@@ -19,15 +19,19 @@ if ([string]::IsNullOrWhiteSpace($ExcelFileName)) {
 $ExcelFilePath = Join-Path $MetadataFolder $ExcelFileName
 
 # Check if project exists
+$isNewProject = $false
 if (-not (Test-Path $ProjectFolder)) {
+    $isNewProject = $true
     Write-Host "Project '$ProjectName' does not exist. Creating structure..." -ForegroundColor Yellow
     Write-Host ""
     
     # Create project folders
     New-Item -ItemType Directory -Path $MetadataFolder -Force | Out-Null
     New-Item -ItemType Directory -Path $PBIPFolder -Force | Out-Null
-    
-    Write-Host "✓ Created: $ProjectFolder" -ForegroundColor Green
+        # Create blank DataverseURL.txt placeholder
+    $dataverseUrlFile = Join-Path $MetadataFolder "DataverseURL.txt"
+    "" | Out-File -FilePath $dataverseUrlFile -Encoding UTF8
+        Write-Host "✓ Created: $ProjectFolder" -ForegroundColor Green
     Write-Host "✓ Created: $MetadataFolder" -ForegroundColor Green
     Write-Host "✓ Created: $PBIPFolder" -ForegroundColor Green
     Write-Host ""
@@ -82,7 +86,7 @@ def extract_metadata(excel_path):
     
     # Read the Metadata tab
     metadata_df = pd.read_excel(excel_path, sheet_name='Metadata')
-    fields_df = metadata_df[['Entity Logical Name', 'Schema Name', 'Display Name', 'Description']].dropna(subset=['Entity Logical Name', 'Schema Name', 'Display Name'])
+    fields_df = metadata_df[['Entity Logical Name', 'Schema Name', 'Display Name', 'Attribute Type', 'Description']].dropna(subset=['Entity Logical Name', 'Schema Name', 'Display Name'])
     
     # Build the output structure
     output = {
@@ -108,6 +112,9 @@ def extract_metadata(excel_path):
                 "displayName": field_row['Display Name'],
                 "schemaName": field_row['Schema Name']
             }
+            # Add attribute type if it exists
+            if pd.notna(field_row.get('Attribute Type')):
+                field_info["attributeType"] = field_row['Attribute Type']
             # Add description if it exists and is not NaN
             if pd.notna(field_row.get('Description')):
                 field_info["description"] = field_row['Description']
@@ -175,6 +182,283 @@ try {
         Write-Host "Tables:" -ForegroundColor Yellow
         foreach ($table in $jsonData.tables) {
             Write-Host "  - $($table.displayName): $($table.fieldCount) fields" -ForegroundColor White
+        }
+        
+        # Check if PBIP files need to be created
+        $pbipFilePath = Join-Path $PBIPFolder "$ProjectName.pbip"
+        if (-not (Test-Path $pbipFilePath)) {
+            Write-Host ""
+            Write-Host "Setting up Power BI project files..." -ForegroundColor Cyan
+            Write-Host ""
+            
+            # Check for DataverseURL.txt file first
+            $dataverseUrlFile = Join-Path $MetadataFolder "DataverseURL.txt"
+            $dataverseUrl = ""
+            
+            if (Test-Path $dataverseUrlFile) {
+                $fileContent = Get-Content $dataverseUrlFile -Raw
+                if (-not [string]::IsNullOrWhiteSpace($fileContent)) {
+                    $dataverseUrl = $fileContent.Trim()
+                    Write-Host "✓ Using Dataverse URL from DataverseURL.txt: $dataverseUrl" -ForegroundColor Green
+                }
+            }
+            
+            # Prompt for Dataverse URL if not found in file
+            if ([string]::IsNullOrWhiteSpace($dataverseUrl)) {
+                Write-Host "To avoid connection errors, please provide your Dataverse URL:" -ForegroundColor Yellow
+                Write-Host "(Tip: Save it to '$dataverseUrlFile' to skip this prompt next time)" -ForegroundColor Gray
+                Write-Host "Example: myorg.crm.dynamics.com" -ForegroundColor Gray
+                $dataverseUrl = Read-Host "Enter Dataverse URL (or press Enter to use default 'mydataverseURL.crm.dynamics.com')"
+                if ([string]::IsNullOrWhiteSpace($dataverseUrl)) {
+                    $dataverseUrl = "mydataverseURL.crm.dynamics.com"
+                    Write-Host "Using default URL: $dataverseUrl" -ForegroundColor Gray
+                }
+                else {
+                    Write-Host "Using URL: $dataverseUrl" -ForegroundColor Green
+                    # Save to file for next time
+                    $dataverseUrl | Out-File -FilePath $dataverseUrlFile -Encoding UTF8 -NoNewline
+                    Write-Host "✓ Saved to DataverseURL.txt for future use" -ForegroundColor Green
+                }
+            }
+            Write-Host ""
+            
+            # Copy template
+            $templatePath = "Code\PBIP_DefaultTemplate"
+            if (Test-Path $templatePath) {
+                Write-Host "  Copying template files..." -ForegroundColor White
+                Copy-Item -Path "$templatePath\*" -Destination $PBIPFolder -Recurse -Force
+                
+                # Rename template files
+                Write-Host "  Renaming files to match project..." -ForegroundColor White
+                Rename-Item -Path (Join-Path $PBIPFolder "Template.pbip") -NewName "$ProjectName.pbip"
+                Rename-Item -Path (Join-Path $PBIPFolder "Template.Report") -NewName "$ProjectName.Report"
+                Rename-Item -Path (Join-Path $PBIPFolder "Template.SemanticModel") -NewName "$ProjectName.SemanticModel"
+                
+                # Update PBIP file references
+                Write-Host "  Updating internal references..." -ForegroundColor White
+                $pbipContent = Get-Content $pbipFilePath -Raw
+                $pbipContent = $pbipContent -replace 'Template\.Report', "$ProjectName.Report"
+                $pbipContent | Set-Content $pbipFilePath -NoNewline
+                
+                # Update report definition
+                $reportDefPath = Join-Path $PBIPFolder "$ProjectName.Report\definition.pbir"
+                $reportDefContent = Get-Content $reportDefPath -Raw
+                $reportDefContent = $reportDefContent -replace 'Template\.SemanticModel', "$ProjectName.SemanticModel"
+                $reportDefContent | Set-Content $reportDefPath -NoNewline
+                
+                # Update Dataverse URL in expressions.tmdl
+                $expressionsPath = Join-Path $PBIPFolder "$ProjectName.SemanticModel\definition\expressions.tmdl"
+                $expressionsContent = Get-Content $expressionsPath -Raw
+                $expressionsContent = $expressionsContent -replace 'mydataverseURL\.crm\.dynamics\.com', $dataverseUrl
+                $expressionsContent | Set-Content $expressionsPath -NoNewline
+                
+                # Update model.tmdl with table references
+                Write-Host "  Adding table definitions..." -ForegroundColor White
+                $modelPath = Join-Path $PBIPFolder "$ProjectName.SemanticModel\definition\model.tmdl"
+                $tableNames = $jsonData.tables | ForEach-Object { $_.schemaName }
+                $queryOrder = @("DataverseURL") + $tableNames
+                $queryOrderStr = $queryOrder | ForEach-Object { "`"$_`"" }
+                $queryOrderLine = "annotation PBI_QueryOrder = [$($queryOrderStr -join ',')]"
+                
+                $refLines = $tableNames | ForEach-Object {
+                    if ($_ -match '\s') {
+                        "ref table '$_'"
+                    } else {
+                        "ref table $_"
+                    }
+                }
+                
+                $modelContent = Get-Content $modelPath -Raw
+                $modelContent = $modelContent -replace 'annotation PBI_QueryOrder = \["DataverseURL"\]', $queryOrderLine
+                $modelContent = $modelContent -replace '(annotation PBI_ProTooling[^\r\n]+)', "`$1`n`n$($refLines -join "`n")`n"
+                $modelContent | Set-Content $modelPath -NoNewline
+                
+                # Create table definition files
+                $tablesDir = Join-Path $PBIPFolder "$ProjectName.SemanticModel\definition\tables"
+                New-Item -ItemType Directory -Path $tablesDir -Force | Out-Null
+                
+                foreach ($table in $jsonData.tables) {
+                    $tableName = $table.schemaName
+                    $displayName = $table.displayName
+                    $tableFile = Join-Path $tablesDir "$tableName.tmdl"
+                    
+                    # Generate GUID tags
+                    $tableTag = [guid]::NewGuid().ToString()
+                    
+                    # Create columns for ALL fields
+                    $columnDefs = @()
+                    $sqlColumns = @()
+                    
+                    # First, add the primary ID column (derived from table name)
+                    $primaryIdField = $tableName.ToLower() -replace '\s', '' # Remove spaces, lowercase
+                    $primaryIdField = $primaryIdField + "id"
+                    $idColTag = [guid]::NewGuid().ToString()
+                    
+                    $idColumnDef = @"
+`tcolumn $primaryIdField
+`t`tdataType: string
+`t`tisHidden
+`t`tlineageTag: $idColTag
+`t`tsummarizeBy: none
+`t`tsourceColumn: $primaryIdField
+
+`t`tannotation SummarizationSetBy = Automatic
+"@
+                    $columnDefs += $idColumnDef
+                    $sqlColumns += "        ,Base.$primaryIdField"
+                    
+                    # Then add all other fields from metadata
+                    foreach ($field in $table.fields) {
+                        $colTag = [guid]::NewGuid().ToString()
+                        $fieldName = $field.schemaName
+                        $fieldDisplay = $field.displayName
+                        $attributeType = if ($field.attributeType) { $field.attributeType } else { "" }
+                        
+                        # Determine data type based on attribute type
+                        $dataType = switch ($attributeType) {
+                            "Currency" { "decimal" }
+                            "Decimal" { "double" }
+                            "Whole Number" { "int64" }
+                            "Integer" { "int64" }
+                            default { "string" }
+                        }
+                        
+                        # Determine format string based on attribute type
+                        $formatString = switch ($attributeType) {
+                            "Currency" { "`n`t`tformatString: \`$#,0.00;(\`$#,0.00);\`$#,0.00" }
+                            "Decimal" { "`n`t`tformatString: #,0.00" }
+                            default { "" }
+                        }
+                        
+                        # For Lookup, Customer, and Owner fields, add BOTH the GUID column (hidden) and the Name column (visible)
+                        if ($attributeType -eq "Lookup" -or $attributeType -eq "Customer" -or $attributeType -eq "Owner") {
+                            # Hidden GUID column
+                            $guidColTag = [guid]::NewGuid().ToString()
+                            $guidColumnDef = @"
+`tcolumn $fieldName
+`t`tdataType: string
+`t`tisHidden
+`t`tlineageTag: $guidColTag
+`t`tsummarizeBy: none
+`t`tsourceColumn: $fieldName
+
+`t`tannotation SummarizationSetBy = Automatic
+"@
+                            $columnDefs += $guidColumnDef
+                            $sqlColumns += "        ,Base.$fieldName"
+                            
+                            # Visible Name column with friendly display name
+                            $nameColTag = [guid]::NewGuid().ToString()
+                            $nameFieldName = $fieldName + "name"
+                            $nameColumnDef = @"
+`tcolumn '$fieldDisplay'
+`t`tdataType: string
+`t`tlineageTag: $nameColTag
+`t`tsummarizeBy: none
+`t`tsourceColumn: $nameFieldName
+
+`t`tannotation SummarizationSetBy = Automatic
+"@
+                            $columnDefs += $nameColumnDef
+                            $sqlColumns += "        ,Base.$nameFieldName"
+                        }
+                        # For Choice, Picklist, and Two Options fields, only include the Name column (readable label)
+                        elseif ($attributeType -eq "Choice" -or $attributeType -eq "Picklist" -or $attributeType -eq "Two Options") {
+                            $nameFieldName = $fieldName + "name"
+                            $choiceColumnDef = @"
+`tcolumn '$fieldDisplay'
+`t`tdataType: string
+`t`tlineageTag: $colTag
+`t`tsummarizeBy: none
+`t`tsourceColumn: $nameFieldName
+
+`t`tannotation SummarizationSetBy = User
+"@
+                            $columnDefs += $choiceColumnDef
+                            $sqlColumns += "        ,Base.$nameFieldName"
+                        }
+                        # For all other field types, standard column
+                        else {
+                            # Determine if column should be hidden (ID columns)
+                            $isHidden = if ($fieldName -match 'id$|^_.*_value$') { "`n`t`tisHidden" } else { "" }
+                            
+                            # Add column definition
+                            $columnDef = @"
+`tcolumn '$fieldDisplay'
+`t`tdataType: $dataType$formatString
+`t`tlineageTag: $colTag
+`t`tsummarizeBy: none
+`t`tsourceColumn: $fieldName$isHidden
+
+`t`tannotation SummarizationSetBy = Automatic
+"@
+                            $columnDefs += $columnDef
+                            
+                            # Add to SQL SELECT list
+                            $sqlColumns += "        ,Base.$fieldName"
+                        }
+                    }
+                    
+                    # Build SQL query with proper formatting
+                    $sqlSelect = $sqlColumns -join "`n"
+                    # Remove leading comma from first column and add space after SELECT
+                    $sqlSelect = $sqlSelect -replace '^\s+,', '    SELECT '
+                    
+                    # Escape backticks in the query for PowerShell here-string
+                    $tableNameQuoted = if ($tableName -match '\s') { "'$tableName'" } else { $tableName }
+                    
+                    $tableContent = @"
+table $tableNameQuoted
+`tlineageTag: $tableTag
+
+$($columnDefs -join "`n`n")
+
+`tpartition $tableNameQuoted = m
+`t`tmode: directQuery
+`t`tsource = ``````
+`t`t`t`tlet
+    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),
+    Source = Value.NativeQuery(Dataverse,"
+`t`t`t`t
+$sqlSelect
+    FROM $tableName as Base
+    
+    " ,null ,[EnableFolding=true])
+in
+    Source
+`t`t`t`t``````
+
+`tannotation PBI_NavigationStepName = Navigation
+
+`tannotation PBI_ResultType = Table
+
+
+"@
+                    $tableContent | Set-Content $tableFile -NoNewline
+                }
+                
+                Write-Host ""
+                Write-Host "✓ Power BI project files created successfully!" -ForegroundColor Green
+                Write-Host "  Location: $pbipFilePath" -ForegroundColor White
+                Write-Host "  Tables created: $($jsonData.tables.Count)" -ForegroundColor White
+                Write-Host "  Total columns: $($jsonData.tables | ForEach-Object { $_.fieldCount } | Measure-Object -Sum | Select-Object -ExpandProperty Sum)" -ForegroundColor White
+                Write-Host "  Mode: DirectQuery with native SQL" -ForegroundColor White
+                Write-Host "  Dataverse URL: $dataverseUrl" -ForegroundColor White
+                Write-Host ""
+                Write-Host "NEXT STEPS:" -ForegroundColor Cyan
+                Write-Host "1. Open $ProjectName.pbip in Power BI Desktop" -ForegroundColor Yellow
+                Write-Host "2. Connect to your Dataverse environment and test the queries" -ForegroundColor Yellow
+                Write-Host "3. Define relationships between tables in the model" -ForegroundColor Yellow
+            }
+            else {
+                Write-Host ""
+                Write-Host "Warning: Template not found at $templatePath" -ForegroundColor Yellow
+                Write-Host "PBIP files must be created manually" -ForegroundColor Yellow
+            }
+        }
+        else {
+            Write-Host ""
+            Write-Host "Note: PBIP files already exist at: $pbipFilePath" -ForegroundColor Cyan
         }
     }
     else {

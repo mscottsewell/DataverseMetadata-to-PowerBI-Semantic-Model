@@ -1,0 +1,252 @@
+table Product
+	lineageTag: 085682ed-284a-461b-9258-e05036f84502
+
+	column productid
+		dataType: string
+		isHidden
+		lineageTag: f2eb34a1-05be-4293-9194-61c8560c1bee
+		summarizeBy: none
+		sourceColumn: productid
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Current Cost'
+		dataType: decimal
+		lineageTag: 6a660820-0e6d-48c8-9cd0-fc38c6a6635e
+		summarizeBy: none
+		sourceColumn: CurrentCost
+
+		annotation SummarizationSetBy = Automatic
+
+	column DefaultUoMId
+		dataType: string
+		isHidden
+		lineageTag: 8c6a397a-41b0-4118-a701-128186fe5e10
+		summarizeBy: none
+		sourceColumn: DefaultUoMId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Default Unit'
+		dataType: string
+		lineageTag: 927c1134-1a61-462e-a57b-60d513268d1f
+		summarizeBy: none
+		sourceColumn: DefaultUoMIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	column DefaultUoMScheduleId
+		dataType: string
+		isHidden
+		lineageTag: 9fd91352-e573-412a-85de-92db2946cb95
+		summarizeBy: none
+		sourceColumn: DefaultUoMScheduleId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Unit Group'
+		dataType: string
+		lineageTag: 4a77891f-ee45-4f35-a2d2-e0c7620028c2
+		summarizeBy: none
+		sourceColumn: DefaultUoMScheduleIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Description'
+		dataType: string
+		lineageTag: 9aae5c90-6540-4259-8e71-cdc9726735a5
+		summarizeBy: none
+		sourceColumn: Description
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Name'
+		dataType: string
+		lineageTag: ea099311-bbf6-4602-b1e4-b3fa02349740
+		summarizeBy: none
+		sourceColumn: Name
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'List Price'
+		dataType: decimal
+		lineageTag: 411d8813-4450-42fe-8577-da065ffc6f23
+		summarizeBy: none
+		sourceColumn: Price
+
+		annotation SummarizationSetBy = Automatic
+
+	column PriceLevelId
+		dataType: string
+		isHidden
+		lineageTag: c1a44159-90d5-442d-a008-93dcd2f8888a
+		summarizeBy: none
+		sourceColumn: PriceLevelId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Default Price List'
+		dataType: string
+		lineageTag: fad47e97-333e-43b4-93e2-ededc36635ea
+		summarizeBy: none
+		sourceColumn: PriceLevelIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Product ID'
+		dataType: string
+		lineageTag: 90ee26ab-9d92-46e0-bcc9-1065ab58a9d3
+		summarizeBy: none
+		sourceColumn: ProductNumber
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Product Type'
+		dataType: string
+		lineageTag: 4f6cb1fd-7768-4b70-8cb7-e9b8ace7fb76
+		summarizeBy: none
+		sourceColumn: ProductTypeCodename
+
+		annotation SummarizationSetBy = User
+
+	column 'URL'
+		dataType: string
+		lineageTag: 87023004-ed40-4b5a-b296-aa9737ec8799
+		summarizeBy: none
+		sourceColumn: ProductUrl
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Decimals Supported'
+		dataType: int64
+		lineageTag: a40f190f-3a5f-4023-b8d6-3707f154aebd
+		summarizeBy: none
+		sourceColumn: QuantityDecimal
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Quantity On Hand'
+		dataType: double
+		lineageTag: b91066ee-1ee9-4661-9f1d-894e12b8fcb1
+		summarizeBy: none
+		sourceColumn: QuantityOnHand
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Standard Cost'
+		dataType: decimal
+		lineageTag: 095953dc-41a8-40ee-b68b-10ec2ce4a0f5
+		summarizeBy: none
+		sourceColumn: StandardCost
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Stock Volume'
+		dataType: double
+		lineageTag: bd30afe4-1b8a-4694-80d0-8752bf144337
+		summarizeBy: none
+		sourceColumn: StockVolume
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Stock Weight'
+		dataType: double
+		lineageTag: bb2484ac-c9a1-40d2-b10e-74a67c7a8a92
+		summarizeBy: none
+		sourceColumn: StockWeight
+
+		annotation SummarizationSetBy = Automatic
+
+	column SubjectId
+		dataType: string
+		isHidden
+		lineageTag: 25691d24-32ee-4164-9ce7-96822f9fe9b0
+		summarizeBy: none
+		sourceColumn: SubjectId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Subject'
+		dataType: string
+		lineageTag: 6757272f-d644-4f6f-a8d3-e3e8defd6f98
+		summarizeBy: none
+		sourceColumn: SubjectIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	column TransactionCurrencyId
+		dataType: string
+		isHidden
+		lineageTag: e61ea755-6537-4ba6-b5a6-542c1c82a19c
+		summarizeBy: none
+		sourceColumn: TransactionCurrencyId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Currency'
+		dataType: string
+		lineageTag: 49b68a67-648b-41e3-8372-928bb30035e1
+		summarizeBy: none
+		sourceColumn: TransactionCurrencyIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Vendor'
+		dataType: string
+		lineageTag: 77294966-08fc-43a1-8999-516312b5e988
+		summarizeBy: none
+		sourceColumn: VendorName
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Vendor Name'
+		dataType: string
+		lineageTag: d785533e-a782-44a9-a6ec-e02c07b1e816
+		summarizeBy: none
+		sourceColumn: VendorPartNumber
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Product = m
+		mode: directQuery
+		source = ```
+				let
+    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),
+    Source = Value.NativeQuery(Dataverse,"
+				
+    SELECT Base.productid
+        ,Base.CurrentCost
+        ,Base.DefaultUoMId
+        ,Base.DefaultUoMIdname
+        ,Base.DefaultUoMScheduleId
+        ,Base.DefaultUoMScheduleIdname
+        ,Base.Description
+        ,Base.Name
+        ,Base.Price
+        ,Base.PriceLevelId
+        ,Base.PriceLevelIdname
+        ,Base.ProductNumber
+        ,Base.ProductTypeCodename
+        ,Base.ProductUrl
+        ,Base.QuantityDecimal
+        ,Base.QuantityOnHand
+        ,Base.StandardCost
+        ,Base.StockVolume
+        ,Base.StockWeight
+        ,Base.SubjectId
+        ,Base.SubjectIdname
+        ,Base.TransactionCurrencyId
+        ,Base.TransactionCurrencyIdname
+        ,Base.VendorName
+        ,Base.VendorPartNumber
+    FROM Product as Base
+    
+    " ,null ,[EnableFolding=true])
+in
+    Source
+				```
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

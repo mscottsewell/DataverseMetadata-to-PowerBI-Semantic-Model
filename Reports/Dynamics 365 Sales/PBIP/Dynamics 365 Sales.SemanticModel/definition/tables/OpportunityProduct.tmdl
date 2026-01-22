@@ -1,0 +1,178 @@
+table OpportunityProduct
+	lineageTag: 6401bc1d-4964-420f-bbbf-3832cae3a55c
+
+	column opportunityproductid
+		dataType: string
+		isHidden
+		lineageTag: b7b1d8cf-1406-4ef4-bda4-262e52845c11
+		summarizeBy: none
+		sourceColumn: opportunityproductid
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Amount'
+		dataType: decimal
+		lineageTag: df70939c-d08a-400b-b781-0d9ab785fb2f
+		summarizeBy: none
+		sourceColumn: BaseAmount
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Extended amount'
+		dataType: decimal
+		lineageTag: 6ecf3bd1-cc21-4d94-a811-2a1d9432e1f2
+		summarizeBy: none
+		sourceColumn: ExtendedAmount
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Price Overridden'
+		dataType: string
+		lineageTag: 35e3ff8e-8238-48e7-aecf-c2d85686b15d
+		summarizeBy: none
+		sourceColumn: IsPriceOverriddenname
+
+		annotation SummarizationSetBy = User
+
+	column 'Select Product'
+		dataType: string
+		lineageTag: de2bdf0b-17a8-433f-9441-06a0034cd74a
+		summarizeBy: none
+		sourceColumn: IsProductOverriddenname
+
+		annotation SummarizationSetBy = User
+
+	column 'Manual Discount Amount'
+		dataType: decimal
+		lineageTag: fb98135e-fd1d-46b2-98b5-2aa932b16bdc
+		summarizeBy: none
+		sourceColumn: ManualDiscountAmount
+
+		annotation SummarizationSetBy = Automatic
+
+	column OpportunityId
+		dataType: string
+		isHidden
+		lineageTag: eba41d5c-2ee3-43fe-b753-adde7c943a8b
+		summarizeBy: none
+		sourceColumn: OpportunityId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Opportunity'
+		dataType: string
+		lineageTag: 8c0bce6e-8411-4af4-a928-d78000bb156c
+		summarizeBy: none
+		sourceColumn: OpportunityIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Price per unit'
+		dataType: decimal
+		lineageTag: 80705ccb-4f09-4629-8892-aee5de65badb
+		summarizeBy: none
+		sourceColumn: PricePerUnit
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Write-In Product'
+		dataType: string
+		lineageTag: 3a85e3d9-876b-4a42-8e39-c3f3eda9570f
+		summarizeBy: none
+		sourceColumn: ProductDescription
+
+		annotation SummarizationSetBy = Automatic
+
+	column ProductId
+		dataType: string
+		isHidden
+		lineageTag: 286f4292-6b18-4d2f-9109-1bfdb1d19c01
+		summarizeBy: none
+		sourceColumn: ProductId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Existing Product'
+		dataType: string
+		lineageTag: 3e6d0da8-090b-4bc3-a537-62081f80e585
+		summarizeBy: none
+		sourceColumn: ProductIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Quantity'
+		dataType: double
+		lineageTag: f3f845a4-9fbc-4b02-bcc7-da9b05943175
+		summarizeBy: none
+		sourceColumn: Quantity
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Tax'
+		dataType: decimal
+		lineageTag: 35464789-1e1e-4f35-8de6-d260b23d8006
+		summarizeBy: none
+		sourceColumn: Tax
+
+		annotation SummarizationSetBy = Automatic
+
+	column UoMId
+		dataType: string
+		isHidden
+		lineageTag: 93eaadcb-de23-4728-89b3-989ade3bfa39
+		summarizeBy: none
+		sourceColumn: UoMId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Unit'
+		dataType: string
+		lineageTag: 68c8b1db-47c0-4fec-9c34-c30e277ec25a
+		summarizeBy: none
+		sourceColumn: UoMIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Volume Discount'
+		dataType: decimal
+		lineageTag: 5156d16d-5f5c-4a67-8d31-8c8790488d61
+		summarizeBy: none
+		sourceColumn: VolumeDiscountAmount
+
+		annotation SummarizationSetBy = Automatic
+
+	partition OpportunityProduct = m
+		mode: directQuery
+		source = ```
+				let
+    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),
+    Source = Value.NativeQuery(Dataverse,"
+				
+    SELECT Base.opportunityproductid
+        ,Base.BaseAmount
+        ,Base.ExtendedAmount
+        ,Base.IsPriceOverriddenname
+        ,Base.IsProductOverriddenname
+        ,Base.ManualDiscountAmount
+        ,Base.OpportunityId
+        ,Base.OpportunityIdname
+        ,Base.PricePerUnit
+        ,Base.ProductDescription
+        ,Base.ProductId
+        ,Base.ProductIdname
+        ,Base.Quantity
+        ,Base.Tax
+        ,Base.UoMId
+        ,Base.UoMIdname
+        ,Base.VolumeDiscountAmount
+    FROM OpportunityProduct as Base
+    
+    " ,null ,[EnableFolding=true])
+in
+    Source
+				```
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

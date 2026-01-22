@@ -1,0 +1,475 @@
+table Contact
+	lineageTag: 6578be26-31ac-4aae-b6e5-bf35a65d620e
+
+	column contactid
+		dataType: string
+		isHidden
+		lineageTag: a5429f58-e330-455f-818b-e643565219bb
+		summarizeBy: none
+		sourceColumn: contactid
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Role'
+		dataType: string
+		lineageTag: 133852c2-4c9f-4fab-bd18-3a37cc36eddb
+		summarizeBy: none
+		sourceColumn: AccountRoleCodename
+
+		annotation SummarizationSetBy = User
+
+	column 'Address 1: Address Type'
+		dataType: string
+		lineageTag: c9bf4e31-6187-4a9e-88bb-2fa6aac5a53f
+		summarizeBy: none
+		sourceColumn: Address1_AddressTypeCodename
+
+		annotation SummarizationSetBy = User
+
+	column 'Address 1: City'
+		dataType: string
+		lineageTag: 4d80e4eb-201f-4bf4-b755-4c4b6897ec58
+		summarizeBy: none
+		sourceColumn: Address1_City
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Address 1: Country/Region'
+		dataType: string
+		lineageTag: 87d89352-ed27-4125-8389-af34c76f38c6
+		summarizeBy: none
+		sourceColumn: Address1_Country
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Address 1: Freight Terms'
+		dataType: string
+		lineageTag: ef144d3c-05f1-47a6-9589-61ce8101cab8
+		summarizeBy: none
+		sourceColumn: Address1_FreightTermsCodename
+
+		annotation SummarizationSetBy = User
+
+	column 'Address 1: Street 1'
+		dataType: string
+		lineageTag: 95027149-cb91-4292-be41-6a41a3a5bca6
+		summarizeBy: none
+		sourceColumn: Address1_Line1
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Address 1: Street 2'
+		dataType: string
+		lineageTag: a64b82b5-eb86-40d1-a9db-2a2df0ef01fc
+		summarizeBy: none
+		sourceColumn: Address1_Line2
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Address 1: Street 3'
+		dataType: string
+		lineageTag: d1938636-7f63-48c5-969d-bd3ec97d01b5
+		summarizeBy: none
+		sourceColumn: Address1_Line3
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Address 1: Name'
+		dataType: string
+		lineageTag: 2d852a6d-f4d7-4689-b613-1801f6989931
+		summarizeBy: none
+		sourceColumn: Address1_Name
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Address 1: ZIP/Postal Code'
+		dataType: string
+		lineageTag: 9efb26d8-1686-4821-9a73-f11b2ea9c035
+		summarizeBy: none
+		sourceColumn: Address1_PostalCode
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Address 1: Shipping Method'
+		dataType: string
+		lineageTag: de1942a0-82d9-42ca-8b3e-7321ebd74577
+		summarizeBy: none
+		sourceColumn: Address1_ShippingMethodCodename
+
+		annotation SummarizationSetBy = User
+
+	column 'Address 1: State/Province'
+		dataType: string
+		lineageTag: 9cf7696b-217c-4413-af51-07e2c94a4f38
+		summarizeBy: none
+		sourceColumn: Address1_StateOrProvince
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Address 1: Phone'
+		dataType: string
+		lineageTag: e5ffc53a-15f8-4b88-a30c-6e25b425509d
+		summarizeBy: none
+		sourceColumn: Address1_Telephone1
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Anniversary'
+		dataType: string
+		lineageTag: 9b88919a-5b1c-4087-8f4e-15eeaaf15422
+		summarizeBy: none
+		sourceColumn: Anniversary
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Assistant'
+		dataType: string
+		lineageTag: b05506a2-1527-4ea6-874a-2ef0dc0209a7
+		summarizeBy: none
+		sourceColumn: AssistantName
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Assistant Phone'
+		dataType: string
+		lineageTag: 91a686c3-f01f-4433-92f6-f54c6b04c4fd
+		summarizeBy: none
+		sourceColumn: AssistantPhone
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Birthday'
+		dataType: string
+		lineageTag: 678a2e7d-63c4-4fa9-a4af-0e6a2b6f8369
+		summarizeBy: none
+		sourceColumn: BirthDate
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Credit Limit'
+		dataType: decimal
+		lineageTag: 430b60e1-2579-41ec-aea2-83c8c3644c1e
+		summarizeBy: none
+		sourceColumn: CreditLimit
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Credit Hold'
+		dataType: string
+		lineageTag: b480a9c5-9fee-479e-9c4c-4563bffceaa2
+		summarizeBy: none
+		sourceColumn: CreditOnHoldname
+
+		annotation SummarizationSetBy = User
+
+	column 'Department'
+		dataType: string
+		lineageTag: 15e09374-972f-43c3-836c-ae736cac426f
+		summarizeBy: none
+		sourceColumn: Department
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Description'
+		dataType: string
+		lineageTag: bcfc12b3-628a-4720-b5a4-45a5d9199ceb
+		summarizeBy: none
+		sourceColumn: Description
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Do not allow Bulk Emails'
+		dataType: string
+		lineageTag: ec4051db-25ca-4e65-9585-e361057f3c92
+		summarizeBy: none
+		sourceColumn: DoNotBulkEMailname
+
+		annotation SummarizationSetBy = User
+
+	column 'Do not allow Emails'
+		dataType: string
+		lineageTag: 9203fcc9-6b2e-4b4c-a948-74353b7e9471
+		summarizeBy: none
+		sourceColumn: DoNotEMailname
+
+		annotation SummarizationSetBy = User
+
+	column 'Do not allow Faxes'
+		dataType: string
+		lineageTag: ddaa1ea1-ebad-4ede-a1fa-1e3dcc458bbe
+		summarizeBy: none
+		sourceColumn: DoNotFaxname
+
+		annotation SummarizationSetBy = User
+
+	column 'Do not allow Phone Calls'
+		dataType: string
+		lineageTag: e975244d-8602-4ade-8126-3342137c8136
+		summarizeBy: none
+		sourceColumn: DoNotPhonename
+
+		annotation SummarizationSetBy = User
+
+	column 'Do not allow Mails'
+		dataType: string
+		lineageTag: 2db7c755-d920-45b2-b2de-93ab595e26cf
+		summarizeBy: none
+		sourceColumn: DoNotPostalMailname
+
+		annotation SummarizationSetBy = User
+
+	column 'Email'
+		dataType: string
+		lineageTag: 3ea7a075-6d44-426e-b0aa-dbba1ab1d50a
+		summarizeBy: none
+		sourceColumn: EMailAddress1
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Marital Status'
+		dataType: string
+		lineageTag: 5572881f-e314-4761-a432-9b6d43c31c11
+		summarizeBy: none
+		sourceColumn: FamilyStatusCodename
+
+		annotation SummarizationSetBy = User
+
+	column 'Fax'
+		dataType: string
+		lineageTag: d42290ed-d01f-44af-a8d8-921ad08728e5
+		summarizeBy: none
+		sourceColumn: Fax
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'First Name'
+		dataType: string
+		lineageTag: c345aabe-713b-4716-9079-35ab5993068d
+		summarizeBy: none
+		sourceColumn: FirstName
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Gender'
+		dataType: string
+		lineageTag: f9b0494b-aee8-4d96-94fa-ff69a24e6439
+		summarizeBy: none
+		sourceColumn: GenderCodename
+
+		annotation SummarizationSetBy = User
+
+	column 'Job Title'
+		dataType: string
+		lineageTag: ed392b10-a488-4ae8-9513-d966072a46f8
+		summarizeBy: none
+		sourceColumn: JobTitle
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Last Name'
+		dataType: string
+		lineageTag: 0b792cca-636a-444d-bea6-53674d47641e
+		summarizeBy: none
+		sourceColumn: LastName
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Manager'
+		dataType: string
+		lineageTag: f90b0c03-89cf-4419-862e-9ab6a867631d
+		summarizeBy: none
+		sourceColumn: ManagerName
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Manager Phone'
+		dataType: string
+		lineageTag: 8d768ee7-8fc8-4a08-b43d-ff50ebbf8b8e
+		summarizeBy: none
+		sourceColumn: ManagerPhone
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Middle Name'
+		dataType: string
+		lineageTag: e59a37e4-1903-450a-8770-8b7854d35ada
+		summarizeBy: none
+		sourceColumn: MiddleName
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Mobile Phone'
+		dataType: string
+		lineageTag: 1571c2bf-72b0-4dae-8be1-43d1fe50f47a
+		summarizeBy: none
+		sourceColumn: MobilePhone
+
+		annotation SummarizationSetBy = Automatic
+
+	column OwnerId
+		dataType: string
+		isHidden
+		lineageTag: 3fa5c683-538e-4404-84dc-c552a04cd593
+		summarizeBy: none
+		sourceColumn: OwnerId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Owner'
+		dataType: string
+		lineageTag: 9baebae0-09b8-4b05-b821-b0094c5334c7
+		summarizeBy: none
+		sourceColumn: OwnerIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	column ParentCustomerId
+		dataType: string
+		isHidden
+		lineageTag: 19b756f4-7473-43ec-a454-9cab692022a8
+		summarizeBy: none
+		sourceColumn: ParentCustomerId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Company Name'
+		dataType: string
+		lineageTag: 563143b9-3ee1-4f5b-83be-4f736ee01249
+		summarizeBy: none
+		sourceColumn: ParentCustomerIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Payment Terms'
+		dataType: string
+		lineageTag: 9c9bae14-d2cd-44cd-beec-f8653d35328e
+		summarizeBy: none
+		sourceColumn: PaymentTermsCodename
+
+		annotation SummarizationSetBy = User
+
+	column 'Preferred Method of Contact'
+		dataType: string
+		lineageTag: 124faa49-2934-4b76-b53e-741c1fe99e20
+		summarizeBy: none
+		sourceColumn: PreferredContactMethodCodename
+
+		annotation SummarizationSetBy = User
+
+	column 'Salutation'
+		dataType: string
+		lineageTag: d54cdcfa-08a7-4e28-a1b6-8d17c60d7c2e
+		summarizeBy: none
+		sourceColumn: Salutation
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Spouse/Partner Name'
+		dataType: string
+		lineageTag: 667f92d1-c546-43ce-9c13-ab932ca6ab35
+		summarizeBy: none
+		sourceColumn: SpousesName
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Business Phone'
+		dataType: string
+		lineageTag: ec4675ae-fc9f-4520-a55a-5705f0382ec9
+		summarizeBy: none
+		sourceColumn: Telephone1
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Home Phone'
+		dataType: string
+		lineageTag: 1a9a1f0a-8514-41b2-85fc-ed34323f2112
+		summarizeBy: none
+		sourceColumn: Telephone2
+
+		annotation SummarizationSetBy = Automatic
+
+	column TransactionCurrencyId
+		dataType: string
+		isHidden
+		lineageTag: 492a5e10-289b-45f4-be88-533c3981e53f
+		summarizeBy: none
+		sourceColumn: TransactionCurrencyId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Currency'
+		dataType: string
+		lineageTag: 5ddc9890-5ddf-4e71-8410-875d84ca99d9
+		summarizeBy: none
+		sourceColumn: TransactionCurrencyIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Contact = m
+		mode: directQuery
+		source = ```
+				let
+    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),
+    Source = Value.NativeQuery(Dataverse,"
+				
+    SELECT Base.contactid
+        ,Base.AccountRoleCodename
+        ,Base.Address1_AddressTypeCodename
+        ,Base.Address1_City
+        ,Base.Address1_Country
+        ,Base.Address1_FreightTermsCodename
+        ,Base.Address1_Line1
+        ,Base.Address1_Line2
+        ,Base.Address1_Line3
+        ,Base.Address1_Name
+        ,Base.Address1_PostalCode
+        ,Base.Address1_ShippingMethodCodename
+        ,Base.Address1_StateOrProvince
+        ,Base.Address1_Telephone1
+        ,Base.Anniversary
+        ,Base.AssistantName
+        ,Base.AssistantPhone
+        ,Base.BirthDate
+        ,Base.CreditLimit
+        ,Base.CreditOnHoldname
+        ,Base.Department
+        ,Base.Description
+        ,Base.DoNotBulkEMailname
+        ,Base.DoNotEMailname
+        ,Base.DoNotFaxname
+        ,Base.DoNotPhonename
+        ,Base.DoNotPostalMailname
+        ,Base.EMailAddress1
+        ,Base.FamilyStatusCodename
+        ,Base.Fax
+        ,Base.FirstName
+        ,Base.GenderCodename
+        ,Base.JobTitle
+        ,Base.LastName
+        ,Base.ManagerName
+        ,Base.ManagerPhone
+        ,Base.MiddleName
+        ,Base.MobilePhone
+        ,Base.OwnerId
+        ,Base.OwnerIdname
+        ,Base.ParentCustomerId
+        ,Base.ParentCustomerIdname
+        ,Base.PaymentTermsCodename
+        ,Base.PreferredContactMethodCodename
+        ,Base.Salutation
+        ,Base.SpousesName
+        ,Base.Telephone1
+        ,Base.Telephone2
+        ,Base.TransactionCurrencyId
+        ,Base.TransactionCurrencyIdname
+    FROM Contact as Base
+    
+    " ,null ,[EnableFolding=true])
+in
+    Source
+				```
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,24 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 0
+
+annotation PBI_QueryOrder = ["DataverseURL","Account","Competitor","Contact","Opportunity","OpportunityProduct","Product"]
+
+annotation PBI_ProTooling = ["TMDLView_Desktop","DevMode","TMDL-Extension"]
+
+ref table Account
+ref table Competitor
+ref table Contact
+ref table Opportunity
+ref table OpportunityProduct
+ref table Product
+
+
+ref cultureInfo en-US
+

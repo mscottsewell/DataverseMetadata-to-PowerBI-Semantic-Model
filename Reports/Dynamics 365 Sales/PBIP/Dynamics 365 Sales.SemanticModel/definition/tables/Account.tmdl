@@ -1,0 +1,561 @@
+table Account
+	lineageTag: cfcd26b6-fa03-46fc-a7a3-d8bc882c07f4
+
+	column accountid
+		dataType: string
+		isHidden
+		lineageTag: 3ff505cf-6df2-4f54-90f1-ed36fb6ebb2f
+		summarizeBy: none
+		sourceColumn: accountid
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Category'
+		dataType: string
+		lineageTag: 2a66f3a6-8a36-4390-a4b3-81c5f973a36f
+		summarizeBy: none
+		sourceColumn: AccountCategoryCodename
+
+		annotation SummarizationSetBy = User
+
+	column 'Account Number'
+		dataType: string
+		lineageTag: c0a059ca-ce95-4088-9701-9da5d338c276
+		summarizeBy: none
+		sourceColumn: AccountNumber
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Address 1: Address Type'
+		dataType: string
+		lineageTag: 8d4f032a-8faa-45c1-8a8b-5b856eed0a99
+		summarizeBy: none
+		sourceColumn: Address1_AddressTypeCodename
+
+		annotation SummarizationSetBy = User
+
+	column 'Address 1: City'
+		dataType: string
+		lineageTag: d69ea864-0d96-4c8b-9797-476ed7881168
+		summarizeBy: none
+		sourceColumn: Address1_City
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Address 1: Country/Region'
+		dataType: string
+		lineageTag: 834cd02d-0205-4068-b9c7-97c2cbaf97cf
+		summarizeBy: none
+		sourceColumn: Address1_Country
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Address 1: Freight Terms'
+		dataType: string
+		lineageTag: 4730c521-13e2-464f-832a-03786cb02486
+		summarizeBy: none
+		sourceColumn: Address1_FreightTermsCodename
+
+		annotation SummarizationSetBy = User
+
+	column 'Address 1: Street 1'
+		dataType: string
+		lineageTag: a8ddf566-dfbf-4e4b-9757-bbfe8d36bef3
+		summarizeBy: none
+		sourceColumn: Address1_Line1
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Address 1: Street 2'
+		dataType: string
+		lineageTag: a2d3880a-f79b-4941-a5c0-ff357e3124d4
+		summarizeBy: none
+		sourceColumn: Address1_Line2
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Address 1: Street 3'
+		dataType: string
+		lineageTag: 1fda2da4-53a8-406d-9f79-47ce3bf74f65
+		summarizeBy: none
+		sourceColumn: Address1_Line3
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Address 1: Name'
+		dataType: string
+		lineageTag: 485635e9-8cb3-4442-be41-ba3db08e70ba
+		summarizeBy: none
+		sourceColumn: Address1_Name
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Address 1: ZIP/Postal Code'
+		dataType: string
+		lineageTag: d37f661f-d130-447d-bb03-11605b25cef1
+		summarizeBy: none
+		sourceColumn: Address1_PostalCode
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Address 1: Shipping Method'
+		dataType: string
+		lineageTag: 28e26787-ce97-492d-aa01-9198793a6c25
+		summarizeBy: none
+		sourceColumn: Address1_ShippingMethodCodename
+
+		annotation SummarizationSetBy = User
+
+	column 'Address 1: State/Province'
+		dataType: string
+		lineageTag: 6da42f95-06f1-4a16-88e6-f8de560af942
+		summarizeBy: none
+		sourceColumn: Address1_StateOrProvince
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Address Phone'
+		dataType: string
+		lineageTag: b63462f4-ad14-4164-a71b-c603ef652330
+		summarizeBy: none
+		sourceColumn: Address1_Telephone1
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Credit Limit'
+		dataType: decimal
+		lineageTag: bfa30b25-a334-4363-a00d-2080abc6ce46
+		summarizeBy: none
+		sourceColumn: CreditLimit
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Credit Hold'
+		dataType: string
+		lineageTag: 3c14796b-f57d-4fa4-aef9-9fae53f4ee5d
+		summarizeBy: none
+		sourceColumn: CreditOnHoldname
+
+		annotation SummarizationSetBy = User
+
+	column 'Relationship Type'
+		dataType: string
+		lineageTag: 6a86fc12-ed91-4bab-99ac-7250b864439d
+		summarizeBy: none
+		sourceColumn: CustomerTypeCodename
+
+		annotation SummarizationSetBy = User
+
+	column DefaultPriceLevelId
+		dataType: string
+		isHidden
+		lineageTag: 0890e276-37d2-45be-9dbd-7d736d235bf9
+		summarizeBy: none
+		sourceColumn: DefaultPriceLevelId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Price List'
+		dataType: string
+		lineageTag: 41d9aec7-f454-4a59-980b-16e424a37674
+		summarizeBy: none
+		sourceColumn: DefaultPriceLevelIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Description'
+		dataType: string
+		lineageTag: 500dd620-9412-4267-a568-7c2601afa3f2
+		summarizeBy: none
+		sourceColumn: Description
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Do not allow Bulk Emails'
+		dataType: string
+		lineageTag: 16ea28a9-8eeb-4392-bf77-5e59492630f1
+		summarizeBy: none
+		sourceColumn: DoNotBulkEMailname
+
+		annotation SummarizationSetBy = User
+
+	column 'Do not allow Emails'
+		dataType: string
+		lineageTag: 8d6ee3e1-b8e9-4220-ab9f-aa31ba81782f
+		summarizeBy: none
+		sourceColumn: DoNotEMailname
+
+		annotation SummarizationSetBy = User
+
+	column 'Do not allow Faxes'
+		dataType: string
+		lineageTag: c2c14c0f-9761-4b5c-b843-13f183f8b9a0
+		summarizeBy: none
+		sourceColumn: DoNotFaxname
+
+		annotation SummarizationSetBy = User
+
+	column 'Do not allow Phone Calls'
+		dataType: string
+		lineageTag: 91df90e3-d056-4d71-a8fd-fcafdeb5e117
+		summarizeBy: none
+		sourceColumn: DoNotPhonename
+
+		annotation SummarizationSetBy = User
+
+	column 'Do not allow Mails'
+		dataType: string
+		lineageTag: 590ebcda-c2b2-4bc6-a6f0-163503879372
+		summarizeBy: none
+		sourceColumn: DoNotPostalMailname
+
+		annotation SummarizationSetBy = User
+
+	column 'Send Marketing Materials'
+		dataType: string
+		lineageTag: 334ac7d4-713d-4d08-8046-80220e601381
+		summarizeBy: none
+		sourceColumn: DoNotSendMMname
+
+		annotation SummarizationSetBy = User
+
+	column 'Email'
+		dataType: string
+		lineageTag: 429b6ab6-6f08-439e-870e-8e0494226f9b
+		summarizeBy: none
+		sourceColumn: EMailAddress1
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Fax'
+		dataType: string
+		lineageTag: 70b73220-fe75-4e43-b143-c1b203463243
+		summarizeBy: none
+		sourceColumn: Fax
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Follow Email Activity'
+		dataType: string
+		lineageTag: 554a2132-6ea5-4edb-87d8-c8f6b3280400
+		summarizeBy: none
+		sourceColumn: FollowEmailname
+
+		annotation SummarizationSetBy = User
+
+	column 'Industry'
+		dataType: string
+		lineageTag: 1facbe36-f0e5-4f14-8be9-33361b37d765
+		summarizeBy: none
+		sourceColumn: IndustryCodename
+
+		annotation SummarizationSetBy = User
+
+	column 'Last Date Included in Campaign'
+		dataType: string
+		lineageTag: 0f315c20-0daf-4455-83f2-599c167c3c45
+		summarizeBy: none
+		sourceColumn: LastUsedInCampaign
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Account Name'
+		dataType: string
+		lineageTag: 200b5ee3-355a-408c-b5dd-23544dbbdb3b
+		summarizeBy: none
+		sourceColumn: Name
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Number of Employees'
+		dataType: int64
+		lineageTag: 4a984b97-a88c-4c8c-8d38-b2a8d4fd7eb9
+		summarizeBy: none
+		sourceColumn: NumberOfEmployees
+
+		annotation SummarizationSetBy = Automatic
+
+	column OriginatingLeadId
+		dataType: string
+		isHidden
+		lineageTag: 3af3d8bf-0bd4-4233-8d9e-1f7e96bf1af8
+		summarizeBy: none
+		sourceColumn: OriginatingLeadId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Originating Lead'
+		dataType: string
+		lineageTag: ab13a7e4-452e-4e9b-878a-625a9c69b356
+		summarizeBy: none
+		sourceColumn: OriginatingLeadIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	column OwnerId
+		dataType: string
+		isHidden
+		lineageTag: 2c7aeff2-1885-4449-9369-edeeedf13366
+		summarizeBy: none
+		sourceColumn: OwnerId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Owner'
+		dataType: string
+		lineageTag: d3dedabd-90f1-49cf-8abb-7238c4398405
+		summarizeBy: none
+		sourceColumn: OwnerIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Ownership'
+		dataType: string
+		lineageTag: 3b433794-2d6a-4b20-a0b7-eea565f2236b
+		summarizeBy: none
+		sourceColumn: OwnershipCodename
+
+		annotation SummarizationSetBy = User
+
+	column ParentAccountId
+		dataType: string
+		isHidden
+		lineageTag: 9a7f8b86-7496-4244-8880-b196d43e830d
+		summarizeBy: none
+		sourceColumn: ParentAccountId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Parent Account'
+		dataType: string
+		lineageTag: 36080be0-e491-4d07-8067-432f95ac90b9
+		summarizeBy: none
+		sourceColumn: ParentAccountIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Payment Terms'
+		dataType: string
+		lineageTag: abf58fc0-7022-4e52-90b4-9e82edd75565
+		summarizeBy: none
+		sourceColumn: PaymentTermsCodename
+
+		annotation SummarizationSetBy = User
+
+	column 'Preferred Day'
+		dataType: string
+		lineageTag: d917fc45-968d-4262-ac10-446279cba46c
+		summarizeBy: none
+		sourceColumn: PreferredAppointmentDayCodename
+
+		annotation SummarizationSetBy = User
+
+	column 'Preferred Time'
+		dataType: string
+		lineageTag: a374fd54-6d0c-416f-9ab2-c3c028ef1a13
+		summarizeBy: none
+		sourceColumn: PreferredAppointmentTimeCodename
+
+		annotation SummarizationSetBy = User
+
+	column 'Preferred Method of Contact'
+		dataType: string
+		lineageTag: 863e3dcf-0021-41f6-958e-61c452aa6916
+		summarizeBy: none
+		sourceColumn: PreferredContactMethodCodename
+
+		annotation SummarizationSetBy = User
+
+	column PreferredSystemUserId
+		dataType: string
+		isHidden
+		lineageTag: 15bb1ef2-3aad-4e98-807e-f18e40c209c2
+		summarizeBy: none
+		sourceColumn: PreferredSystemUserId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Preferred User'
+		dataType: string
+		lineageTag: a6a2cd88-9f67-4b69-8fee-40fab0ed63e0
+		summarizeBy: none
+		sourceColumn: PreferredSystemUserIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	column PrimaryContactId
+		dataType: string
+		isHidden
+		lineageTag: fdc15f76-9c89-4254-a536-0bc527a48752
+		summarizeBy: none
+		sourceColumn: PrimaryContactId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Primary Contact'
+		dataType: string
+		lineageTag: 298ecaee-cd08-487e-bdae-a5e71cbf808d
+		summarizeBy: none
+		sourceColumn: PrimaryContactIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Annual Revenue'
+		dataType: decimal
+		lineageTag: 71d4938f-c571-4a22-aad6-0311792f532f
+		summarizeBy: none
+		sourceColumn: Revenue
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'SIC Code'
+		dataType: string
+		lineageTag: bebdab2e-f9be-4436-9588-268cf6d56aa6
+		summarizeBy: none
+		sourceColumn: SIC
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Main Phone'
+		dataType: string
+		lineageTag: febd18f5-b552-4419-afbd-ec5bae995197
+		summarizeBy: none
+		sourceColumn: Telephone1
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Other Phone'
+		dataType: string
+		lineageTag: 323dda51-0e57-443c-9464-9c388e8c376e
+		summarizeBy: none
+		sourceColumn: Telephone2
+
+		annotation SummarizationSetBy = Automatic
+
+	column TerritoryId
+		dataType: string
+		isHidden
+		lineageTag: f0b21f12-9190-41ca-bbda-6d806244c2d3
+		summarizeBy: none
+		sourceColumn: TerritoryId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Territory'
+		dataType: string
+		lineageTag: ff957db5-157f-48a4-be20-37ded7113daa
+		summarizeBy: none
+		sourceColumn: TerritoryIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Ticker Symbol'
+		dataType: string
+		lineageTag: cf429ff5-d787-4fd0-8f03-dfc343f4d356
+		summarizeBy: none
+		sourceColumn: TickerSymbol
+
+		annotation SummarizationSetBy = Automatic
+
+	column TransactionCurrencyId
+		dataType: string
+		isHidden
+		lineageTag: cfc3973b-9f0a-4464-abbe-f1e42d46df99
+		summarizeBy: none
+		sourceColumn: TransactionCurrencyId
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Currency'
+		dataType: string
+		lineageTag: 02e81821-7506-41cc-8670-11888b67dde3
+		summarizeBy: none
+		sourceColumn: TransactionCurrencyIdname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Website'
+		dataType: string
+		lineageTag: a5feebcc-bbf8-43d6-80e4-7f22230decd1
+		summarizeBy: none
+		sourceColumn: WebSiteURL
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Account = m
+		mode: directQuery
+		source = ```
+				let
+    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),
+    Source = Value.NativeQuery(Dataverse,"
+				
+    SELECT Base.accountid
+        ,Base.AccountCategoryCodename
+        ,Base.AccountNumber
+        ,Base.Address1_AddressTypeCodename
+        ,Base.Address1_City
+        ,Base.Address1_Country
+        ,Base.Address1_FreightTermsCodename
+        ,Base.Address1_Line1
+        ,Base.Address1_Line2
+        ,Base.Address1_Line3
+        ,Base.Address1_Name
+        ,Base.Address1_PostalCode
+        ,Base.Address1_ShippingMethodCodename
+        ,Base.Address1_StateOrProvince
+        ,Base.Address1_Telephone1
+        ,Base.CreditLimit
+        ,Base.CreditOnHoldname
+        ,Base.CustomerTypeCodename
+        ,Base.DefaultPriceLevelId
+        ,Base.DefaultPriceLevelIdname
+        ,Base.Description
+        ,Base.DoNotBulkEMailname
+        ,Base.DoNotEMailname
+        ,Base.DoNotFaxname
+        ,Base.DoNotPhonename
+        ,Base.DoNotPostalMailname
+        ,Base.DoNotSendMMname
+        ,Base.EMailAddress1
+        ,Base.Fax
+        ,Base.FollowEmailname
+        ,Base.IndustryCodename
+        ,Base.LastUsedInCampaign
+        ,Base.Name
+        ,Base.NumberOfEmployees
+        ,Base.OriginatingLeadId
+        ,Base.OriginatingLeadIdname
+        ,Base.OwnerId
+        ,Base.OwnerIdname
+        ,Base.OwnershipCodename
+        ,Base.ParentAccountId
+        ,Base.ParentAccountIdname
+        ,Base.PaymentTermsCodename
+        ,Base.PreferredAppointmentDayCodename
+        ,Base.PreferredAppointmentTimeCodename
+        ,Base.PreferredContactMethodCodename
+        ,Base.PreferredSystemUserId
+        ,Base.PreferredSystemUserIdname
+        ,Base.PrimaryContactId
+        ,Base.PrimaryContactIdname
+        ,Base.Revenue
+        ,Base.SIC
+        ,Base.Telephone1
+        ,Base.Telephone2
+        ,Base.TerritoryId
+        ,Base.TerritoryIdname
+        ,Base.TickerSymbol
+        ,Base.TransactionCurrencyId
+        ,Base.TransactionCurrencyIdname
+        ,Base.WebSiteURL
+    FROM Account as Base
+    
+    " ,null ,[EnableFolding=true])
+in
+    Source
+				```
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+
