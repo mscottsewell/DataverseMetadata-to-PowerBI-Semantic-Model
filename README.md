@@ -8,8 +8,7 @@ ImaginationWorkship-PowerBI/
 │   └── ImaginationWorkshop/
 │       ├── Metadata/       # Excel and JSON metadata files
 │       │   ├── ImaginationWorkshop Metadata Dictionary.xlsx
-│       │   ├── ImaginationWorkshop Metadata Dictionary.json
-│       │   └── metadata_all.json
+│       │   └── ImaginationWorkshop Metadata Dictionary.json
 │       └── PBIP/           # Power BI Project files
 │           ├── CoreAI Imagination Workshop.pbip
 │           ├── CoreAI Imagination Workshop.Report/
