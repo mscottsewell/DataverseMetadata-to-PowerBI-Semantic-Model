@@ -1,4 +1,4 @@
-# ImaginationWorkshop Power BI Project
+# Dataverse Metadata to Power BI Semantic Model Quickstart
 
 ## Project Structure
 
