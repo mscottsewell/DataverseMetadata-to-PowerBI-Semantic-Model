@@ -28,11 +28,8 @@ ImaginationWorkship-PowerBI/
 - Choose the "All Attributes contained in forms", and select a form for each entity you want added to the semantic model in Power BI. (Be sure to select each entity row and select the form for it, one by one.)
 - Select the two checkboxes in the lower right corner to create the two summarized tabs.
 - **Hint** Use the "Generation settings" option to save a configuration file so that you can return and edit/re-create the file easily if needed.
-  
-<img width="800" alt="Metadata Document Generator Screenshot" src="https://github.com/user-attachments/assets/27cda522-1ee1-4529-9d8c-11a556e1b944" />
-
 - Generate the file and save it into the `Reports/[ProjectName]/Metadata/` folder.
-- Be sure to set the file's sensitivity label to 'General' to avoid access issues.
+- If your organization uses IRM, be sure to set the Excel file's sensitivity label to 'General' to avoid access issues. <img width="800" alt="Metadata Document Generator Screenshot" src="https://github.com/user-attachments/assets/e437ec8c-4513-4db0-bdf2-e6d32a07b802" />
 
 ## Main Tool
 
