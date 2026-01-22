@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory=$false)]
-    [string]$ProjectName = "ImaginationWorkshop",
+    [string]$ProjectName = "Dynamics 365 Sales",
     
     [Parameter(Mandatory=$false)]
     [string]$ExcelFileName = ""

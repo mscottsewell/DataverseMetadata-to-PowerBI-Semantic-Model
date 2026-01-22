@@ -3,16 +3,16 @@
 ## Project Structure
 
 ```
-ImaginationWorkship-PowerBI/
+DataverseMetadata-to-PowerBI-Semantic-Model/
 ├── Reports/                # Power BI Reports with project-specific metadata
-│   └── ImaginationWorkshop/
+│   └── Dynamics 365 Sales/
 │       ├── Metadata/       # Excel and JSON metadata files
-│       │   ├── ImaginationWorkshop Metadata Dictionary.xlsx
-│       │   └── ImaginationWorkshop Metadata Dictionary.json
+│       │   ├── Dynamics 365 Sales Metadata Dictionary.xlsx
+│       │   └── Dynamics 365 Sales Metadata Dictionary.json
 │       └── PBIP/           # Power BI Project files
-│           ├── CoreAI Imagination Workshop.pbip
-│           ├── CoreAI Imagination Workshop.Report/
-│           └── CoreAI Imagination Workshop.SemanticModel/
+           ├── Dynamics 365 Sales.pbip
+           ├── Dynamics 365 Sales.Report/
+           └── Dynamics 365 Sales.SemanticModel/
 ├── Code/                   # Utility scripts
 │   ├── extract_fields.py
 │   ├── extract_tables.py
@@ -40,21 +40,21 @@ Extracts metadata from Excel files into JSON format for Power BI semantic model 
 **Usage:**
 
 ```powershell
-# Use default project (ImaginationWorkshop)
+# Use default project (Dynamics 365 Sales)
 .\Extract-PowerBIMetadata.ps1
 
 # Specify a different project
-.\Extract-PowerBIMetadata.ps1 -ProjectName "ImaginationWorkshop"
+.\Extract-PowerBIMetadata.ps1 -ProjectName "Dynamics 365 Sales"
 
 # Specify custom Excel file name
-.\Extract-PowerBIMetadata.ps1 -ProjectName "ImaginationWorkshop" -ExcelFileName "CustomMetadata.xlsx"
+.\Extract-PowerBIMetadata.ps1 -ProjectName "Dynamics 365 Sales" -ExcelFileName "CustomMetadata.xlsx"
 
 # Create a new project structure (if project doesn't exist)
 .\Extract-PowerBIMetadata.ps1 -ProjectName "NewProject"
 ```
 
 **Parameters:**
-- `ProjectName` (optional): Name of the project folder under Reports/. Default: `ImaginationWorkshop`
+- `ProjectName` (optional): Name of the project folder under Reports/. Default: `Dynamics 365 Sales`
 - `ExcelFileName` (optional): Name of Excel file. Default: `{ProjectName} Metadata Dictionary.xlsx`
 
 **Output:**
@@ -97,6 +97,9 @@ See [Code/README.md](Code/README.md) for Python utility scripts that display met
 
 ### Existing Projects
 
+- **Dynamics 365 Sales**: Sample Dynamics 365 Sales report with common CRM tables
+  - Metadata: [Reports/Dynamics 365 Sales/Metadata/](Reports/Dynamics%20365%20Sales/Metadata/)
+  - PBIP: [Reports/Dynamics 365 Sales/PBIP/](Reports/Dynamics%20365%20Sales/PBIP/)
 - **ImaginationWorkshop**: CoreAI Imagination Workshop report with 12 Dataverse tables
   - Metadata: [Reports/ImaginationWorkshop/Metadata/](Reports/ImaginationWorkshop/Metadata/)
   - PBIP: [Reports/ImaginationWorkshop/PBIP/](Reports/ImaginationWorkshop/PBIP/)
