@@ -22,6 +22,14 @@ ImaginationWorkship-PowerBI/
 └── README.md
 ```
 
+## Extracting Metadata
+
+Use the XrmToolBox "Metadata Document Generator" utility to export Dataverse table metadata to an Excel file. 
+Use the 'Solution' option to include only relevant tables.
+![Image of Metadata Document Generator](MetadataDocumentGenerator Screenshot.png)
+Place this file in the `Reports/[ProjectName]/Metadata/` folder.
+Be sure to set the file's sensitivity label to 'General' to avoid access issues.
+
 ## Main Tool
 
 ### Extract-PowerBIMetadata.ps1
