@@ -1,0 +1,106 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.5.0/schema.json",
+  "name": "b252300f425d05603853",
+  "position": {
+    "x": 20.953550235318193,
+    "y": 245.15653775322284,
+    "z": 3002,
+    "height": 436.88152240638431,
+    "width": 269.25312052383879
+  },
+  "visual": {
+    "visualType": "slicer",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Imagination Workshop"
+                    }
+                  },
+                  "Property": "Workshop Name"
+                }
+              },
+              "queryRef": "Imagination Workshop.Workshop Name",
+              "nativeQueryRef": "Workshop Name",
+              "active": true
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Imagination Workshop"
+                  }
+                },
+                "Property": "Workshop Name"
+              }
+            },
+            "direction": "Ascending"
+          }
+        ]
+      }
+    },
+    "objects": {
+      "data": [
+        {
+          "properties": {
+            "mode": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Basic'"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "general": [
+        {
+          "properties": {}
+        }
+      ],
+      "selection": [
+        {
+          "properties": {
+            "selectAllCheckboxEnabled": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "3ee2d7b38800e975e9a6",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Imagination Workshop"
+              }
+            },
+            "Property": "Workshop Name"
+          }
+        },
+        "type": "Categorical"
+      }
+    ]
+  }
+}

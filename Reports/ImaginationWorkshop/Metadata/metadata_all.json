@@ -1,0 +1,624 @@
+{
+  "contact": [
+    {
+      "Schema Name": "Address1_Composite",
+      "Display Name": "Address 1",
+      "Attribute Type": "Multiline Text",
+      "Description": "Shows the complete primary address.",
+      "Additional data": "Format: TextArea_x000D_\nMax length: 1000"
+    },
+    {
+      "Schema Name": "EMailAddress1",
+      "Display Name": "Email",
+      "Attribute Type": "Text",
+      "Description": "Type the primary email address for the contact.",
+      "Additional data": "Format: Email_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "FullName",
+      "Display Name": "Full Name",
+      "Attribute Type": "Text",
+      "Description": "Combines and shows the contact's first and last names so that the full name can be displayed in views and reports.",
+      "Additional data": "Format: Text_x000D_\nMax length: 160"
+    },
+    {
+      "Schema Name": "JobTitle",
+      "Display Name": "Job Title",
+      "Attribute Type": "Text",
+      "Description": "Type the job title of the contact to make sure the contact is addressed correctly in sales calls, email, and marketing campaigns.",
+      "Additional data": "Format: Text_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "MobilePhone",
+      "Display Name": "Mobile Phone",
+      "Attribute Type": "Text",
+      "Description": "Type the mobile phone number for the contact.",
+      "Additional data": "Format: Text_x000D_\nMax length: 50"
+    },
+    {
+      "Schema Name": "OwnerId",
+      "Display Name": "Owner",
+      "Attribute Type": "Owner",
+      "Description": "Enter the user or team who is assigned to manage the record. This field is updated every time the record is assigned to a different user.",
+      "Additional data": "Targets:_x000D_\nsystemuser_x000D_\nteam"
+    },
+    {
+      "Schema Name": "ParentCustomerId",
+      "Display Name": "Company Name",
+      "Attribute Type": "Customer",
+      "Description": "Select the parent account or parent contact for the contact to provide a quick link to additional details, such as financial information, activities, and opportunities.",
+      "Additional data": "Targets:_x000D_\naccount_x000D_\ncontact"
+    },
+    {
+      "Schema Name": "PreferredContactMethodCode",
+      "Display Name": "Preferred Method of Contact",
+      "Attribute Type": "Choice",
+      "Description": "Select the preferred method of contact.",
+      "Additional data": "Options:_x000D_\n1: Any (no color)_x000D_\n2: Email (no color)_x000D_\n3: Phone (no color)_x000D_\n4: Fax (no color)_x000D_\n5: Mail (no color)_x000D_\nDefault: 1"
+    },
+    {
+      "Schema Name": "Telephone1",
+      "Display Name": "Business Phone",
+      "Attribute Type": "Text",
+      "Description": "Type the main phone number for this contact.",
+      "Additional data": "Format: Text_x000D_\nMax length: 50"
+    }
+  ],
+  "caiiw_iwnextsteps": [
+    {
+      "Schema Name": "caiiw_ETA",
+      "Display Name": "ETA",
+      "Attribute Type": "DateTime",
+      "Description": "",
+      "Additional data": "Format: DateOnly"
+    },
+    {
+      "Schema Name": "caiiw_Name",
+      "Display Name": "Name",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 850"
+    },
+    {
+      "Schema Name": "caiiw_NextStepOwner",
+      "Display Name": "Next Step Owner",
+      "Attribute Type": "Lookup",
+      "Description": "",
+      "Additional data": "Targets:_x000D_\ncaiiw_eventattendee"
+    },
+    {
+      "Schema Name": "caiiw_NextStepsDetails",
+      "Display Name": "Next Steps Details",
+      "Attribute Type": "Multiline Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 2000"
+    },
+    {
+      "Schema Name": "caiiw_NextStepStatus",
+      "Display Name": "Next Step Status",
+      "Attribute Type": "Choice",
+      "Description": "",
+      "Additional data": "Options:_x000D_\n848250000: Not Started (no color)_x000D_\n848250001: In Progress (no color)_x000D_\n848250002: Complete (no color)_x000D_\nDefault: 848250000"
+    },
+    {
+      "Schema Name": "caiiw_Nomination",
+      "Display Name": "Nomination",
+      "Attribute Type": "Lookup",
+      "Description": "",
+      "Additional data": "Targets:_x000D_\ncaiiw_nomination"
+    },
+    {
+      "Schema Name": "OwnerId",
+      "Display Name": "Owner",
+      "Attribute Type": "Owner",
+      "Description": "Owner Id",
+      "Additional data": "Targets:_x000D_\nsystemuser_x000D_\nteam"
+    }
+  ],
+  "caiiw_iwproductfeedback": [
+    {
+      "Schema Name": "caiiw_FeedbackDetails",
+      "Display Name": "Feedback Details",
+      "Attribute Type": "Multiline Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 8000"
+    },
+    {
+      "Schema Name": "caiiw_FeedbackStatus",
+      "Display Name": "Feedback Status",
+      "Attribute Type": "Choice",
+      "Description": "",
+      "Additional data": "Options:_x000D_\n848250000: Needs Triage (no color)_x000D_\n848250001: Assigned to PG (no color)_x000D_\n848250002: Customer Review Neeed (no color)_x000D_\n848250003: Closed - Fixed (no color)_x000D_\n848250004: Closed - Will Not Fix (no color)_x000D_\n848250005: Closed - Other (no color)_x000D_\nDefault: 848250000"
+    },
+    {
+      "Schema Name": "caiiw_InternalTicketNumber",
+      "Display Name": "Internal Ticket Number",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "caiiw_Name",
+      "Display Name": "Name",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 850"
+    },
+    {
+      "Schema Name": "caiiw_Nomination",
+      "Display Name": "Nomination",
+      "Attribute Type": "Lookup",
+      "Description": "",
+      "Additional data": "Targets:_x000D_\ncaiiw_nomination"
+    },
+    {
+      "Schema Name": "caiiw_ReportedBy",
+      "Display Name": "Reported By",
+      "Attribute Type": "Lookup",
+      "Description": "Used to get more information about the issue",
+      "Additional data": "Targets:_x000D_\ncaiiw_eventattendee"
+    },
+    {
+      "Schema Name": "OwnerId",
+      "Display Name": "Owner",
+      "Attribute Type": "Owner",
+      "Description": "Owner Id",
+      "Additional data": "Targets:_x000D_\nsystemuser_x000D_\nteam"
+    }
+  ],
+  "caiiw_marketing": [
+    {
+      "Schema Name": "caiiw_CustomerLookup",
+      "Display Name": "Customer Lookup",
+      "Attribute Type": "Lookup",
+      "Description": "",
+      "Additional data": "Targets:_x000D_\naccount"
+    },
+    {
+      "Schema Name": "caiiw_Details",
+      "Display Name": "Details",
+      "Attribute Type": "Multiline Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 8000"
+    },
+    {
+      "Schema Name": "caiiw_MarketingEngagement",
+      "Display Name": "Marketing Engagement",
+      "Attribute Type": "Choices",
+      "Description": "",
+      "Additional data": "Options:_x000D_\n848250000: Case Study_x000D_\n848250001: Event Co-present_x000D_\n848250002: Video_x000D_\n848250003: Other_x000D_\nDefault: N/A"
+    },
+    {
+      "Schema Name": "caiiw_MarketingStatus",
+      "Display Name": "Marketing Status",
+      "Attribute Type": "Choice",
+      "Description": "",
+      "Additional data": "Options:_x000D_\n848250000: Not Started (no color)_x000D_\n848250001: Initial Conversation (no color)_x000D_\n848250002: Aligned (no color)_x000D_\n848250003: Confirmed (no color)_x000D_\n848250004: Completed (no color)_x000D_\nDefault: 848250000"
+    },
+    {
+      "Schema Name": "caiiw_Name",
+      "Display Name": "Name",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 850"
+    },
+    {
+      "Schema Name": "caiiw_TargetDate",
+      "Display Name": "Target Date",
+      "Attribute Type": "DateTime",
+      "Description": "",
+      "Additional data": "Format: DateOnly"
+    },
+    {
+      "Schema Name": "OwnerId",
+      "Display Name": "Owner",
+      "Attribute Type": "Owner",
+      "Description": "Owner Id",
+      "Additional data": "Targets:_x000D_\nsystemuser_x000D_\nteam"
+    }
+  ],
+  "caiiw_nomination": [
+    {
+      "Schema Name": "caiiw_CompanyLookup",
+      "Display Name": "Company Lookup",
+      "Attribute Type": "Lookup",
+      "Description": "",
+      "Additional data": "Targets:_x000D_\naccount"
+    },
+    {
+      "Schema Name": "caiiw_CompanyName",
+      "Display Name": "Company Name",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "caiiw_EmailAddress",
+      "Display Name": "Email Address",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Email_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "caiiw_FullName",
+      "Display Name": "Full Name",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "caiiw_MicrosoftContactEmail",
+      "Display Name": "Microsoft Contact Email",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Email_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "caiiw_MicrosoftContactName",
+      "Display Name": "Microsoft Contact Name",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "caiiw_NominationName",
+      "Display Name": "Nomination Name",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 850"
+    },
+    {
+      "Schema Name": "caiiw_PotentialBusinessImpact",
+      "Display Name": "Potential Business Impact",
+      "Attribute Type": "Multiline Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 2000"
+    },
+    {
+      "Schema Name": "caiiw_SelectionStatus",
+      "Display Name": "Selection Status",
+      "Attribute Type": "Choice",
+      "Description": "",
+      "Additional data": "Options:_x000D_\n848250000: Approved (no color)_x000D_\n848250001: Declined (no color)_x000D_\n848250002: Not Triaged (no color)_x000D_\nDefault: 848250002"
+    },
+    {
+      "Schema Name": "caiiw_TransformationDetails",
+      "Display Name": "Transformation Details",
+      "Attribute Type": "Multiline Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 2000"
+    },
+    {
+      "Schema Name": "caiiw_Whyisthisthetimetotackletheproblem",
+      "Display Name": "Why is this the time to tackle the problem?",
+      "Attribute Type": "Multiline Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 2000"
+    },
+    {
+      "Schema Name": "caiiw_Workshop",
+      "Display Name": "Workshop",
+      "Attribute Type": "Lookup",
+      "Description": "",
+      "Additional data": "Targets:_x000D_\ncaiiw_imaginationworkshop"
+    },
+    {
+      "Schema Name": "OwnerId",
+      "Display Name": "Owner",
+      "Attribute Type": "Owner",
+      "Description": "Owner Id",
+      "Additional data": "Targets:_x000D_\nsystemuser_x000D_\nteam"
+    }
+  ],
+  "caiiw_nominationlearningobjective": [
+    {
+      "Schema Name": "caiiw_LearningObjective",
+      "Display Name": "Learning Objective",
+      "Attribute Type": "Lookup",
+      "Description": "",
+      "Additional data": "Targets:_x000D_\ncaiiw_learningobjective"
+    },
+    {
+      "Schema Name": "caiiw_Name",
+      "Display Name": "Name",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 850"
+    },
+    {
+      "Schema Name": "caiiw_Nomination",
+      "Display Name": "Nomination",
+      "Attribute Type": "Lookup",
+      "Description": "",
+      "Additional data": "Targets:_x000D_\ncaiiw_nomination"
+    },
+    {
+      "Schema Name": "caiiw_WorkshopLearnings",
+      "Display Name": "Workshop Learnings",
+      "Attribute Type": "Multiline Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 10000"
+    },
+    {
+      "Schema Name": "OwnerId",
+      "Display Name": "Owner",
+      "Attribute Type": "Owner",
+      "Description": "Owner Id",
+      "Additional data": "Targets:_x000D_\nsystemuser_x000D_\nteam"
+    }
+  ],
+  "caiiw_workshopfeedback": [
+    {
+      "Schema Name": "caiiw_AttendeeLookup",
+      "Display Name": "Attendee Lookup",
+      "Attribute Type": "Lookup",
+      "Description": "",
+      "Additional data": "Targets:_x000D_\ncaiiw_eventattendee"
+    },
+    {
+      "Schema Name": "caiiw_AttendeeType",
+      "Display Name": "Attendee Type",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "caiiw_Dislikes",
+      "Display Name": "Dislikes",
+      "Attribute Type": "Multiline Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 8000"
+    },
+    {
+      "Schema Name": "caiiw_Likes",
+      "Display Name": "Likes",
+      "Attribute Type": "Multiline Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 8000"
+    },
+    {
+      "Schema Name": "caiiw_Name",
+      "Display Name": "Name",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 850"
+    },
+    {
+      "Schema Name": "caiiw_NSATScore",
+      "Display Name": "NSAT Score",
+      "Attribute Type": "Whole number",
+      "Description": "",
+      "Additional data": "Minimum value: 0_x000D_\nMaximum value: 10"
+    },
+    {
+      "Schema Name": "caiiw_WorkshopLookup",
+      "Display Name": "Workshop Lookup",
+      "Attribute Type": "Lookup",
+      "Description": "",
+      "Additional data": "Targets:_x000D_\ncaiiw_imaginationworkshop"
+    },
+    {
+      "Schema Name": "caiiw_WorkshopText",
+      "Display Name": "Workshop Text",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "OwnerId",
+      "Display Name": "Owner",
+      "Attribute Type": "Owner",
+      "Description": "Owner Id",
+      "Additional data": "Targets:_x000D_\nsystemuser_x000D_\nteam"
+    }
+  ],
+  "caiiw_learningobjective": [
+    {
+      "Schema Name": "caiiw_AdditionalInformationorContext",
+      "Display Name": "Additional Information or Context",
+      "Attribute Type": "Multiline Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 8000"
+    },
+    {
+      "Schema Name": "caiiw_ContactName",
+      "Display Name": "Contact Name",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "caiiw_DRILeaderName",
+      "Display Name": "DRI Leader Name",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "caiiw_EngagementTimeline",
+      "Display Name": "Engagement Timeline",
+      "Attribute Type": "Multiline Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 2000"
+    },
+    {
+      "Schema Name": "caiiw_Importance",
+      "Display Name": "Importance",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "caiiw_KeyCustomerInsightGoals",
+      "Display Name": "Key Customer Insight Goals",
+      "Attribute Type": "Multiline Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 8000"
+    },
+    {
+      "Schema Name": "caiiw_LearningObjectiveName",
+      "Display Name": "Learning Objective Name",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 850"
+    },
+    {
+      "Schema Name": "caiiw_ProductorServiceArea",
+      "Display Name": "Product or Service Area",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "OwnerId",
+      "Display Name": "Owner",
+      "Attribute Type": "Owner",
+      "Description": "Owner Id",
+      "Additional data": "Targets:_x000D_\nsystemuser_x000D_\nteam"
+    }
+  ],
+  "caiiw_imaginationworkshop": [
+    {
+      "Schema Name": "caiiw_EndDate",
+      "Display Name": "End Date",
+      "Attribute Type": "DateTime",
+      "Description": "",
+      "Additional data": "Format: DateOnly"
+    },
+    {
+      "Schema Name": "caiiw_FeedbackCount",
+      "Display Name": "Feedback Count",
+      "Attribute Type": "Whole number",
+      "Description": "",
+      "Additional data": "Minimum value: -2147483648_x000D_\nMaximum value: 2147483647"
+    },
+    {
+      "Schema Name": "caiiw_Location",
+      "Display Name": "Location",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "caiiw_NPSAvg",
+      "Display Name": "NPS Avg",
+      "Attribute Type": "Decimal",
+      "Description": "",
+      "Additional data": "Minimum value: -100000000000_x000D_\nMaximum value: 100000000000_x000D_\nPrecision: 2"
+    },
+    {
+      "Schema Name": "caiiw_StartDate",
+      "Display Name": "Start Date",
+      "Attribute Type": "DateTime",
+      "Description": "",
+      "Additional data": "Format: DateOnly"
+    },
+    {
+      "Schema Name": "caiiw_WorkshopName",
+      "Display Name": "Workshop Name",
+      "Attribute Type": "Text",
+      "Description": "The Single Imagination Workshop ",
+      "Additional data": "Format: Text_x000D_\nMax length: 850"
+    },
+    {
+      "Schema Name": "OwnerId",
+      "Display Name": "Owner",
+      "Attribute Type": "Owner",
+      "Description": "Owner Id",
+      "Additional data": "Targets:_x000D_\nsystemuser_x000D_\nteam"
+    }
+  ],
+  "caiiw_coreaiguide": [
+    {
+      "Schema Name": "caiiw_AnythingElse",
+      "Display Name": "Anything Else",
+      "Attribute Type": "Multiline Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 2000"
+    },
+    {
+      "Schema Name": "caiiw_Availability",
+      "Display Name": "Availability",
+      "Attribute Type": "Multiline Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 2000"
+    },
+    {
+      "Schema Name": "caiiw_City",
+      "Display Name": "City",
+      "Attribute Type": "Text",
+      "Description": "City",
+      "Additional data": "Format: Text_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "caiiw_Country",
+      "Display Name": "Country",
+      "Attribute Type": "Text",
+      "Description": "Country Location",
+      "Additional data": "Format: Text_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "caiiw_EmployeeEmail",
+      "Display Name": "Employee Email",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "caiiw_ExpertiseAreas",
+      "Display Name": "Expertise Areas",
+      "Attribute Type": "Multiline Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 2000"
+    },
+    {
+      "Schema Name": "caiiw_JobTitleRole",
+      "Display Name": "Job Title / Role",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "caiiw_LinkedInProfile",
+      "Display Name": "LinkedIn Profile",
+      "Attribute Type": "Text",
+      "Description": "",
+      "Additional data": "Format: Url_x000D_\nMax length: 100"
+    },
+    {
+      "Schema Name": "caiiw_Name",
+      "Display Name": "Name",
+      "Attribute Type": "Text",
+      "Description": "CoreAI Guide Record name",
+      "Additional data": "Format: Text_x000D_\nMax length: 850"
+    },
+    {
+      "Schema Name": "caiiw_OtherSkills",
+      "Display Name": "Other Skills",
+      "Attribute Type": "Multiline Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 2000"
+    },
+    {
+      "Schema Name": "caiiw_RelevantCustomerExperience",
+      "Display Name": "Relevant Customer Experience",
+      "Attribute Type": "Multiline Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 2000"
+    },
+    {
+      "Schema Name": "caiiw_WhyIwanttobeaguide",
+      "Display Name": "Why I want to be a guide",
+      "Attribute Type": "Multiline Text",
+      "Description": "",
+      "Additional data": "Format: Text_x000D_\nMax length: 2000"
+    },
+    {
+      "Schema Name": "OwnerId",
+      "Display Name": "Owner",
+      "Attribute Type": "Owner",
+      "Description": "Owner Id",
+      "Additional data": "Targets:_x000D_\nsystemuser_x000D_\nteam"
+    }
+  ]
+}

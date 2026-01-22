@@ -1,0 +1,111 @@
+table 'Nomination Learning Objective'
+	lineageTag: df9916eb-6fe7-4307-aa5b-75d02f9285f5
+
+	measure 'Learning Objectives' = COUNTROWS('Learning Objective')
+		formatString: 0
+		lineageTag: c84a7a32-48ba-4018-b1fe-22239638b0d0
+
+	column caiiw_nominationlearningobjectiveid
+		dataType: string
+		isHidden
+		lineageTag: 3a33dbd8-e6b4-45e2-9109-2ee1f3dbe236
+		summarizeBy: none
+		sourceColumn: caiiw_nominationlearningobjectiveid
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Learning Objective | Targets: caiiw_learningobjective
+	column 'Learning Objective'
+		dataType: string
+		lineageTag: 7d8e9f1a-2b3c-4d5e-6f7a-8b9c0d1e2f3a
+		summarizeBy: none
+		sourceColumn: caiiw_learningobjectivename
+
+		annotation SummarizationSetBy = Automatic
+
+	column Name
+		dataType: string
+		lineageTag: 9840fa11-e2f5-4065-868f-6a9beaedd3d3
+		summarizeBy: none
+		sourceColumn: caiiw_name
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Nomination | Targets: caiiw_nomination
+	column Nomination
+		dataType: string
+		lineageTag: 8e9f0a1b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
+		summarizeBy: none
+		sourceColumn: caiiw_nominationname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Workshop Learnings'
+		dataType: string
+		lineageTag: 2f4056cf-9dfa-48a4-953d-7157a6d82cb2
+		summarizeBy: none
+		sourceColumn: caiiw_workshoplearnings
+
+		annotation SummarizationSetBy = Automatic
+
+	column Owner
+		dataType: string
+		lineageTag: 9f0a1b2c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+		summarizeBy: none
+		sourceColumn: owneridname
+
+		annotation SummarizationSetBy = Automatic
+
+	column caiiw_learningobjective
+		dataType: string
+		isHidden
+		lineageTag: 6c731501-2210-4607-92c4-3b5253636350
+		summarizeBy: none
+		sourceColumn: caiiw_learningobjective
+
+		annotation SummarizationSetBy = Automatic
+
+	column caiiw_nomination
+		dataType: string
+		isHidden
+		lineageTag: acf893b0-744d-4ca5-8e1c-3e1d85fc8cc2
+		summarizeBy: none
+		sourceColumn: caiiw_nomination
+
+		annotation SummarizationSetBy = Automatic
+
+	column ownerid
+		dataType: string
+		isHidden
+		lineageTag: 761f3bc2-411a-47ec-9008-8c0961eda5d3
+		summarizeBy: none
+		sourceColumn: ownerid
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Nomination Learning Objective' = m
+		mode: directQuery
+		source = ```
+				let
+				    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),
+				    Source = Value.NativeQuery(Dataverse,"
+				
+				    SELECT Base.caiiw_nominationlearningobjectiveid
+				        ,Base.caiiw_learningobjective
+				        ,Base.caiiw_learningobjectivename
+				        ,Base.caiiw_name
+				        ,Base.caiiw_nomination
+				        ,Base.caiiw_nominationname
+				        ,Base.caiiw_workshoplearnings
+				        ,Base.ownerid
+				        ,Base.owneridname
+				    FROM caiiw_NominationLearningObjective as Base
+				    WHERE Base.statecode = 0
+					
+				    " ,null ,[EnableFolding=true])
+				in
+				    Source
+				```
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,49 @@
+relationship 935084de-097a-b436-f7ec-de481197224b
+	relyOnReferentialIntegrity
+	fromColumn: 'Event Attendee'.caiiw_coreaiguide
+	toColumn: 'CoreAI Guide'.caiiw_coreaiguideid
+
+relationship a9e05092-5173-d69f-b839-3c9fbffe9911
+	fromColumn: 'Event Attendee'.caiiw_nomination
+	toColumn: Nomination.caiiw_nominationid
+
+relationship c512abc5-bf81-c703-49c9-3db41c3dae56
+	fromColumn: 'Nomination Learning Objective'.caiiw_nomination
+	toColumn: Nomination.caiiw_nominationid
+
+relationship 71a2645e-4e7a-1f1e-5315-58f2c3c4c158
+	fromColumn: Nomination.caiiw_workshop
+	toColumn: 'Imagination Workshop'.caiiw_imaginationworkshopid
+
+relationship 8c2472c1-8b26-ef7e-814d-506c0a1e6897
+	relyOnReferentialIntegrity
+	fromColumn: 'IW Next Steps'.caiiw_nomination
+	toColumn: Nomination.caiiw_nominationid
+
+relationship 0d3b8076-8e52-d000-d371-1339492b0845
+	relyOnReferentialIntegrity
+	fromColumn: 'IW Product Feedback'.caiiw_nomination
+	toColumn: Nomination.caiiw_nominationid
+
+relationship 019c52a1-3740-2609-ae59-47558a10db1e
+	crossFilteringBehavior: bothDirections
+	fromColumn: 'Nomination Learning Objective'.caiiw_learningobjective
+	toColumn: 'Learning Objective'.caiiw_learningobjectiveid
+
+relationship fef1c5bb-ee15-66f6-1ee9-55a6a714f00d
+	relyOnReferentialIntegrity
+	fromColumn: Marketing.caiiw_customerlookup
+	toColumn: Account.accountid
+
+relationship b623f4fb-44e1-63ca-2059-b97e9c0e7e5d
+	fromColumn: Nomination.caiiw_companylookup
+	toColumn: Account.accountid
+
+relationship efd14abd-21ef-0681-0eaf-c57a2ef5099b
+	fromColumn: 'Event Attendee'.caiiw_customercontact
+	toColumn: Contact.contactid
+
+relationship 92927392-0cae-a80c-beaf-afd4e738ee3b
+	fromColumn: 'Workshop Feedback'.caiiw_workshoplookup
+	toColumn: 'Imagination Workshop'.caiiw_imaginationworkshopid
+

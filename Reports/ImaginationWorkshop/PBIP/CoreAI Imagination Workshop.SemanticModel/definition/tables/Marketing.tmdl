@@ -1,0 +1,120 @@
+table Marketing
+	lineageTag: 1de31c21-d1f9-4658-8d0a-f0387461153c
+
+	measure 'Customer Stories' = COUNTROWS(Marketing)
+		formatString: 0
+		lineageTag: 17258afd-7b1f-4677-8c96-390753ad5f43
+
+	column caiiw_marketingid
+		dataType: string
+		isHidden
+		lineageTag: 5f97b27f-819e-4e67-9882-e7afb222eee7
+		summarizeBy: none
+		sourceColumn: caiiw_marketingid
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Customer Lookup'
+		dataType: string
+		lineageTag: 8aad72ca-3da0-49ea-8c45-37aa3b8b82c0
+		summarizeBy: none
+		sourceColumn: caiiw_customerlookupname
+
+		annotation SummarizationSetBy = Automatic
+
+	column Details
+		dataType: string
+		lineageTag: 5f243df5-def7-43b9-84c0-cb8f0b5a8dea
+		summarizeBy: none
+		sourceColumn: caiiw_details
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Marketing Engagement'
+		dataType: string
+		lineageTag: 4ed9418b-31f0-4b47-812b-4cc6f8ae9ec1
+		summarizeBy: none
+		sourceColumn: caiiw_marketingengagement
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Marketing Status'
+		dataType: string
+		lineageTag: b2a17e63-80e0-4733-b2ab-28944834c378
+		summarizeBy: none
+		sourceColumn: caiiw_marketingstatusname
+
+		annotation SummarizationSetBy = Automatic
+
+	column Name
+		dataType: string
+		lineageTag: 3c110525-cefd-40af-bfb6-fefa3285416c
+		summarizeBy: none
+		sourceColumn: caiiw_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Target Date'
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 2699a44e-5a73-4abf-bda7-fd9e507528b3
+		summarizeBy: none
+		sourceColumn: caiiw_targetdate
+
+		annotation SummarizationSetBy = Automatic
+
+	column Owner
+		dataType: string
+		lineageTag: 69300a40-d7c0-43ec-a020-e1a41b359af3
+		summarizeBy: none
+		sourceColumn: owneridname
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Customer Lookup | Targets: account
+	column caiiw_customerlookup
+		dataType: string
+		isHidden
+		lineageTag: 8aad72ca-3da0-49ea-8c45-37aa3b8b82b9
+		summarizeBy: none
+		sourceColumn: caiiw_customerlookup
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Owner Id | Targets: systemuser team
+	column ownerid
+		dataType: string
+		isHidden
+		lineageTag: 69300a40-d7c0-43ec-a020-e1a41b359af2
+		summarizeBy: none
+		sourceColumn: ownerid
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Marketing = m
+		mode: directQuery
+		source = ```
+				let
+				    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),
+				    Source = Value.NativeQuery(Dataverse,"
+				
+				    SELECT Base.caiiw_marketingid
+				        ,Base.caiiw_customerlookup
+				        ,Base.caiiw_customerlookupname
+				        ,Base.caiiw_details
+				        ,Base.caiiw_marketingengagement
+				        ,Base.caiiw_marketingstatusname
+				        ,Base.caiiw_name
+				        ,Base.caiiw_targetdate
+				        ,Base.ownerid
+				        ,Base.owneridname
+				    FROM caiiw_Marketing as Base
+				    WHERE Base.statecode = 0
+					
+				    " ,null ,[EnableFolding=true])
+				in
+				    Source
+				```
+
+	annotation PBI_ResultType = Table
+

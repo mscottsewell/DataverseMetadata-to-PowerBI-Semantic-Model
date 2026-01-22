@@ -1,0 +1,731 @@
+{
+  "metadata": {
+    "source_file": "ImaginationWorkshop Metadata Dictionary.xlsx",
+    "extraction_date": "2026-01-22T07:49:03.661750",
+    "total_tables": 13
+  },
+  "tables": [
+    {
+      "displayName": "Account",
+      "schemaName": "Account",
+      "fieldCount": 8,
+      "fields": [
+        {
+          "displayName": "Address 1",
+          "schemaName": "Address1_Composite",
+          "description": "Shows the complete primary address."
+        },
+        {
+          "displayName": "Description",
+          "schemaName": "Description",
+          "description": "Type additional information to describe the account, such as an excerpt from the company's website."
+        },
+        {
+          "displayName": "Account Name",
+          "schemaName": "Name",
+          "description": "Type the company or business name."
+        },
+        {
+          "displayName": "Owner",
+          "schemaName": "OwnerId",
+          "description": "Enter the user or team who is assigned to manage the record. This field is updated every time the record is assigned to a different user."
+        },
+        {
+          "displayName": "Ownership",
+          "schemaName": "OwnershipCode",
+          "description": "Select the account's ownership structure, such as public or private."
+        },
+        {
+          "displayName": "Primary Contact",
+          "schemaName": "PrimaryContactId",
+          "description": "Choose the primary contact for the account to provide quick access to contact details."
+        },
+        {
+          "displayName": "Ticker Symbol",
+          "schemaName": "TickerSymbol",
+          "description": "Type the stock exchange symbol for the account to track financial performance of the company. You can click the code entered in this field to access the latest trading information from MSN Money."
+        },
+        {
+          "displayName": "Website",
+          "schemaName": "WebSiteURL",
+          "description": "Type the account's website URL to get quick details about the company profile."
+        }
+      ]
+    },
+    {
+      "displayName": "CoreAI Guide",
+      "schemaName": "caiiw_CoreAIGuide",
+      "fieldCount": 13,
+      "fields": [
+        {
+          "displayName": "Anything Else",
+          "schemaName": "caiiw_AnythingElse"
+        },
+        {
+          "displayName": "Availability",
+          "schemaName": "caiiw_Availability"
+        },
+        {
+          "displayName": "City",
+          "schemaName": "caiiw_City",
+          "description": "City"
+        },
+        {
+          "displayName": "Country",
+          "schemaName": "caiiw_Country",
+          "description": "Country Location"
+        },
+        {
+          "displayName": "Employee Email",
+          "schemaName": "caiiw_EmployeeEmail"
+        },
+        {
+          "displayName": "Expertise Areas",
+          "schemaName": "caiiw_ExpertiseAreas"
+        },
+        {
+          "displayName": "Job Title / Role",
+          "schemaName": "caiiw_JobTitleRole"
+        },
+        {
+          "displayName": "LinkedIn Profile",
+          "schemaName": "caiiw_LinkedInProfile"
+        },
+        {
+          "displayName": "Name",
+          "schemaName": "caiiw_Name",
+          "description": "CoreAI Guide Record name"
+        },
+        {
+          "displayName": "Other Skills",
+          "schemaName": "caiiw_OtherSkills"
+        },
+        {
+          "displayName": "Relevant Customer Experience",
+          "schemaName": "caiiw_RelevantCustomerExperience"
+        },
+        {
+          "displayName": "Why I want to be a guide",
+          "schemaName": "caiiw_WhyIwanttobeaguide"
+        },
+        {
+          "displayName": "Owner",
+          "schemaName": "OwnerId",
+          "description": "Owner Id"
+        }
+      ]
+    },
+    {
+      "displayName": "Event Attendee",
+      "schemaName": "caiiw_EventAttendee",
+      "fieldCount": 7,
+      "fields": [
+        {
+          "displayName": "Attendee Type",
+          "schemaName": "caiiw_AttendeeType"
+        },
+        {
+          "displayName": "CoreAI Guide",
+          "schemaName": "caiiw_CoreAIGuide"
+        },
+        {
+          "displayName": "Customer Contact",
+          "schemaName": "caiiw_CustomerContact"
+        },
+        {
+          "displayName": "MS Employee",
+          "schemaName": "caiiw_MSEmployee"
+        },
+        {
+          "displayName": "Name",
+          "schemaName": "caiiw_Name"
+        },
+        {
+          "displayName": "Nomination",
+          "schemaName": "caiiw_Nomination"
+        },
+        {
+          "displayName": "Owner",
+          "schemaName": "OwnerId",
+          "description": "Owner Id"
+        }
+      ]
+    },
+    {
+      "displayName": "Imagination Workshop",
+      "schemaName": "caiiw_ImaginationWorkshop",
+      "fieldCount": 7,
+      "fields": [
+        {
+          "displayName": "End Date",
+          "schemaName": "caiiw_EndDate"
+        },
+        {
+          "displayName": "Feedback Count",
+          "schemaName": "caiiw_FeedbackCount"
+        },
+        {
+          "displayName": "Location",
+          "schemaName": "caiiw_Location"
+        },
+        {
+          "displayName": "NPS Avg",
+          "schemaName": "caiiw_NPSAvg"
+        },
+        {
+          "displayName": "Start Date",
+          "schemaName": "caiiw_StartDate"
+        },
+        {
+          "displayName": "Workshop Name",
+          "schemaName": "caiiw_WorkshopName",
+          "description": "The Single Imagination Workshop "
+        },
+        {
+          "displayName": "Owner",
+          "schemaName": "OwnerId",
+          "description": "Owner Id"
+        }
+      ]
+    },
+    {
+      "displayName": "IW Next Steps",
+      "schemaName": "caiiw_IWNextSteps",
+      "fieldCount": 7,
+      "fields": [
+        {
+          "displayName": "ETA",
+          "schemaName": "caiiw_ETA"
+        },
+        {
+          "displayName": "Name",
+          "schemaName": "caiiw_Name"
+        },
+        {
+          "displayName": "Next Step Owner",
+          "schemaName": "caiiw_NextStepOwner"
+        },
+        {
+          "displayName": "Next Steps Details",
+          "schemaName": "caiiw_NextStepsDetails"
+        },
+        {
+          "displayName": "Next Step Status",
+          "schemaName": "caiiw_NextStepStatus"
+        },
+        {
+          "displayName": "Nomination",
+          "schemaName": "caiiw_Nomination"
+        },
+        {
+          "displayName": "Owner",
+          "schemaName": "OwnerId",
+          "description": "Owner Id"
+        }
+      ]
+    },
+    {
+      "displayName": "IW Product Feedback",
+      "schemaName": "caiiw_IWProductFeedback",
+      "fieldCount": 7,
+      "fields": [
+        {
+          "displayName": "Feedback Details",
+          "schemaName": "caiiw_FeedbackDetails"
+        },
+        {
+          "displayName": "Feedback Status",
+          "schemaName": "caiiw_FeedbackStatus"
+        },
+        {
+          "displayName": "Internal Ticket Number",
+          "schemaName": "caiiw_InternalTicketNumber"
+        },
+        {
+          "displayName": "Name",
+          "schemaName": "caiiw_Name"
+        },
+        {
+          "displayName": "Nomination",
+          "schemaName": "caiiw_Nomination"
+        },
+        {
+          "displayName": "Reported By",
+          "schemaName": "caiiw_ReportedBy",
+          "description": "Used to get more information about the issue"
+        },
+        {
+          "displayName": "Owner",
+          "schemaName": "OwnerId",
+          "description": "Owner Id"
+        }
+      ]
+    },
+    {
+      "displayName": "Learning Objective",
+      "schemaName": "caiiw_LearningObjective",
+      "fieldCount": 9,
+      "fields": [
+        {
+          "displayName": "Additional Information or Context",
+          "schemaName": "caiiw_AdditionalInformationorContext"
+        },
+        {
+          "displayName": "Contact Name",
+          "schemaName": "caiiw_ContactName"
+        },
+        {
+          "displayName": "DRI Leader Name",
+          "schemaName": "caiiw_DRILeaderName"
+        },
+        {
+          "displayName": "Engagement Timeline",
+          "schemaName": "caiiw_EngagementTimeline"
+        },
+        {
+          "displayName": "Importance",
+          "schemaName": "caiiw_Importance"
+        },
+        {
+          "displayName": "Key Customer Insight Goals",
+          "schemaName": "caiiw_KeyCustomerInsightGoals"
+        },
+        {
+          "displayName": "Learning Objective Name",
+          "schemaName": "caiiw_LearningObjectiveName"
+        },
+        {
+          "displayName": "Product or Service Area",
+          "schemaName": "caiiw_ProductorServiceArea"
+        },
+        {
+          "displayName": "Owner",
+          "schemaName": "OwnerId",
+          "description": "Owner Id"
+        }
+      ]
+    },
+    {
+      "displayName": "Marketing",
+      "schemaName": "caiiw_Marketing",
+      "fieldCount": 7,
+      "fields": [
+        {
+          "displayName": "Customer Lookup",
+          "schemaName": "caiiw_CustomerLookup"
+        },
+        {
+          "displayName": "Details",
+          "schemaName": "caiiw_Details"
+        },
+        {
+          "displayName": "Marketing Engagement",
+          "schemaName": "caiiw_MarketingEngagement"
+        },
+        {
+          "displayName": "Marketing Status",
+          "schemaName": "caiiw_MarketingStatus"
+        },
+        {
+          "displayName": "Name",
+          "schemaName": "caiiw_Name"
+        },
+        {
+          "displayName": "Target Date",
+          "schemaName": "caiiw_TargetDate"
+        },
+        {
+          "displayName": "Owner",
+          "schemaName": "OwnerId",
+          "description": "Owner Id"
+        }
+      ]
+    },
+    {
+      "displayName": "Nomination",
+      "schemaName": "caiiw_Nomination",
+      "fieldCount": 13,
+      "fields": [
+        {
+          "displayName": "Company Lookup",
+          "schemaName": "caiiw_CompanyLookup"
+        },
+        {
+          "displayName": "Company Name",
+          "schemaName": "caiiw_CompanyName"
+        },
+        {
+          "displayName": "Email Address",
+          "schemaName": "caiiw_EmailAddress"
+        },
+        {
+          "displayName": "Full Name",
+          "schemaName": "caiiw_FullName"
+        },
+        {
+          "displayName": "Microsoft Contact Email",
+          "schemaName": "caiiw_MicrosoftContactEmail"
+        },
+        {
+          "displayName": "Microsoft Contact Name",
+          "schemaName": "caiiw_MicrosoftContactName"
+        },
+        {
+          "displayName": "Nomination Name",
+          "schemaName": "caiiw_NominationName"
+        },
+        {
+          "displayName": "Potential Business Impact",
+          "schemaName": "caiiw_PotentialBusinessImpact"
+        },
+        {
+          "displayName": "Selection Status",
+          "schemaName": "caiiw_SelectionStatus"
+        },
+        {
+          "displayName": "Transformation Details",
+          "schemaName": "caiiw_TransformationDetails"
+        },
+        {
+          "displayName": "Why is this the time to tackle the problem?",
+          "schemaName": "caiiw_Whyisthisthetimetotackletheproblem"
+        },
+        {
+          "displayName": "Workshop",
+          "schemaName": "caiiw_Workshop"
+        },
+        {
+          "displayName": "Owner",
+          "schemaName": "OwnerId",
+          "description": "Owner Id"
+        }
+      ]
+    },
+    {
+      "displayName": "Nomination Learning Objective",
+      "schemaName": "caiiw_NominationLearningObjective",
+      "fieldCount": 5,
+      "fields": [
+        {
+          "displayName": "Learning Objective",
+          "schemaName": "caiiw_LearningObjective"
+        },
+        {
+          "displayName": "Name",
+          "schemaName": "caiiw_Name"
+        },
+        {
+          "displayName": "Nomination",
+          "schemaName": "caiiw_Nomination"
+        },
+        {
+          "displayName": "Workshop Learnings",
+          "schemaName": "caiiw_WorkshopLearnings"
+        },
+        {
+          "displayName": "Owner",
+          "schemaName": "OwnerId",
+          "description": "Owner Id"
+        }
+      ]
+    },
+    {
+      "displayName": "Workshop Feedback",
+      "schemaName": "caiiw_WorkshopFeedback",
+      "fieldCount": 9,
+      "fields": [
+        {
+          "displayName": "Attendee Lookup",
+          "schemaName": "caiiw_AttendeeLookup"
+        },
+        {
+          "displayName": "Attendee Type",
+          "schemaName": "caiiw_AttendeeType"
+        },
+        {
+          "displayName": "Dislikes",
+          "schemaName": "caiiw_Dislikes"
+        },
+        {
+          "displayName": "Likes",
+          "schemaName": "caiiw_Likes"
+        },
+        {
+          "displayName": "Name",
+          "schemaName": "caiiw_Name"
+        },
+        {
+          "displayName": "NSAT Score",
+          "schemaName": "caiiw_NSATScore"
+        },
+        {
+          "displayName": "Workshop Lookup",
+          "schemaName": "caiiw_WorkshopLookup"
+        },
+        {
+          "displayName": "Workshop Text",
+          "schemaName": "caiiw_WorkshopText"
+        },
+        {
+          "displayName": "Owner",
+          "schemaName": "OwnerId",
+          "description": "Owner Id"
+        }
+      ]
+    },
+    {
+      "displayName": "Contact",
+      "schemaName": "Contact",
+      "fieldCount": 9,
+      "fields": [
+        {
+          "displayName": "Address 1",
+          "schemaName": "Address1_Composite",
+          "description": "Shows the complete primary address."
+        },
+        {
+          "displayName": "Email",
+          "schemaName": "EMailAddress1",
+          "description": "Type the primary email address for the contact."
+        },
+        {
+          "displayName": "Full Name",
+          "schemaName": "FullName",
+          "description": "Combines and shows the contact's first and last names so that the full name can be displayed in views and reports."
+        },
+        {
+          "displayName": "Job Title",
+          "schemaName": "JobTitle",
+          "description": "Type the job title of the contact to make sure the contact is addressed correctly in sales calls, email, and marketing campaigns."
+        },
+        {
+          "displayName": "Mobile Phone",
+          "schemaName": "MobilePhone",
+          "description": "Type the mobile phone number for the contact."
+        },
+        {
+          "displayName": "Owner",
+          "schemaName": "OwnerId",
+          "description": "Enter the user or team who is assigned to manage the record. This field is updated every time the record is assigned to a different user."
+        },
+        {
+          "displayName": "Company Name",
+          "schemaName": "ParentCustomerId",
+          "description": "Select the parent account or parent contact for the contact to provide a quick link to additional details, such as financial information, activities, and opportunities."
+        },
+        {
+          "displayName": "Preferred Method of Contact",
+          "schemaName": "PreferredContactMethodCode",
+          "description": "Select the preferred method of contact."
+        },
+        {
+          "displayName": "Business Phone",
+          "schemaName": "Telephone1",
+          "description": "Type the main phone number for this contact."
+        }
+      ]
+    },
+    {
+      "displayName": "User",
+      "schemaName": "SystemUser",
+      "fieldCount": 39,
+      "fields": [
+        {
+          "displayName": "Access Mode",
+          "schemaName": "AccessMode",
+          "description": "Type of user."
+        },
+        {
+          "displayName": "City",
+          "schemaName": "Address1_City",
+          "description": "City name for address 1."
+        },
+        {
+          "displayName": "Country/Region",
+          "schemaName": "Address1_Country",
+          "description": "Country/region name in address 1."
+        },
+        {
+          "displayName": "Address 1: Fax",
+          "schemaName": "Address1_Fax",
+          "description": "Fax number for address 1."
+        },
+        {
+          "displayName": "Street 1",
+          "schemaName": "Address1_Line1",
+          "description": "First line for entering address 1 information."
+        },
+        {
+          "displayName": "Street 2",
+          "schemaName": "Address1_Line2",
+          "description": "Second line for entering address 1 information."
+        },
+        {
+          "displayName": "Street 3",
+          "schemaName": "Address1_Line3",
+          "description": "Third line for entering address 1 information."
+        },
+        {
+          "displayName": "ZIP/Postal Code",
+          "schemaName": "Address1_PostalCode",
+          "description": "ZIP Code or postal code for address 1."
+        },
+        {
+          "displayName": "State/Province",
+          "schemaName": "Address1_StateOrProvince",
+          "description": "State or province for address 1."
+        },
+        {
+          "displayName": "Main Phone",
+          "schemaName": "Address1_Telephone1",
+          "description": "First telephone number associated with address 1."
+        },
+        {
+          "displayName": "Other Phone",
+          "schemaName": "Address1_Telephone2",
+          "description": "Second telephone number associated with address 1."
+        },
+        {
+          "displayName": "Pager",
+          "schemaName": "Address1_Telephone3",
+          "description": "Third telephone number associated with address 1."
+        },
+        {
+          "displayName": "Other City",
+          "schemaName": "Address2_City",
+          "description": "City name for address 2."
+        },
+        {
+          "displayName": "Other Country/Region",
+          "schemaName": "Address2_Country",
+          "description": "Country/region name in address 2."
+        },
+        {
+          "displayName": "Other Street 1",
+          "schemaName": "Address2_Line1",
+          "description": "First line for entering address 2 information."
+        },
+        {
+          "displayName": "Other Street 2",
+          "schemaName": "Address2_Line2",
+          "description": "Second line for entering address 2 information."
+        },
+        {
+          "displayName": "Other Street 3",
+          "schemaName": "Address2_Line3",
+          "description": "Third line for entering address 2 information."
+        },
+        {
+          "displayName": "Other ZIP/Postal Code",
+          "schemaName": "Address2_PostalCode",
+          "description": "ZIP Code or postal code for address 2."
+        },
+        {
+          "displayName": "Other State/Province",
+          "schemaName": "Address2_StateOrProvince",
+          "description": "State or province for address 2."
+        },
+        {
+          "displayName": "Business Unit",
+          "schemaName": "BusinessUnitId",
+          "description": "Unique identifier of the business unit with which the user is associated."
+        },
+        {
+          "displayName": "License Type",
+          "schemaName": "CALType",
+          "description": "License type of user. This is used only in the on-premises version of the product. Online licenses are managed through Microsoft 365 Office Portal"
+        },
+        {
+          "displayName": "Mailbox",
+          "schemaName": "DefaultMailbox",
+          "description": "Select the mailbox associated with this user."
+        },
+        {
+          "displayName": "User Name",
+          "schemaName": "DomainName",
+          "description": "Active Directory domain of which the user is a member."
+        },
+        {
+          "displayName": "First Name",
+          "schemaName": "FirstName",
+          "description": "First name of the user."
+        },
+        {
+          "displayName": "Home Phone",
+          "schemaName": "HomePhone",
+          "description": "Home phone number for the user."
+        },
+        {
+          "displayName": "Primary Email",
+          "schemaName": "InternalEMailAddress",
+          "description": "Internal email address for the user."
+        },
+        {
+          "displayName": "Invitation Status",
+          "schemaName": "InviteStatusCode",
+          "description": "User invitation status."
+        },
+        {
+          "displayName": "Status",
+          "schemaName": "IsDisabled",
+          "description": "Information about whether the user is enabled."
+        },
+        {
+          "displayName": "Last Name",
+          "schemaName": "LastName",
+          "description": "Last name of the user."
+        },
+        {
+          "displayName": "Mobile Alert Email",
+          "schemaName": "MobileAlertEMail",
+          "description": "Mobile alert email address for the user."
+        },
+        {
+          "displayName": "Mobile Phone",
+          "schemaName": "MobilePhone",
+          "description": "Mobile phone number for the user."
+        },
+        {
+          "displayName": "Manager",
+          "schemaName": "ParentSystemUserId",
+          "description": "Unique identifier of the manager of the user."
+        },
+        {
+          "displayName": "Email 2",
+          "schemaName": "PersonalEMailAddress",
+          "description": "Personal email address of the user."
+        },
+        {
+          "displayName": "Position",
+          "schemaName": "PositionId",
+          "description": "User's position in hierarchical security model."
+        },
+        {
+          "displayName": "Preferred Address",
+          "schemaName": "PreferredAddressCode",
+          "description": "Preferred address for the user."
+        },
+        {
+          "displayName": "Preferred Phone",
+          "schemaName": "PreferredPhoneCode",
+          "description": "Preferred phone number for the user."
+        },
+        {
+          "displayName": "Default Queue",
+          "schemaName": "QueueId",
+          "description": "Unique identifier of the default queue for the user."
+        },
+        {
+          "displayName": "Title",
+          "schemaName": "Title",
+          "description": "Title of the user."
+        },
+        {
+          "displayName": "Windows Live ID",
+          "schemaName": "WindowsLiveID",
+          "description": "Windows Live ID"
+        }
+      ]
+    }
+  ]
+}

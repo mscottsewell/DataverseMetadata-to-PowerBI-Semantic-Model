@@ -1,0 +1,132 @@
+table 'IW Product Feedback'
+	lineageTag: a273857e-f5ff-4f88-98e4-cea1dd7380ac
+
+	measure 'PG Feedback' = COUNTROWS('IW Product Feedback')
+		formatString: 0
+		lineageTag: 832358e0-9853-4edf-8196-c6faff559741
+
+	column caiiw_iwproductfeedbackid
+		dataType: string
+		isHidden
+		lineageTag: ea167eeb-a73f-438f-b76d-c3405510d2c2
+		summarizeBy: none
+		sourceColumn: caiiw_iwproductfeedbackid
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Feedback Details'
+		dataType: string
+		lineageTag: 4cf1e57c-4544-48f0-9d7a-8bc094272d0b
+		summarizeBy: none
+		sourceColumn: caiiw_feedbackdetails
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Feedback Status'
+		dataType: string
+		lineageTag: 71d26545-b2af-41f7-8627-0e4cc6357539
+		summarizeBy: none
+		sourceColumn: caiiw_feedbackstatusname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Internal Ticket Number'
+		dataType: string
+		lineageTag: 36c416c5-183e-4060-bdb8-00cc5c2900ff
+		summarizeBy: none
+		sourceColumn: caiiw_internalticketnumber
+
+		annotation SummarizationSetBy = Automatic
+
+	column Name
+		dataType: string
+		lineageTag: 447b518c-93a8-408a-81b1-984ba8a34dc6
+		summarizeBy: none
+		sourceColumn: caiiw_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column Nomination
+		dataType: string
+		lineageTag: 3100b1d3-d0b6-40d9-9ef2-4f4d146f0b7f
+		summarizeBy: none
+		sourceColumn: caiiw_nominationname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Reported By'
+		dataType: string
+		lineageTag: c8669a10-e6ab-4755-ab27-e399a7f6def2
+		summarizeBy: none
+		sourceColumn: caiiw_reportedbyname
+
+		annotation SummarizationSetBy = Automatic
+
+	column Owner
+		dataType: string
+		lineageTag: 7bb1446b-4ccb-4bbd-862e-8380e11cf11f
+		summarizeBy: none
+		sourceColumn: owneridname
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Nomination | Targets: caiiw_nomination
+	column caiiw_nomination
+		dataType: string
+		isHidden
+		lineageTag: 3100b1d3-d0b6-40d9-9ef2-4f4d146f0b7e
+		summarizeBy: none
+		sourceColumn: caiiw_nomination
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Used to get more information about the issue | Targets: caiiw_eventattendee
+	column caiiw_reportedby
+		dataType: string
+		isHidden
+		lineageTag: c8669a10-e6ab-4755-ab27-e399a7f6def1
+		summarizeBy: none
+		sourceColumn: caiiw_reportedby
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Owner Id | Targets: systemuser team
+	column ownerid
+		dataType: string
+		isHidden
+		lineageTag: 7bb1446b-4ccb-4bbd-862e-8380e11cf11e
+		summarizeBy: none
+		sourceColumn: ownerid
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'IW Product Feedback' = m
+		mode: directQuery
+		source = ```
+				let
+				    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),
+				    Source = Value.NativeQuery(Dataverse,"
+				
+				    SELECT Base.caiiw_iwproductfeedbackid
+				        ,Base.caiiw_feedbackdetails
+				        ,Base.caiiw_feedbackstatusname
+				        ,Base.caiiw_internalticketnumber
+				        ,Base.caiiw_name
+				        ,Base.caiiw_nomination
+				        ,Base.caiiw_nominationname
+				        ,Base.caiiw_reportedby
+				        ,Base.caiiw_reportedbyname
+				        ,Base.ownerid
+				        ,Base.owneridname
+				    FROM caiiw_IWProductFeedback as Base
+				    WHERE Base.statecode = 0
+					
+				    " ,null ,[EnableFolding=true])
+				in
+				    Source
+				```
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

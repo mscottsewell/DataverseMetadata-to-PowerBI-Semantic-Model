@@ -1,0 +1,428 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.5.0/schema.json",
+  "name": "2f27d9ec72049d5e132b",
+  "position": {
+    "x": 349.92428892981383,
+    "y": 245.15653775322284,
+    "z": 3000,
+    "height": 305.92183343564562,
+    "width": 851.76181706568445,
+    "tabOrder": 3000
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Imagination Workshop"
+                    }
+                  },
+                  "Property": "Workshop Name"
+                }
+              },
+              "queryRef": "Imagination Workshop.Workshop Name",
+              "nativeQueryRef": "Workshop Name"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Nomination"
+                    }
+                  },
+                  "Property": "Nominations"
+                }
+              },
+              "queryRef": "Nomination.Nominations",
+              "nativeQueryRef": "Nominations"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Event Attendee"
+                    }
+                  },
+                  "Property": "Attendees"
+                }
+              },
+              "queryRef": "Event Attendee.Attendees",
+              "nativeQueryRef": "Attendees"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Nomination Learning Objective"
+                    }
+                  },
+                  "Property": "Learning Objectives"
+                }
+              },
+              "queryRef": "Nomination Learning Objective.Learning Objectives",
+              "nativeQueryRef": "Learning Objectives"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Workshop Feedback"
+                    }
+                  },
+                  "Property": "Average Workshop NSAT"
+                }
+              },
+              "queryRef": "Workshop Feedback.Average Workshop NSAT",
+              "nativeQueryRef": "Average Workshop NSAT"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Marketing"
+                    }
+                  },
+                  "Property": "Customer Stories"
+                }
+              },
+              "queryRef": "Marketing.Customer Stories",
+              "nativeQueryRef": "Customer Stories"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "IW Product Feedback"
+                    }
+                  },
+                  "Property": "PG Feedback"
+                }
+              },
+              "queryRef": "IW Product Feedback.PG Feedback",
+              "nativeQueryRef": "PG Feedback"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "IW Next Steps"
+                    }
+                  },
+                  "Property": "Next Steps"
+                }
+              },
+              "queryRef": "IW Next Steps.Next Steps",
+              "nativeQueryRef": "Next Steps"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Nomination"
+                  }
+                },
+                "Property": "Nominations"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": true
+      }
+    },
+    "objects": {
+      "columnHeaders": [
+        {
+          "properties": {
+            "fontFamily": {
+              "expr": {
+                "Literal": {
+                  "Value": "'''Segoe UI Bold'', wf_segoe-ui_bold, helvetica, arial, sans-serif'"
+                }
+              }
+            },
+            "autoSizeColumnWidth": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "wordWrap": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "columnWidth": [
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "195.90710221073795D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Imagination Workshop.Workshop Name"
+          }
+        },
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "77D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Nomination.Nominations"
+          }
+        },
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "76.61981646585146D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Event Attendee.Attendees"
+          }
+        },
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "76.4266540619853D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Nomination Learning Objective.Learning Objectives"
+          }
+        },
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "102.37898605741483D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Workshop Feedback.Average Workshop NSAT"
+          }
+        },
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "88.61858308290215D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Marketing.Customer Stories"
+          }
+        },
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "88.57213040564055D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "IW Product Feedback.PG Feedback"
+          }
+        },
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "73.3814257628463D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "IW Next Steps.Next Steps"
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "dropShadow": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "1b8211087b612007b0cd",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Nomination"
+              }
+            },
+            "Property": "Nominations"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "906e0e293dba900d390a",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Event Attendee"
+              }
+            },
+            "Property": "Attendees"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "b55c54bd0350a952b15c",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Nomination Learning Objective"
+              }
+            },
+            "Property": "Learning Objectives"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "533a2b100ceb8e3176ce",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Workshop Feedback"
+              }
+            },
+            "Property": "Average Workshop NSAT"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "8f2192ddd7366abd2a0c",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Marketing"
+              }
+            },
+            "Property": "Customer Stories"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "4f2f122d3b76472dea1b",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "IW Product Feedback"
+              }
+            },
+            "Property": "PG Feedback"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "ae3d4aed0c21ab7ee87d",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "IW Next Steps"
+              }
+            },
+            "Property": "Next Steps"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "44792f598330bd864267",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Imagination Workshop"
+              }
+            },
+            "Property": "Workshop Name"
+          }
+        },
+        "type": "Categorical"
+      }
+    ]
+  }
+}

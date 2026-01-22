@@ -1,0 +1,188 @@
+table Nomination
+	lineageTag: 2d828b71-bccf-4cad-8e48-31aa0d91eac7
+
+	measure Nominations = COUNTROWS(Nomination)
+		formatString: 0
+		lineageTag: ecf3318f-e41b-46cd-9f40-78b5e17f533b
+
+	column caiiw_nominationid
+		dataType: string
+		isHidden
+		lineageTag: 347de750-4ddb-46bb-a10a-51a7c9114b66
+		summarizeBy: none
+		sourceColumn: caiiw_nominationid
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Company Lookup | Targets: account
+	column 'Company Lookup'
+		dataType: string
+		lineageTag: 5e68c91e-9f12-4d87-b1e3-7f4a8b2c6d3a
+		summarizeBy: none
+		sourceColumn: caiiw_companylookupname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Company Name'
+		dataType: string
+		lineageTag: c8d9b85d-b3c0-4c10-a99f-ea8106846dfe
+		summarizeBy: none
+		sourceColumn: caiiw_companyname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Email Address'
+		dataType: string
+		lineageTag: 8b1649a2-1255-4086-ba59-21ac5844af69
+		summarizeBy: none
+		sourceColumn: caiiw_emailaddress
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Full Name'
+		dataType: string
+		lineageTag: 0877ee9c-41e4-4042-9fc8-464cfe32fa49
+		summarizeBy: none
+		sourceColumn: caiiw_fullname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Microsoft Contact Email'
+		dataType: string
+		lineageTag: d97039fe-101f-459d-958f-283719d04804
+		summarizeBy: none
+		sourceColumn: caiiw_microsoftcontactemail
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Microsoft Contact Name'
+		dataType: string
+		lineageTag: 2cc64b41-fc36-40f0-b7e7-50c24e5762b1
+		summarizeBy: none
+		sourceColumn: caiiw_microsoftcontactname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Nomination Name'
+		dataType: string
+		lineageTag: e85244d0-95ee-4718-82b0-5b153274ef5a
+		summarizeBy: none
+		sourceColumn: caiiw_nominationname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Potential Business Impact'
+		dataType: string
+		lineageTag: 9a629d68-3e67-42af-91fd-24730bb73aba
+		summarizeBy: none
+		sourceColumn: caiiw_potentialbusinessimpact
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Options:_x000D_
+	/// 848250000: Approved (no color)_x000D_
+	/// 848250001: Declined (no color)_x000D_
+	/// 848250002: Not Triaged (no color)_x000D_
+	/// Default: 848250002
+	column 'Selection Status'
+		dataType: string
+		lineageTag: 1a20890e-ceaa-4bd8-9178-af6fc3408ab2
+		summarizeBy: none
+		sourceColumn: caiiw_selectionstatusname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Transformation Details'
+		dataType: string
+		lineageTag: 0900c588-bd63-47fe-8c1d-10489cd27aef
+		summarizeBy: none
+		sourceColumn: caiiw_transformationdetails
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Why is this the time to tackle the problem?'
+		dataType: string
+		lineageTag: 7867c9b3-0b18-413d-8a41-c94c7b56ec46
+		summarizeBy: none
+		sourceColumn: caiiw_whyisthisthetimetotackletheproblem
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Workshop | Targets: caiiw_imaginationworkshop
+	column Workshop
+		dataType: string
+		lineageTag: 8d7f6a4e-3c2b-4f81-a9e6-1b5c8d9e2f7a
+		summarizeBy: none
+		sourceColumn: caiiw_workshopname
+
+		annotation SummarizationSetBy = Automatic
+
+	column Owner
+		dataType: string
+		lineageTag: 4a9e7f6c-2d8b-4e91-a3f6-5b7c9d8e1a2b
+		summarizeBy: none
+		sourceColumn: owneridname
+
+		annotation SummarizationSetBy = Automatic
+
+	column caiiw_companylookup
+		dataType: string
+		isHidden
+		lineageTag: 93af2293-300e-493a-baf5-d5985f3fb616
+		summarizeBy: none
+		sourceColumn: caiiw_companylookup
+
+		annotation SummarizationSetBy = Automatic
+
+	column caiiw_workshop
+		dataType: string
+		isHidden
+		lineageTag: 5ca898ad-dfd9-4bc6-ba14-fd1935a4d155
+		summarizeBy: none
+		sourceColumn: caiiw_workshop
+
+		annotation SummarizationSetBy = Automatic
+
+	column ownerid
+		dataType: string
+		isHidden
+		lineageTag: 113a126d-438d-437f-8324-22267df56a61
+		summarizeBy: none
+		sourceColumn: ownerid
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Nomination = m
+		mode: directQuery
+		source = ```
+				let
+				    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),
+				    Source = Value.NativeQuery(Dataverse,"
+				
+				    SELECT Base.caiiw_nominationid
+				        ,Base.caiiw_companylookup
+				        ,Base.caiiw_companylookupname
+				        ,Base.caiiw_companyname
+				        ,Base.caiiw_emailaddress
+				        ,Base.caiiw_fullname
+				        ,Base.caiiw_microsoftcontactemail
+				        ,Base.caiiw_microsoftcontactname
+				        ,Base.caiiw_nominationname
+				        ,Base.caiiw_potentialbusinessimpact
+				        ,Base.caiiw_selectionstatusname
+				        ,Base.caiiw_transformationdetails
+				        ,Base.caiiw_whyisthisthetimetotackletheproblem
+				        ,Base.caiiw_workshop
+				        ,Base.caiiw_workshopname
+				        ,Base.ownerid
+				        ,Base.owneridname
+				    FROM caiiw_Nomination as Base
+				    WHERE Base.statecode = 0
+					
+				    " ,null ,[EnableFolding=true])
+				in
+				    Source
+				```
+
+	annotation PBI_ResultType = Table
+

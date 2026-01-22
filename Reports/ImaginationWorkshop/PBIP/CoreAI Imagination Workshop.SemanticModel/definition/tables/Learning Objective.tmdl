@@ -1,0 +1,123 @@
+table 'Learning Objective'
+	lineageTag: aa6805e3-a966-4d72-9aff-37a7149a3132
+
+	column caiiw_learningobjectiveid
+		dataType: string
+		isHidden
+		lineageTag: 3c93bb40-28ff-4c15-9660-4c2edcf7b2a7
+		summarizeBy: none
+		sourceColumn: caiiw_learningobjectiveid
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Additional Information or Context'
+		dataType: string
+		lineageTag: c35121c1-637a-458a-b7b9-67d4a73d7f41
+		summarizeBy: none
+		sourceColumn: caiiw_additionalinformationorcontext
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Contact Name'
+		dataType: string
+		lineageTag: 2b43d150-28f7-408e-9fbd-99bd936fffde
+		summarizeBy: none
+		sourceColumn: caiiw_contactname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'DRI Leader Name'
+		dataType: string
+		lineageTag: 389edbc1-1385-48ab-95fc-bca2be1cc41a
+		summarizeBy: none
+		sourceColumn: caiiw_drileadername
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Engagement Timeline'
+		dataType: string
+		lineageTag: fc6dce4c-3986-42ff-b1b7-d709a6c7d8cf
+		summarizeBy: none
+		sourceColumn: caiiw_engagementtimeline
+
+		annotation SummarizationSetBy = Automatic
+
+	column Importance
+		dataType: string
+		lineageTag: 55cad0dd-e843-42c6-b081-a36cb4813705
+		summarizeBy: none
+		sourceColumn: caiiw_importance
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Key Customer Insight Goals'
+		dataType: string
+		lineageTag: 4b17680f-94b8-4c41-8ec6-5a80857fdde6
+		summarizeBy: none
+		sourceColumn: caiiw_keycustomerinsightgoals
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Learning Objective Name'
+		dataType: string
+		lineageTag: a29992c5-2819-4d3a-a1a7-dcae2fb329af
+		summarizeBy: none
+		sourceColumn: caiiw_learningobjectivename
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Product or Service Area'
+		dataType: string
+		lineageTag: 08d85800-3427-42f4-a110-b712c341809b
+		summarizeBy: none
+		sourceColumn: caiiw_productorservicearea
+
+		annotation SummarizationSetBy = Automatic
+
+	column Owner
+		dataType: string
+		lineageTag: 3d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+		summarizeBy: none
+		sourceColumn: owneridname
+
+		annotation SummarizationSetBy = Automatic
+
+	column ownerid
+		dataType: string
+		isHidden
+		lineageTag: 4d37b8e7-ab16-4cd2-bda2-60690da65ec4
+		summarizeBy: none
+		sourceColumn: ownerid
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Learning Objective' = m
+		mode: directQuery
+		source = ```
+				let
+				    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),
+				    Source = Value.NativeQuery(Dataverse,"
+				
+				    SELECT Base.caiiw_learningobjectiveid
+				        ,Base.caiiw_additionalinformationorcontext
+				        ,Base.caiiw_contactname
+				        ,Base.caiiw_drileadername
+				        ,Base.caiiw_engagementtimeline
+				        ,Base.caiiw_importance
+				        ,Base.caiiw_keycustomerinsightgoals
+				        ,Base.caiiw_learningobjectivename
+				        ,Base.caiiw_productorservicearea
+				        ,Base.ownerid
+				        ,Base.owneridname
+				    FROM caiiw_LearningObjective as Base
+				    WHERE Base.statecode = 0
+					
+				    " ,null ,[EnableFolding=true])
+				in
+				    Source
+				```
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

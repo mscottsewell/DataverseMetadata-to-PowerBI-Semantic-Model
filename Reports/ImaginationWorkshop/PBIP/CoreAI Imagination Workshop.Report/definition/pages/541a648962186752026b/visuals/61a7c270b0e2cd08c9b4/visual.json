@@ -1,0 +1,244 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.5.0/schema.json",
+  "name": "61a7c270b0e2cd08c9b4",
+  "position": {
+    "x": 419.93126347061224,
+    "y": 71.579192637036172,
+    "z": 3000,
+    "height": 128.84254674666511,
+    "width": 830.31863458961959
+  },
+  "visual": {
+    "visualType": "cardVisual",
+    "query": {
+      "queryState": {
+        "Data": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Nomination"
+                    }
+                  },
+                  "Property": "Nominations"
+                }
+              },
+              "queryRef": "Nomination.Nominations",
+              "nativeQueryRef": "Workshop Throughput",
+              "displayName": "Workshop Throughput"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Event Attendee"
+                    }
+                  },
+                  "Property": "Attendees"
+                }
+              },
+              "queryRef": "Event Attendee.Attendees",
+              "nativeQueryRef": "Attendees"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Workshop Feedback"
+                    }
+                  },
+                  "Property": "Average Workshop NSAT"
+                }
+              },
+              "queryRef": "Workshop Feedback.Average NSAT",
+              "nativeQueryRef": "Average NSAT"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Marketing"
+                    }
+                  },
+                  "Property": "Customer Stories"
+                }
+              },
+              "queryRef": "Marketing.Marketing Engagements",
+              "nativeQueryRef": "Customer Stories"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "IW Product Feedback"
+                    }
+                  },
+                  "Property": "PG Feedback"
+                }
+              },
+              "queryRef": "IW Product Feedback.PG Feedback",
+              "nativeQueryRef": "PG Feedback"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Nomination"
+                  }
+                },
+                "Property": "Nominations"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": true
+      }
+    },
+    "objects": {
+      "layout": [
+        {
+          "properties": {
+            "backgroundShow": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          },
+          "selector": {
+            "id": "default"
+          }
+        },
+        {
+          "properties": {
+            "orientation": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            },
+            "columnCount": {
+              "expr": {
+                "Literal": {
+                  "Value": "5L"
+                }
+              }
+            },
+            "autoGrid": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "dropShadow": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "f40cddd1d75845707be1",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Nomination"
+              }
+            },
+            "Property": "Nominations"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "c82d653009698143e52c",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Event Attendee"
+              }
+            },
+            "Property": "Attendees"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "bed525cd053910859c21",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Workshop Feedback"
+              }
+            },
+            "Property": "Average Workshop NSAT"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "956891b924e8ec794089",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Marketing"
+              }
+            },
+            "Property": "Customer Stories"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "636709f898d4c7b054ed",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "IW Product Feedback"
+              }
+            },
+            "Property": "PG Feedback"
+          }
+        },
+        "type": "Advanced"
+      }
+    ]
+  }
+}

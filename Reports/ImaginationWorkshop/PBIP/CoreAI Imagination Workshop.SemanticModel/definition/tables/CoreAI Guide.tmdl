@@ -1,0 +1,159 @@
+table 'CoreAI Guide'
+	lineageTag: 9d6703ea-5844-445f-8e02-17ce8c7e7cd1
+
+	column caiiw_coreaiguideid
+		dataType: string
+		isHidden
+		lineageTag: e221d3b7-e29c-4fef-b0c8-7d457af4876e
+		summarizeBy: none
+		sourceColumn: caiiw_coreaiguideid
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Anything Else'
+		dataType: string
+		lineageTag: 5b99ae76-afb1-4d76-b6ca-ec65a7d63a0d
+		summarizeBy: none
+		sourceColumn: caiiw_anythingelse
+
+		annotation SummarizationSetBy = Automatic
+
+	column Availability
+		dataType: string
+		lineageTag: 79f39936-4b95-406b-959f-ffd9fd3fe5d5
+		summarizeBy: none
+		sourceColumn: caiiw_availability
+
+		annotation SummarizationSetBy = Automatic
+
+	column City
+		dataType: string
+		lineageTag: c60812c3-1a6a-4ba2-afe7-2cf61bb70f1f
+		summarizeBy: none
+		sourceColumn: caiiw_city
+
+		annotation SummarizationSetBy = Automatic
+
+	column Country
+		dataType: string
+		lineageTag: 046924ee-f309-473e-903b-c2caa4e35551
+		summarizeBy: none
+		sourceColumn: caiiw_country
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Employee Email'
+		dataType: string
+		lineageTag: b957306a-6826-4162-8157-3e7b866cfaa6
+		summarizeBy: none
+		sourceColumn: caiiw_employeeemail
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Expertise Areas'
+		dataType: string
+		lineageTag: df9b4e3d-b63c-42f0-8922-b630c1ada7d9
+		summarizeBy: none
+		sourceColumn: caiiw_expertiseareas
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Job Title / Role'
+		dataType: string
+		lineageTag: 10794a70-ecd2-42c0-aaa4-c3c07077b8ef
+		summarizeBy: none
+		sourceColumn: caiiw_jobtitlerole
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'LinkedIn Profile'
+		dataType: string
+		lineageTag: 601a98dc-7809-451d-9d85-49ff2c9ab589
+		summarizeBy: none
+		sourceColumn: caiiw_linkedinprofile
+
+		annotation SummarizationSetBy = Automatic
+
+	column Name
+		dataType: string
+		lineageTag: 2ff81350-102e-4092-a382-474bd2c17ffd
+		summarizeBy: none
+		sourceColumn: caiiw_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Other Skills'
+		dataType: string
+		lineageTag: fe0cd0c2-2488-4e09-949f-9dbe185c19cc
+		summarizeBy: none
+		sourceColumn: caiiw_otherskills
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Relevant Customer Experience'
+		dataType: string
+		lineageTag: a31fb234-9002-464b-8cf7-04bd14c5debb
+		summarizeBy: none
+		sourceColumn: caiiw_relevantcustomerexperience
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Why I want to be a guide'
+		dataType: string
+		lineageTag: 4806fc4b-c698-429d-b68a-02bbf9fb411c
+		summarizeBy: none
+		sourceColumn: caiiw_whyiwanttobeaguide
+
+		annotation SummarizationSetBy = Automatic
+
+	column Owner
+		dataType: string
+		lineageTag: 5f6a7b8c-9d0e-1f2a-3b4c-5d6e7f8a9b0c
+		summarizeBy: none
+		sourceColumn: owneridname
+
+		annotation SummarizationSetBy = Automatic
+
+	column ownerid
+		dataType: string
+		isHidden
+		lineageTag: 10a5597b-8837-458f-8d75-6d27902982e9
+		summarizeBy: none
+		sourceColumn: ownerid
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'CoreAI Guide' = m
+		mode: directQuery
+		source = ```
+				let
+				    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),
+				    Source = Value.NativeQuery(Dataverse,"
+				
+				    SELECT Base.caiiw_coreaiguideid
+				        ,Base.caiiw_anythingelse
+				        ,Base.caiiw_availability
+				        ,Base.caiiw_city
+				        ,Base.caiiw_country
+				        ,Base.caiiw_employeeemail
+				        ,Base.caiiw_expertiseareas
+				        ,Base.caiiw_jobtitlerole
+				        ,Base.caiiw_linkedinprofile
+				        ,Base.caiiw_name
+				        ,Base.caiiw_otherskills
+				        ,Base.caiiw_relevantcustomerexperience
+				        ,Base.caiiw_whyiwanttobeaguide
+				        ,Base.ownerid
+				        ,Base.owneridname
+				    FROM caiiw_CoreAIGuide as Base
+				    WHERE Base.statecode = 0
+					
+				    " ,null ,[EnableFolding=true])
+				in
+				    Source
+				```
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

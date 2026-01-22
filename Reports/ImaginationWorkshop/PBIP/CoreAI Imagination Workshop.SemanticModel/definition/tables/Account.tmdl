@@ -1,0 +1,132 @@
+table Account
+	lineageTag: d89070a5-3e6e-42ae-bffe-48337c3a0617
+
+	column accountid
+		dataType: string
+		isHidden
+		lineageTag: 4ef5a371-af6c-4341-be91-2cc4ed3b5058
+		summarizeBy: none
+		sourceColumn: accountid
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Shows the complete primary address.
+	column 'Address 1'
+		dataType: string
+		lineageTag: 98df49f2-4315-4f10-be5b-09bf451b7823
+		summarizeBy: none
+		sourceColumn: address1_composite
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Type additional information to describe the account, such as an excerpt from the company's website.
+	column Description
+		dataType: string
+		lineageTag: cf73ca2c-f68d-4f44-b68f-4cfb985b9b8c
+		summarizeBy: none
+		sourceColumn: description
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Type the company or business name.
+	column 'Account Name'
+		dataType: string
+		lineageTag: fa4682b1-499d-450e-9e1a-bb0743d487e1
+		summarizeBy: none
+		sourceColumn: name
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Enter the user or team who is assigned to manage the record. This field is updated every time the record is assigned to a different user. | Targets: systemuser team
+	column ownerid
+		dataType: string
+		isHidden
+		lineageTag: 763c9a76-edb1-4b40-9205-796940547c6b
+		summarizeBy: none
+		sourceColumn: ownerid
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Select the account's ownership structure, such as public or private.
+	column Ownership
+		dataType: string
+		lineageTag: 8f2fb6fb-eefd-4a22-b8a8-50a5c7f4d2da
+		summarizeBy: none
+		sourceColumn: ownershipcodename
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Choose the primary contact for the account to provide quick access to contact details. | Targets: contact
+	column primarycontactid
+		dataType: string
+		isHidden
+		lineageTag: 1e22e741-1a37-4598-bbe5-f8a9abd35d94
+		summarizeBy: none
+		sourceColumn: primarycontactid
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Type the stock exchange symbol for the account to track financial performance of the company. You can click the code entered in this field to access the latest trading information from MSN Money.
+	column 'Ticker Symbol'
+		dataType: string
+		lineageTag: cc2356f1-21d3-4a7c-9ff6-627dd2a1af32
+		summarizeBy: none
+		sourceColumn: tickersymbol
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Type the account's website URL to get quick details about the company profile.
+	column Website
+		dataType: string
+		lineageTag: 93ccad67-f100-4ac0-9d13-a17b363fc79d
+		summarizeBy: none
+		sourceColumn: websiteurl
+
+		annotation SummarizationSetBy = Automatic
+
+	column Owner
+		dataType: string
+		lineageTag: 763c9a76-edb1-4b40-9205-796940547c6c
+		summarizeBy: none
+		sourceColumn: owneridname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Primary Contact'
+		dataType: string
+		lineageTag: 1e22e741-1a37-4598-bbe5-f8a9abd35d95
+		summarizeBy: none
+		sourceColumn: primarycontactidname
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Account = m
+		mode: directQuery
+		source = ```
+				let
+				    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),
+				    Source = Value.NativeQuery(Dataverse,"
+				
+				    SELECT Base.accountid
+				        ,Base.address1_composite
+				        ,Base.description
+				        ,Base.name
+				        ,Base.ownerid
+				        ,Base.owneridname
+				        ,Base.ownershipcodename
+				        ,Base.primarycontactid
+				        ,Base.primarycontactidname
+				        ,Base.tickersymbol
+				        ,Base.websiteurl
+				    FROM Account as Base
+				    WHERE Base.statecode = 0
+					
+				    " ,null ,[EnableFolding=true])
+				in
+				    Source
+				```
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

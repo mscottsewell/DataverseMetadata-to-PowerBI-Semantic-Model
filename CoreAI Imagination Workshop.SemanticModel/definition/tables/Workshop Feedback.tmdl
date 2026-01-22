@@ -1,0 +1,148 @@
+table 'Workshop Feedback'
+	lineageTag: 54a64bc2-0df3-4df0-9d89-b3415ec538ba
+
+	measure 'Average Workshop NSAT' = AVERAGE('Workshop Feedback'[NSAT Score])
+		formatString: 0.0
+		lineageTag: 7cbb3cda-47e0-41f9-81ef-dde37c9bd299
+
+	column caiiw_workshopfeedbackid
+		dataType: string
+		isHidden
+		lineageTag: 783be566-0138-4df6-ad09-4b1762201e7c
+		summarizeBy: none
+		sourceColumn: caiiw_workshopfeedbackid
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Attendee Lookup | Targets: caiiw_eventattendee
+	column 'Attendee Lookup'
+		dataType: string
+		lineageTag: 0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+		summarizeBy: none
+		sourceColumn: caiiw_attendeelookupname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Attendee Type'
+		dataType: string
+		lineageTag: fbcc3a94-5bfa-43c7-a789-567687b94a70
+		summarizeBy: none
+		sourceColumn: caiiw_attendeetype
+
+		annotation SummarizationSetBy = Automatic
+
+	column Dislikes
+		dataType: string
+		lineageTag: 2cd20fa9-6eed-426e-bac3-1fd7eef71d96
+		summarizeBy: none
+		sourceColumn: caiiw_dislikes
+
+		annotation SummarizationSetBy = Automatic
+
+	column Likes
+		dataType: string
+		lineageTag: 716f155f-1b37-40ba-ab12-b9786270c9ec
+		summarizeBy: none
+		sourceColumn: caiiw_likes
+
+		annotation SummarizationSetBy = Automatic
+
+	column Name
+		dataType: string
+		lineageTag: d25012a4-5bf6-4f88-a42c-74780a822b63
+		summarizeBy: none
+		sourceColumn: caiiw_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'NSAT Score'
+		dataType: int64
+		formatString: 0
+		lineageTag: cb93b22e-b41d-4b27-8cfa-c41b1959a490
+		summarizeBy: none
+		sourceColumn: caiiw_nsatscore
+
+		annotation SummarizationSetBy = User
+
+	/// Workshop Lookup | Targets: caiiw_imaginationworkshop
+	column 'Workshop Lookup'
+		dataType: string
+		lineageTag: 1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+		summarizeBy: none
+		sourceColumn: caiiw_workshoplookupname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Workshop Text'
+		dataType: string
+		lineageTag: 7e35c37c-dc6a-467b-81f0-135d11f1f381
+		summarizeBy: none
+		sourceColumn: caiiw_workshoptext
+
+		annotation SummarizationSetBy = Automatic
+
+	column Owner
+		dataType: string
+		lineageTag: 2c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+		summarizeBy: none
+		sourceColumn: owneridname
+
+		annotation SummarizationSetBy = Automatic
+
+	column caiiw_attendeelookup
+		dataType: string
+		isHidden
+		lineageTag: 4f763ccd-91a0-4ec9-ae4b-15ea89bec36b
+		summarizeBy: none
+		sourceColumn: caiiw_attendeelookup
+
+		annotation SummarizationSetBy = Automatic
+
+	column caiiw_workshoplookup
+		dataType: string
+		isHidden
+		lineageTag: 4217b958-548a-4025-84e0-53affe2e8027
+		summarizeBy: none
+		sourceColumn: caiiw_workshoplookup
+
+		annotation SummarizationSetBy = Automatic
+
+	column ownerid
+		dataType: string
+		isHidden
+		lineageTag: 12631818-f2fc-47c9-ae9a-e9b02638d7f9
+		summarizeBy: none
+		sourceColumn: ownerid
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Workshop Feedback' = m
+		mode: directQuery
+		source = ```
+				let
+				    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),
+				    Source = Value.NativeQuery(Dataverse,"
+				
+				    SELECT Base.caiiw_workshopfeedbackid
+				        ,Base.caiiw_attendeelookup
+				        ,Base.caiiw_attendeelookupname
+				        ,Base.caiiw_attendeetype
+				        ,Base.caiiw_dislikes
+				        ,Base.caiiw_likes
+				        ,Base.caiiw_name
+				        ,Base.caiiw_nsatscore
+				        ,Base.caiiw_workshoplookup
+				        ,Base.caiiw_workshoplookupname
+				        ,Base.caiiw_workshoptext
+				        ,Base.ownerid
+				        ,Base.owneridname
+				    FROM caiiw_WorkshopFeedback as Base
+				    WHERE Base.statecode = 0
+					
+				    " ,null ,[EnableFolding=true])
+				in
+				    Source
+				```
+
+	annotation PBI_ResultType = Table
+

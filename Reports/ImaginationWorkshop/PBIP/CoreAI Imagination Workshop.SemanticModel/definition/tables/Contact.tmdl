@@ -1,0 +1,142 @@
+table Contact
+	lineageTag: 4b3a9bff-8178-4f4b-a8d9-4c33bd4ea53c
+
+	column contactid
+		dataType: string
+		isHidden
+		lineageTag: 41f60cc5-3010-4ead-9c4d-bf726212704b
+		summarizeBy: none
+		sourceColumn: contactid
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Shows the complete primary address.
+	column 'Address 1'
+		dataType: string
+		lineageTag: a9d71a33-05b0-4995-818b-91de672a6bec
+		summarizeBy: none
+		sourceColumn: address1_composite
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Type the primary email address for the contact.
+	column Email
+		dataType: string
+		lineageTag: 42787c2f-8441-4c38-8f9c-54829f02ab78
+		summarizeBy: none
+		sourceColumn: emailaddress1
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Combines and shows the contact's first and last names so that the full name can be displayed in views and reports.
+	column 'Full Name'
+		dataType: string
+		lineageTag: b5278744-b79c-4610-b0c4-467f39624389
+		summarizeBy: none
+		sourceColumn: fullname
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Type the job title of the contact to make sure the contact is addressed correctly in sales calls, email, and marketing campaigns.
+	column 'Job Title'
+		dataType: string
+		lineageTag: 5b879c6d-90f8-4f1d-af63-ac5370ea45ef
+		summarizeBy: none
+		sourceColumn: jobtitle
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Type the mobile phone number for the contact.
+	column 'Mobile Phone'
+		dataType: string
+		lineageTag: 8272d9b6-be44-4563-9aa0-b87b5d806f1b
+		summarizeBy: none
+		sourceColumn: mobilephone
+
+		annotation SummarizationSetBy = Automatic
+
+	column Owner
+		dataType: string
+		lineageTag: 6855e9f0-b253-45b1-a7ab-7c617c6f5e30
+		summarizeBy: none
+		sourceColumn: owneridname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Company Name'
+		dataType: string
+		lineageTag: 4dd56169-0aa6-4fed-bdd8-3fbe5d8ea18e
+		summarizeBy: none
+		sourceColumn: parentcustomeridname
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Select the preferred method of contact.
+	column 'Preferred Method of Contact'
+		dataType: string
+		lineageTag: 296420fe-e4f6-4e85-9e6a-444bdb577408
+		summarizeBy: none
+		sourceColumn: preferredcontactmethodcodename
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Type the main phone number for this contact.
+	column 'Business Phone'
+		dataType: string
+		lineageTag: 4be85b58-c712-44ef-bedf-bbcc53087a70
+		summarizeBy: none
+		sourceColumn: telephone1
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Enter the user or team who is assigned to manage the record. This field is updated every time the record is assigned to a different user. | Targets: systemuser team
+	column ownerid
+		dataType: string
+		isHidden
+		lineageTag: 6855e9f0-b253-45b1-a7ab-7c617c6f5e29
+		summarizeBy: none
+		sourceColumn: ownerid
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Select the parent account or parent contact for the contact to provide a quick link to additional details, such as financial information, activities, and opportunities. | Targets: account contact
+	column parentcustomerid
+		dataType: string
+		isHidden
+		lineageTag: 4dd56169-0aa6-4fed-bdd8-3fbe5d8ea18d
+		summarizeBy: none
+		sourceColumn: parentcustomerid
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Contact = m
+		mode: directQuery
+		source = ```
+				let
+				    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),
+				    Source = Value.NativeQuery(Dataverse,"
+				
+				    SELECT Base.contactid
+				        ,Base.address1_composite
+				        ,Base.emailaddress1
+				        ,Base.fullname
+				        ,Base.jobtitle
+				        ,Base.mobilephone
+				        ,Base.ownerid
+				        ,Base.owneridname
+				        ,Base.parentcustomerid
+				        ,Base.parentcustomeridname
+				        ,Base.preferredcontactmethodcodename
+				        ,Base.telephone1
+				    FROM Contact as Base
+				    WHERE Base.statecode = 0
+					
+				    " ,null ,[EnableFolding=true])
+				in
+				    Source
+				```
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,154 @@
+table 'Event Attendee'
+	lineageTag: 20033745-4d04-41d5-9731-6bf1139a1a4c
+
+	measure Attendees = COUNTROWS('Event Attendee')
+		formatString: 0
+		lineageTag: c7b22ced-e9a0-4a9a-8299-37d68e536ab5
+
+	column caiiw_eventattendeeid
+		dataType: string
+		isHidden
+		lineageTag: ae8cd4e4-0cbc-467e-bd55-475478519cd1
+		summarizeBy: none
+		sourceColumn: caiiw_eventattendeeid
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Attendee Type'
+		dataType: string
+		lineageTag: 75736283-d674-4457-8f43-39e52edec3c8
+		summarizeBy: none
+		sourceColumn: caiiw_attendeetypename
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'CoreAI Guide'
+		dataType: string
+		lineageTag: ac6def2f-1849-45c5-bfb8-69bd65b8f70
+		summarizeBy: none
+		sourceColumn: caiiw_coreaiguidename
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Customer Contact'
+		dataType: string
+		lineageTag: fd7cb2a5-bc77-4194-a639-f930899df881
+		summarizeBy: none
+		sourceColumn: caiiw_customercontactname
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'MS Employee'
+		dataType: string
+		lineageTag: 9ed87432-4785-4724-943c-58dac9cabd84
+		summarizeBy: none
+		sourceColumn: caiiw_msemployeename
+
+		annotation SummarizationSetBy = Automatic
+
+	column Name
+		dataType: string
+		lineageTag: 7df7f71b-38a6-4c87-b0b1-2264b2beb8b3
+		summarizeBy: none
+		sourceColumn: caiiw_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column Nomination
+		dataType: string
+		lineageTag: 1f3cb37d-b83c-4a14-84ac-8c47426f4d55
+		summarizeBy: none
+		sourceColumn: caiiw_nominationname
+
+		annotation SummarizationSetBy = Automatic
+
+	column Owner
+		dataType: string
+		lineageTag: c6032e16-a13a-4e52-88c0-cf8a63f4a00b
+		summarizeBy: none
+		sourceColumn: owneridname
+
+		annotation SummarizationSetBy = Automatic
+
+	/// CoreAI Guide | Targets: caiiw_coreaiguide
+	column caiiw_coreaiguide
+		dataType: string
+		isHidden
+		lineageTag: ac6def2f-1849-45c5-bfb8-69bd65b8f76f
+		summarizeBy: none
+		sourceColumn: caiiw_coreaiguide
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Customer Contact | Targets: contact
+	column caiiw_customercontact
+		dataType: string
+		isHidden
+		lineageTag: fd7cb2a5-bc77-4194-a639-f930899df880
+		summarizeBy: none
+		sourceColumn: caiiw_customercontact
+
+		annotation SummarizationSetBy = Automatic
+
+	/// MS Employee | Targets: systemuser
+	column caiiw_msemployee
+		dataType: string
+		isHidden
+		lineageTag: 9ed87432-4785-4724-943c-58dac9cabd83
+		summarizeBy: none
+		sourceColumn: caiiw_msemployee
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Nomination | Targets: caiiw_nomination
+	column caiiw_nomination
+		dataType: string
+		isHidden
+		lineageTag: 1f3cb37d-b83c-4a14-84ac-8c47426f4d54
+		summarizeBy: none
+		sourceColumn: caiiw_nomination
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Enter the user or team who is assigned to manage the record. This field is updated every time the record is assigned to a different user. | Targets: systemuser team
+	column ownerid
+		dataType: string
+		isHidden
+		lineageTag: c6032e16-a13a-4e52-88c0-cf8a63f4a00a
+		summarizeBy: none
+		sourceColumn: ownerid
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Event Attendee' = m
+		mode: directQuery
+		source = ```
+				let
+				    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),
+				    Source = Value.NativeQuery(Dataverse,"
+				
+				    SELECT Base.caiiw_eventattendeeid
+				        ,Base.caiiw_attendeetypename
+				        ,Base.caiiw_coreaiguide
+				        ,Base.caiiw_coreaiguidename
+				        ,Base.caiiw_customercontact
+				        ,Base.caiiw_customercontactname
+				        ,Base.caiiw_msemployee
+				        ,Base.caiiw_msemployeename
+				        ,Base.caiiw_name
+				        ,Base.caiiw_nomination
+				        ,Base.caiiw_nominationname
+				        ,Base.ownerid
+				        ,Base.owneridname
+				    FROM caiiw_EventAttendee as Base
+				    WHERE Base.statecode = 0
+					
+				    " ,null ,[EnableFolding=true])
+				in
+				    Source
+				```
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,113 @@
+table 'Imagination Workshop'
+	lineageTag: 1eea521b-0a74-48c2-9e13-ac0e7eb4c09a
+
+	column caiiw_imaginationworkshopid
+		dataType: string
+		isHidden
+		lineageTag: f7a285f0-5312-4aba-8c3b-30f53844f71b
+		summarizeBy: none
+		sourceColumn: caiiw_imaginationworkshopid
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'End Date'
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: b602792a-c0c2-4e85-9d10-0cd8d1a4edc1
+		summarizeBy: none
+		sourceColumn: caiiw_enddate
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Feedback Count'
+		dataType: int64
+		formatString: 0
+		lineageTag: fa142889-faf3-4636-a3fa-761046b86c6d
+		summarizeBy: sum
+		sourceColumn: caiiw_feedbackcount
+
+		annotation SummarizationSetBy = Automatic
+
+	column Location
+		dataType: string
+		lineageTag: 5da6a912-d752-4bab-978e-c76fd0021889
+		summarizeBy: none
+		sourceColumn: caiiw_location
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'NPS Avg'
+		dataType: double
+		lineageTag: 6775eca8-2ba1-4772-a80f-6b39ffb30d05
+		summarizeBy: sum
+		sourceColumn: caiiw_npsavg
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column 'Start Date'
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: e6657450-7dfb-4b69-bd16-b895705a1d86
+		summarizeBy: none
+		sourceColumn: caiiw_startdate
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Workshop Name'
+		dataType: string
+		lineageTag: 04c73add-a195-4255-852d-691bc4b927fd
+		summarizeBy: none
+		sourceColumn: caiiw_workshopname
+		sortByColumn: 'Start Date'
+
+		changedProperty = SortByColumn
+
+		annotation SummarizationSetBy = Automatic
+
+	column Owner
+		dataType: string
+		lineageTag: 4e5f6a7b-8c9d-0e1f-2a3b-4c5d6e7f8a9b
+		summarizeBy: none
+		sourceColumn: owneridname
+
+		annotation SummarizationSetBy = Automatic
+
+	column ownerid
+		dataType: string
+		isHidden
+		lineageTag: 394733ff-2026-4f78-8c72-e75b913a2ea7
+		summarizeBy: none
+		sourceColumn: ownerid
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Imagination Workshop' = m
+		mode: directQuery
+		source = ```
+				let
+				    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),
+				    Source = Value.NativeQuery(Dataverse,"
+				
+				    SELECT Base.caiiw_imaginationworkshopid
+				        ,Base.caiiw_enddate
+				        ,Base.caiiw_feedbackcount
+				        ,Base.caiiw_location
+				        ,Base.caiiw_npsavg
+				        ,Base.caiiw_startdate
+				        ,Base.caiiw_workshopname
+				        ,Base.ownerid
+				        ,Base.owneridname
+				    FROM caiiw_ImaginationWorkshop as Base
+				    WHERE Base.statecode = 0
+					
+				    " ,null ,[EnableFolding=true])
+				in
+				    Source
+				```
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

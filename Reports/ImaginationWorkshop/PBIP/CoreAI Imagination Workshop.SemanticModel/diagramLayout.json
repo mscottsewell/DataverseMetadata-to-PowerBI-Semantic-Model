@@ -1,0 +1,188 @@
+{
+  "version": "1.1.0",
+  "diagrams": [
+    {
+      "ordinal": 0,
+      "scrollPosition": {
+        "x": 0,
+        "y": 0
+      },
+      "nodes": [
+        {
+          "location": {
+            "x": 0,
+            "y": 0
+          },
+          "nodeIndex": "Account",
+          "nodeLineageTag": "d89070a5-3e6e-42ae-bffe-48337c3a0617",
+          "size": {
+            "height": 128,
+            "width": 234
+          },
+          "zIndex": 8
+        },
+        {
+          "location": {
+            "x": 0,
+            "y": 413
+          },
+          "nodeIndex": "Contact",
+          "nodeLineageTag": "4b3a9bff-8178-4f4b-a8d9-4c33bd4ea53c",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 1,
+          "expandedHeight": 145
+        },
+        {
+          "location": {
+            "x": 277,
+            "y": 419
+          },
+          "nodeIndex": "CoreAI Guide",
+          "nodeLineageTag": "9d6703ea-5844-445f-8e02-17ce8c7e7cd1",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 11,
+          "expandedHeight": 156
+        },
+        {
+          "location": {
+            "x": 129,
+            "y": 588
+          },
+          "nodeIndex": "Event Attendee",
+          "nodeLineageTag": "20033745-4d04-41d5-9731-6bf1139a1a4c",
+          "size": {
+            "height": 152,
+            "width": 234
+          },
+          "zIndex": 9,
+          "expandedHeight": 272
+        },
+        {
+          "location": {
+            "x": 877,
+            "y": 160
+          },
+          "nodeIndex": "Imagination Workshop",
+          "nodeLineageTag": "1eea521b-0a74-48c2-9e13-ac0e7eb4c09a",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 2,
+          "expandedHeight": 272
+        },
+        {
+          "location": {
+            "x": 714,
+            "y": 480
+          },
+          "nodeIndex": "IW Next Steps",
+          "nodeLineageTag": "d7ebad9c-11a2-45f2-a30f-0ba0f5db2387",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 3,
+          "expandedHeight": 272
+        },
+        {
+          "location": {
+            "x": 713,
+            "y": 615
+          },
+          "nodeIndex": "IW Product Feedback",
+          "nodeLineageTag": "a273857e-f5ff-4f88-98e4-cea1dd7380ac",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 4,
+          "expandedHeight": 374
+        },
+        {
+          "location": {
+            "x": 1196,
+            "y": 178
+          },
+          "nodeIndex": "Learning Objective",
+          "nodeLineageTag": "aa6805e3-a966-4d72-9aff-37a7149a3132",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 5,
+          "expandedHeight": 374
+        },
+        {
+          "location": {
+            "x": 0,
+            "y": 185
+          },
+          "nodeIndex": "Marketing",
+          "nodeLineageTag": "1de31c21-d1f9-4658-8d0a-f0387461153c",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 12,
+          "expandedHeight": 272
+        },
+        {
+          "location": {
+            "x": 523.84002685546875,
+            "y": 0
+          },
+          "nodeIndex": "Nomination",
+          "nodeLineageTag": "2d828b71-bccf-4cad-8e48-31aa0d91eac7",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 6
+        },
+        {
+          "location": {
+            "x": 875.8399658203125,
+            "y": 297
+          },
+          "nodeIndex": "Nomination Learning Objective",
+          "nodeLineageTag": "df9916eb-6fe7-4307-aa5b-75d02f9285f5",
+          "size": {
+            "height": 128,
+            "width": 234
+          },
+          "zIndex": 7,
+          "expandedHeight": 329
+        },
+        {
+          "location": {
+            "x": 1189,
+            "y": 12
+          },
+          "nodeIndex": "Workshop Feedback",
+          "nodeLineageTag": "54a64bc2-0df3-4df0-9d89-b3415ec538ba",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 10,
+          "expandedHeight": 423
+        }
+      ],
+      "name": "All tables",
+      "zoomValue": 100,
+      "pinKeyFieldsToTop": false,
+      "showExtraHeaderInfo": false,
+      "hideKeyFieldsWhenCollapsed": false,
+      "tablesLocked": false
+    }
+  ],
+  "selectedDiagram": "All tables",
+  "defaultDiagram": "All tables"
+}

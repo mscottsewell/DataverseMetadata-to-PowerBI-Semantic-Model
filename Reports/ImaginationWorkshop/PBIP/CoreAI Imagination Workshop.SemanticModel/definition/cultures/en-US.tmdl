@@ -1,0 +1,32 @@
+cultureInfo en-US
+
+	linguisticMetadata =
+			{
+			  "Version": "2.0.0",
+			  "Language": "en-US",
+			  "Entities": {
+			    "nomination.nominations": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "Nomination",
+			          "ConceptualProperty": "Nominations"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Workshop Throughput": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    }
+			  }
+			}
+		contentType: json
+

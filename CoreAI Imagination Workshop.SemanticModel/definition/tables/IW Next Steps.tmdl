@@ -1,0 +1,131 @@
+table 'IW Next Steps'
+	lineageTag: d7ebad9c-11a2-45f2-a30f-0ba0f5db2387
+
+	measure 'Next Steps' = COUNTROWS('IW Next Steps')
+		formatString: 0
+		lineageTag: 7686df1b-da3d-4675-b9e6-e91c296a6187
+
+	column caiiw_iwnextstepsid
+		dataType: string
+		isHidden
+		lineageTag: 04b62724-bd73-4a1e-853c-94318dc03ea4
+		summarizeBy: none
+		sourceColumn: caiiw_iwnextstepsid
+
+		annotation SummarizationSetBy = Automatic
+
+	column ETA
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 90f119fa-0db1-4d18-b3b5-f6eeffd0ee18
+		summarizeBy: none
+		sourceColumn: caiiw_eta
+
+		annotation SummarizationSetBy = Automatic
+
+	column Name
+		dataType: string
+		lineageTag: b03ad350-e8df-4567-a796-f5e65e3bdf75
+		summarizeBy: none
+		sourceColumn: caiiw_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Next Step Owner'
+		dataType: string
+		lineageTag: a8e996ce-338d-4dc0-95f3-8cee80df0405
+		summarizeBy: none
+		sourceColumn: caiiw_nextstepownername
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Next Steps Details'
+		dataType: string
+		lineageTag: 8e664bc2-ae75-48d0-8ce1-da2af5310359
+		summarizeBy: none
+		sourceColumn: caiiw_nextstepsdetails
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Next Step Status'
+		dataType: string
+		lineageTag: 23e6477d-cd6b-4979-9e24-3bb724851821
+		summarizeBy: none
+		sourceColumn: caiiw_nextstepstatusname
+
+		annotation SummarizationSetBy = Automatic
+
+	column Nomination
+		dataType: string
+		lineageTag: 74e86da7-2ab0-41bd-b6ea-7ca8bbc4a0e0
+		summarizeBy: none
+		sourceColumn: caiiw_nominationname
+
+		annotation SummarizationSetBy = Automatic
+
+	column Owner
+		dataType: string
+		lineageTag: aa66e9a8-aaa5-4969-ac3e-a3a075c9c671
+		summarizeBy: none
+		sourceColumn: owneridname
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Next Step Owner | Targets: caiiw_eventattendee
+	column caiiw_nextstepowner
+		dataType: string
+		isHidden
+		lineageTag: a8e996ce-338d-4dc0-95f3-8cee80df0404
+		summarizeBy: none
+		sourceColumn: caiiw_nextstepowner
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Nomination | Targets: caiiw_nomination
+	column caiiw_nomination
+		dataType: string
+		isHidden
+		lineageTag: 74e86da7-2ab0-41bd-b6ea-7ca8bbc4a0d9
+		summarizeBy: none
+		sourceColumn: caiiw_nomination
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Enter the user or team who is assigned to manage the record. This field is updated every time the record is assigned to a different user. | Targets: systemuser team
+	column ownerid
+		dataType: string
+		isHidden
+		lineageTag: aa66e9a8-aaa5-4969-ac3e-a3a075c9c670
+		summarizeBy: none
+		sourceColumn: ownerid
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'IW Next Steps' = m
+		mode: directQuery
+		source = ```
+				let
+				    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),
+				    Source = Value.NativeQuery(Dataverse,"
+				
+				    SELECT Base.caiiw_iwnextstepsid
+				        ,Base.caiiw_eta
+				        ,Base.caiiw_name
+				        ,Base.caiiw_nextstepowner
+				        ,Base.caiiw_nextstepownername
+				        ,Base.caiiw_nextstepsdetails
+				        ,Base.caiiw_nextstepstatusname
+				        ,Base.caiiw_nomination
+				        ,Base.caiiw_nominationname
+				        ,Base.ownerid
+				        ,Base.owneridname
+				    FROM caiiw_IWNextSteps as Base
+				    WHERE Base.statecode = 0
+					
+				    " ,null ,[EnableFolding=true])
+				in
+				    Source
+				```
+
+	annotation PBI_ResultType = Table
+
