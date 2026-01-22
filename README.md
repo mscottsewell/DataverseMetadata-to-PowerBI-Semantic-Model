@@ -7,6 +7,7 @@ DataverseMetadata-to-PowerBI-Semantic-Model/
 ├── Reports/                # Power BI Reports with project-specific metadata
 │   └── Dynamics 365 Sales/
 │       ├── Metadata/       # Excel and JSON metadata files
+│       │   ├── DataverseURL.txt
 │       │   ├── Dynamics 365 Sales Metadata Dictionary.xlsx
 │       │   └── Dynamics 365 Sales Metadata Dictionary.json
 │       └── PBIP/           # Power BI Project files
@@ -23,6 +24,7 @@ DataverseMetadata-to-PowerBI-Semantic-Model/
 
 ## Extracting Metadata
 
+- **Create a DataverseURL.txt file** in the `Reports/[ProjectName]/Metadata/` folder containing your Dataverse organization URL (e.g., `https://yourorg.crm.dynamics.com`).
 - Use the XrmToolBox "Metadata Document Generator" utility to export Dataverse table metadata to an Excel file. 
 - Use the 'Load Entities from Solution' option to include only relevant tables.
 - Choose the "All Attributes contained in forms", and select a form for each entity you want added to the semantic model in Power BI. (Be sure to select each entity row and select the form for it, one by one.)
@@ -88,18 +90,20 @@ See [Code/README.md](Code/README.md) for Python utility scripts that display met
    - Filename should be: `NewProject Metadata Dictionary.xlsx`
    - Set sensitivity label to 'General'
 
-4. Run the script again to generate JSON:
+4. Create a `DataverseURL.txt` file in `Reports/NewProject/Metadata/`
+   - Add your Dataverse organization URL (e.g., `yourorg.crm.dynamics.com`)
+   - This file documents the source environment for the metadata
+
+5. Run the script again to generate JSON:
    ```powershell
    .\Extract-PowerBIMetadata.ps1 -ProjectName "NewProject"
    ```
 
-5. Create your PBIP files in `Reports/NewProject/PBIP/`
+6. Create your PBIP files in `Reports/NewProject/PBIP/`
 
 ### Existing Projects
 
 - **Dynamics 365 Sales**: Sample Dynamics 365 Sales report with common CRM tables
   - Metadata: [Reports/Dynamics 365 Sales/Metadata/](Reports/Dynamics%20365%20Sales/Metadata/)
   - PBIP: [Reports/Dynamics 365 Sales/PBIP/](Reports/Dynamics%20365%20Sales/PBIP/)
-- **ImaginationWorkshop**: CoreAI Imagination Workshop report with 12 Dataverse tables
-  - Metadata: [Reports/ImaginationWorkshop/Metadata/](Reports/ImaginationWorkshop/Metadata/)
-  - PBIP: [Reports/ImaginationWorkshop/PBIP/](Reports/ImaginationWorkshop/PBIP/)
+

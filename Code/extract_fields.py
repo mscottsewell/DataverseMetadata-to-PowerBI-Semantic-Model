@@ -2,9 +2,21 @@ import pandas as pd
 import sys
 import os
 
-# Get metadata folder from command line argument or use default
-metadata_folder = sys.argv[1] if len(sys.argv) > 1 else 'Metadata/ImaginationWorkshop'
-excel_file = os.path.join(metadata_folder, 'ImaginationWorkshop Metadata Dictionary.xlsx')
+# Get metadata folder from command line argument
+if len(sys.argv) < 2:
+    print("Usage: python extract_fields.py <metadata_folder>")
+    print("Example: python extract_fields.py 'Reports/Dynamics 365 Sales/Metadata'")
+    sys.exit(1)
+
+metadata_folder = sys.argv[1]
+
+# Find the Excel file in the metadata folder (looks for any .xlsx file)
+import glob
+excel_files = glob.glob(os.path.join(metadata_folder, '*.xlsx'))
+if not excel_files:
+    print(f"Error: No Excel files found in {metadata_folder}")
+    sys.exit(1)
+excel_file = excel_files[0]
 
 # Read the Metadata tab
 df = pd.read_excel(excel_file, sheet_name='Metadata')

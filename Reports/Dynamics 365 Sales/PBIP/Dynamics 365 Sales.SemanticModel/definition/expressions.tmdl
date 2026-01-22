@@ -1,7 +1,0 @@
-expression DataverseURL = "londonbicycles.crm.dynamics.com" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
-	lineageTag: 8f051abc-86f1-459a-bbb1-08565985df7e
-
-	annotation PBI_NavigationStepName = Navigation
-
-	annotation PBI_ResultType = Text
-

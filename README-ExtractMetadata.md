@@ -1,37 +1,47 @@
 # Extract-PowerBIMetadata.ps1 Usage
 
 ## Overview
-This PowerShell script extracts table and field metadata from an Excel file and outputs it to a JSON file with the same base name.
+This PowerShell script extracts table and field metadata from an Excel file within a project structure and outputs it to a JSON file with the same base name. The script organizes projects under the Reports/ folder, with each project containing Metadata/ and PBIP/ subfolders.
 
 ## Usage
 
 ```powershell
-.\Extract-PowerBIMetadata.ps1 -ExcelFilePath "<path-to-excel-file>"
+# Use default project (Dynamics 365 Sales)
+.\Extract-PowerBIMetadata.ps1
+
+# Specify a different project
+.\Extract-PowerBIMetadata.ps1 -ProjectName "ProjectName"
+
+# Specify custom Excel file name
+.\Extract-PowerBIMetadata.ps1 -ProjectName "ProjectName" -ExcelFileName "CustomMetadata.xlsx"
 ```
 
 ## Examples
 
-### Example 1: Extract from file in current directory
+### Example 1: Use default project (Dynamics 365 Sales)
+
 ```powershell
-.\Extract-PowerBIMetadata.ps1 -ExcelFilePath "ImaginationWorkshop Metadata Dictionary.xlsx"
+.\Extract-PowerBIMetadata.ps1
 ```
 
-### Example 2: Extract from file with full path
+### Example 2: Specify a different project
+
 ```powershell
-.\Extract-PowerBIMetadata.ps1 -ExcelFilePath "C:\Data\MyMetadata.xlsx"
+.\Extract-PowerBIMetadata.ps1 -ProjectName "MyProject"
 ```
 
-### Example 3: Using relative path
+### Example 3: Specify custom Excel file name
+
 ```powershell
-.\Extract-PowerBIMetadata.ps1 -ExcelFilePath "..\data\metadata.xlsx"
+.\Extract-PowerBIMetadata.ps1 -ProjectName "MyProject" -ExcelFileName "CustomMetadata.xlsx"
 ```
 
 ## Output
 
 The script creates a JSON file with the same name as the input Excel file.
 
-**Input:** `ImaginationWorkshop Metadata Dictionary.xlsx`  
-**Output:** `ImaginationWorkshop Metadata Dictionary.json`
+**Input:** `Dynamics 365 Sales Metadata Dictionary.xlsx`  
+**Output:** `Dynamics 365 Sales Metadata Dictionary.json`
 
 ## JSON Structure
 
@@ -60,13 +70,18 @@ The script creates a JSON file with the same name as the input Excel file.
 }
 ```
 
+## Parameters
+
+- `ProjectName` (optional): Name of the project folder under Reports/. Default: `Dynamics 365 Sales`
+- `ExcelFileName` (optional): Name of Excel file. Default: `{ProjectName} Metadata Dictionary.xlsx`
+
 ## Requirements
 
 - PowerShell 5.1 or higher
 - Python 3.x with pandas installed
 - Excel file with:
   - First tab containing Entity and Schema Name columns
-  - "Metadata" tab containing Entity Logical Name, Schema Name, and Display Name columns
+  - "Metadata" tab containing Entity Logical Name, Schema Name, Display Name, Attribute Type, and Description columns
 
 ## Notes
 

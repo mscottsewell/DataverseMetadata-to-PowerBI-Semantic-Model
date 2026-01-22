@@ -13,7 +13,7 @@ python Code\extract_fields.py Reports\{ProjectName}\Metadata
 
 **Example:**
 ```powershell
-python Code\extract_fields.py Reports\ImaginationWorkshop\Metadata
+python Code\extract_fields.py "Reports\Dynamics 365 Sales\Metadata"
 ```
 
 ### extract_tables.py
@@ -27,10 +27,10 @@ python Code\extract_tables.py Reports\{ProjectName}\Metadata
 
 **Example:**
 ```powershell
-python Code\extract_tables.py Reports\ImaginationWorkshop\Metadata
+python Code\extract_tables.py "Reports\Dynamics 365 Sales\Metadata"
 ```
 
-**Note:** If no metadata folder is specified, defaults to `Metadata/ImaginationWorkshop` (legacy path)
+**Note:** A metadata folder path must be provided as an argument to specify which project to read from.
 
 ## Archive Folder
 
