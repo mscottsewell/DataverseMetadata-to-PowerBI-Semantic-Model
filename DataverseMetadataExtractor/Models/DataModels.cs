@@ -1,9 +1,51 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json;
 
 namespace DataverseMetadataExtractor.Models
 {
+    /// <summary>
+    /// Container for all saved configurations
+    /// </summary>
+    public class ConfigurationsFile
+    {
+        public List<ConfigurationEntry> Configurations { get; set; } = new();
+        public string? LastUsedConfigurationName { get; set; }
+    }
+
+    /// <summary>
+    /// A named configuration with metadata
+    /// </summary>
+    public class ConfigurationEntry
+    {
+        public string Name { get; set; } = "Default";
+        public DateTime LastUsed { get; set; } = DateTime.Now;
+        public AppSettings Settings { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Defines the role of a table in a star-schema model
+    /// </summary>
+    public enum TableRole
+    {
+        Dimension,  // Default - dimension table (lookup target)
+        Fact        // Fact table - the central table with measures
+    }
+
+    /// <summary>
+    /// Represents a relationship/lookup between two tables in the star schema
+    /// </summary>
+    public class RelationshipConfig
+    {
+        public string SourceTable { get; set; } = "";      // The Fact or Dimension table (Many side)
+        public string SourceAttribute { get; set; } = "";   // The lookup attribute on source
+        public string TargetTable { get; set; } = "";       // The Dimension table (One side)
+        public string? DisplayName { get; set; }            // Friendly name of the lookup
+        public bool IsActive { get; set; } = true;          // Active relationship (only one active per table pair)
+        public bool IsSnowflake { get; set; } = false;      // True if this is a Dimension->ParentDimension relationship
+    }
+
     public class AppSettings
     {
         public string? LastEnvironmentUrl { get; set; }
@@ -21,6 +63,11 @@ namespace DataverseMetadataExtractor.Models
         public string? WindowGeometry { get; set; }
         public bool AutoloadCache { get; set; } = true;
         public bool ShowAllAttributes { get; set; } = false;  // false = show selected, true = show all
+
+        // Star-schema configuration
+        public string? FactTable { get; set; }  // Logical name of the fact table (null if not set)
+        public Dictionary<string, TableRole> TableRoles { get; set; } = new();  // table -> role
+        public List<RelationshipConfig> Relationships { get; set; } = new();  // All configured relationships
     }
 
     public class TableDisplayInfo
@@ -142,7 +189,19 @@ namespace DataverseMetadataExtractor.Models
         public string Environment { get; set; } = "";
         public string Solution { get; set; } = "";
         public string ProjectName { get; set; } = "";
+        public string? FactTable { get; set; }  // Logical name of the fact table
+        public List<ExportRelationship> Relationships { get; set; } = new();  // Star-schema relationships
         public List<ExportTable> Tables { get; set; } = new();
+    }
+
+    public class ExportRelationship
+    {
+        public string SourceTable { get; set; } = "";       // Fact or Dimension table (Many side)
+        public string SourceAttribute { get; set; } = "";   // Lookup attribute
+        public string TargetTable { get; set; } = "";       // Dimension table (One side)
+        public string? DisplayName { get; set; }
+        public bool IsActive { get; set; } = true;
+        public bool IsSnowflake { get; set; } = false;      // True if Dimension->ParentDimension
     }
 
     public class ExportTable
@@ -153,6 +212,7 @@ namespace DataverseMetadataExtractor.Models
         public int ObjectTypeCode { get; set; }
         public string? PrimaryIdAttribute { get; set; }
         public string? PrimaryNameAttribute { get; set; }
+        public string Role { get; set; } = "Dimension";  // "Fact" or "Dimension"
         public List<ExportForm> Forms { get; set; } = new();
         public ExportView? View { get; set; }
         public List<AttributeMetadata> Attributes { get; set; } = new();

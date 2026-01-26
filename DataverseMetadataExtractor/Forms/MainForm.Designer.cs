@@ -15,6 +15,14 @@ namespace DataverseMetadataExtractor.Forms
 
         private void InitializeComponent()
         {
+            this.menuStrip = new System.Windows.Forms.MenuStrip();
+            this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.configurationsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.switchConfigurationToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.newConfigurationToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.renameConfigurationToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.deleteConfigurationToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            
             this.groupBoxConnection = new System.Windows.Forms.GroupBox();
             this.lblConnectionStatus = new System.Windows.Forms.Label();
             this.btnConnect = new System.Windows.Forms.Button();
@@ -68,6 +76,7 @@ namespace DataverseMetadataExtractor.Forms
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.progressBar = new System.Windows.Forms.ToolStripProgressBar();
             
+            this.menuStrip.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainerMain)).BeginInit();
             this.splitContainerMain.Panel1.SuspendLayout();
             this.splitContainerMain.Panel2.SuspendLayout();
@@ -96,6 +105,58 @@ namespace DataverseMetadataExtractor.Forms
             this.groupBoxConnection.TabIndex = 0;
             this.groupBoxConnection.TabStop = false;
             this.groupBoxConnection.Text = "Connection";
+
+            // menuStrip
+            this.menuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { this.fileToolStripMenuItem });
+            this.menuStrip.Location = new System.Drawing.Point(0, 0);
+            this.menuStrip.Name = "menuStrip";
+            this.menuStrip.Size = new System.Drawing.Size(1200, 24);
+            this.menuStrip.TabIndex = 0;
+            this.menuStrip.Text = "menuStrip";
+
+            // fileToolStripMenuItem
+            this.fileToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+                this.configurationsToolStripMenuItem
+            });
+            this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
+            this.fileToolStripMenuItem.Size = new System.Drawing.Size(37, 20);
+            this.fileToolStripMenuItem.Text = "&File";
+
+            // configurationsToolStripMenuItem
+            this.configurationsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+                this.switchConfigurationToolStripMenuItem,
+                this.newConfigurationToolStripMenuItem,
+                this.renameConfigurationToolStripMenuItem,
+                this.deleteConfigurationToolStripMenuItem
+            });
+            this.configurationsToolStripMenuItem.Name = "configurationsToolStripMenuItem";
+            this.configurationsToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.configurationsToolStripMenuItem.Text = "&Configurations";
+            this.configurationsToolStripMenuItem.DropDownOpening += new System.EventHandler(this.ConfigurationsToolStripMenuItem_DropDownOpening);
+
+            // switchConfigurationToolStripMenuItem
+            this.switchConfigurationToolStripMenuItem.Name = "switchConfigurationToolStripMenuItem";
+            this.switchConfigurationToolStripMenuItem.Size = new System.Drawing.Size(220, 22);
+            this.switchConfigurationToolStripMenuItem.Text = "&Switch to...";
+            // Will be populated dynamically with submenu items
+
+            // newConfigurationToolStripMenuItem
+            this.newConfigurationToolStripMenuItem.Name = "newConfigurationToolStripMenuItem";
+            this.newConfigurationToolStripMenuItem.Size = new System.Drawing.Size(220, 22);
+            this.newConfigurationToolStripMenuItem.Text = "&New Configuration...";
+            this.newConfigurationToolStripMenuItem.Click += new System.EventHandler(this.NewConfigurationToolStripMenuItem_Click);
+
+            // renameConfigurationToolStripMenuItem
+            this.renameConfigurationToolStripMenuItem.Name = "renameConfigurationToolStripMenuItem";
+            this.renameConfigurationToolStripMenuItem.Size = new System.Drawing.Size(220, 22);
+            this.renameConfigurationToolStripMenuItem.Text = "&Rename Current...";
+            this.renameConfigurationToolStripMenuItem.Click += new System.EventHandler(this.RenameConfigurationToolStripMenuItem_Click);
+
+            // deleteConfigurationToolStripMenuItem
+            this.deleteConfigurationToolStripMenuItem.Name = "deleteConfigurationToolStripMenuItem";
+            this.deleteConfigurationToolStripMenuItem.Size = new System.Drawing.Size(220, 22);
+            this.deleteConfigurationToolStripMenuItem.Text = "&Delete Current...";
+            this.deleteConfigurationToolStripMenuItem.Click += new System.EventHandler(this.DeleteConfigurationToolStripMenuItem_Click);
 
             // labelEnvironmentUrl
             this.labelEnvironmentUrl.AutoSize = true;
@@ -141,15 +202,15 @@ namespace DataverseMetadataExtractor.Forms
             // btnSelectTables
             this.btnSelectTables.Location = new System.Drawing.Point(0, 5);
             this.btnSelectTables.Name = "btnSelectTables";
-            this.btnSelectTables.Size = new System.Drawing.Size(120, 30);
+            this.btnSelectTables.Size = new System.Drawing.Size(180, 30);
             this.btnSelectTables.TabIndex = 0;
-            this.btnSelectTables.Text = "Select Tables...";
+            this.btnSelectTables.Text = "Select Fact && Dimensions...";
             this.btnSelectTables.UseVisualStyleBackColor = true;
             this.btnSelectTables.Click += new System.EventHandler(this.BtnSelectTables_Click);
 
             // lblTableCount
             this.lblTableCount.AutoSize = true;
-            this.lblTableCount.Location = new System.Drawing.Point(130, 12);
+            this.lblTableCount.Location = new System.Drawing.Point(190, 12);
             this.lblTableCount.Name = "lblTableCount";
             this.lblTableCount.Size = new System.Drawing.Size(112, 15);
             this.lblTableCount.TabIndex = 1;
@@ -178,8 +239,10 @@ namespace DataverseMetadataExtractor.Forms
             this.groupBoxSelectedTables.Text = "Selected Tables && Forms";
 
             // listViewSelectedTables
+            this.colRole = new System.Windows.Forms.ColumnHeader();
             this.listViewSelectedTables.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
                 this.colEdit,
+                this.colRole,
                 this.colTable,
                 this.colForm,
                 this.colView,
@@ -201,15 +264,19 @@ namespace DataverseMetadataExtractor.Forms
 
             // colEdit
             this.colEdit.Text = "✏️";
-            this.colEdit.Width = 40;
+            this.colEdit.Width = 30;
+
+            // colRole
+            this.colRole.Text = "Role";
+            this.colRole.Width = 50;
 
             // colTable
             this.colTable.Text = "Table";
-            this.colTable.Width = 150;
+            this.colTable.Width = 130;
 
             // colForm
             this.colForm.Text = "Form";
-            this.colForm.Width = 160;
+            this.colForm.Width = 100;
 
             // colView
             this.colView.Text = "Filter";
@@ -482,6 +549,8 @@ namespace DataverseMetadataExtractor.Forms
             this.Controls.Add(this.panelTableSelector);
             this.Controls.Add(this.groupBoxConnection);
             this.Controls.Add(this.statusStrip);
+            this.Controls.Add(this.menuStrip);
+            this.MainMenuStrip = this.menuStrip;
             this.MinimumSize = new System.Drawing.Size(1000, 600);
             this.Name = "MainForm";
             this.Padding = new System.Windows.Forms.Padding(10);
@@ -490,6 +559,8 @@ namespace DataverseMetadataExtractor.Forms
             this.Load += new System.EventHandler(this.MainForm_Load);
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.MainForm_FormClosing);
 
+            this.menuStrip.ResumeLayout(false);
+            this.menuStrip.PerformLayout();
             this.splitContainerMain.Panel1.ResumeLayout(false);
             this.splitContainerMain.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainerMain)).EndInit();
@@ -513,6 +584,14 @@ namespace DataverseMetadataExtractor.Forms
             this.PerformLayout();
         }
 
+        private System.Windows.Forms.MenuStrip menuStrip;
+        private System.Windows.Forms.ToolStripMenuItem fileToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem configurationsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem switchConfigurationToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem newConfigurationToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem renameConfigurationToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem deleteConfigurationToolStripMenuItem;
+        
         private System.Windows.Forms.GroupBox groupBoxConnection;
         private System.Windows.Forms.Label lblConnectionStatus;
         private System.Windows.Forms.Button btnConnect;
@@ -528,6 +607,7 @@ namespace DataverseMetadataExtractor.Forms
         private System.Windows.Forms.GroupBox groupBoxSelectedTables;
         private System.Windows.Forms.ListView listViewSelectedTables;
         private System.Windows.Forms.ColumnHeader colEdit;
+        private System.Windows.Forms.ColumnHeader colRole;
         private System.Windows.Forms.ColumnHeader colTable;
         private System.Windows.Forms.ColumnHeader colForm;
         private System.Windows.Forms.ColumnHeader colView;

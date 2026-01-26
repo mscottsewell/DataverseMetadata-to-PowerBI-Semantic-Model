@@ -1,15 +1,59 @@
 {
   "Environment": "https://portfolioshapingdev.crm.dynamics.com",
   "Solution": "CoreAI",
-  "ProjectName": "PortfolioShaping",
+  "ProjectName": "PortfolioShaping2",
+  "FactTable": "cai_allocation",
+  "Relationships": [
+    {
+      "SourceTable": "cai_allocation",
+      "SourceAttribute": "cai_allocationperiodid",
+      "TargetTable": "cai_allocationperiod",
+      "DisplayName": "Period",
+      "IsActive": true,
+      "IsSnowflake": false
+    },
+    {
+      "SourceTable": "cai_allocation",
+      "SourceAttribute": "tov2_positionid",
+      "TargetTable": "tov2_position",
+      "DisplayName": "Position",
+      "IsActive": true,
+      "IsSnowflake": false
+    },
+    {
+      "SourceTable": "cai_allocation",
+      "SourceAttribute": "cai_resourceid",
+      "TargetTable": "cai_resource",
+      "DisplayName": "Resource",
+      "IsActive": true,
+      "IsSnowflake": false
+    },
+    {
+      "SourceTable": "cai_allocation",
+      "SourceAttribute": "cai_serviceorinitiativeid",
+      "TargetTable": "cai_serviceorinitiative",
+      "DisplayName": "Service or Initiative",
+      "IsActive": true,
+      "IsSnowflake": false
+    },
+    {
+      "SourceTable": "cai_serviceorinitiative",
+      "SourceAttribute": "cai_area",
+      "TargetTable": "cai_area",
+      "DisplayName": "Parent Area",
+      "IsActive": true,
+      "IsSnowflake": true
+    }
+  ],
   "Tables": [
     {
       "LogicalName": "cai_allocation",
       "DisplayName": "Allocation",
       "SchemaName": "cai_Allocation",
-      "ObjectTypeCode": 10569,
+      "ObjectTypeCode": 0,
       "PrimaryIdAttribute": "cai_allocationid",
       "PrimaryNameAttribute": "cai_name",
+      "Role": "Fact",
       "Forms": [
         {
           "FormId": "607af789-5bda-4526-bf40-39342a375241",
@@ -28,231 +72,279 @@
           "DisplayName": "% Allocated - Other Areas",
           "SchemaName": "cai_AllocationPercentageOtherAreas",
           "AttributeType": "Integer",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_allocationpercentage",
           "DisplayName": "% Allocation",
           "SchemaName": "cai_AllocationPercentage",
           "AttributeType": "Integer",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_allocationid",
           "DisplayName": "Allocation",
           "SchemaName": "cai_AllocationId",
           "AttributeType": "Uniqueidentifier",
-          "IsCustomAttribute": false
+          "IsCustomAttribute": false,
+          "Targets": null
         },
         {
           "LogicalName": "cai_name",
           "DisplayName": "Allocation Name",
           "SchemaName": "cai_Name",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_costcenter",
           "DisplayName": "Cost Center",
           "SchemaName": "cai_CostCenter",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_alias",
           "DisplayName": "Employee Alias",
           "SchemaName": "cai_Alias",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_employeename",
           "DisplayName": "Employee Name",
           "SchemaName": "cai_EmployeeName",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level",
           "DisplayName": "Hierarchy Level",
           "SchemaName": "cai_Level",
           "AttributeType": "Integer",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level_1",
           "DisplayName": "Hierarchy Level 1",
           "SchemaName": "cai_Level_1",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level_2",
           "DisplayName": "Hierarchy Level 2",
           "SchemaName": "cai_Level_2",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level_3",
           "DisplayName": "Hierarchy Level 3",
           "SchemaName": "cai_Level_3",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level_4",
           "DisplayName": "Hierarchy Level 4",
           "SchemaName": "cai_Level_4",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level_5",
           "DisplayName": "Hierarchy Level 5",
           "SchemaName": "cai_Level_5",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level_6",
           "DisplayName": "Hierarchy Level 6",
           "SchemaName": "cai_Level_6",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level_7",
           "DisplayName": "Hierarchy Level 7",
           "SchemaName": "cai_Level_7",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level_8",
           "DisplayName": "Hierarchy Level 8",
           "SchemaName": "cai_Level_8",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level_9",
           "DisplayName": "Hierarchy Level 9",
           "SchemaName": "cai_Level_9",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_manager_systemuserid",
           "DisplayName": "Manager",
           "SchemaName": "cai_Manager_SystemUserId",
           "AttributeType": "Lookup",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": [
+            "systemuser"
+          ]
         },
         {
           "LogicalName": "cai_managerapprovalstatus",
           "DisplayName": "Manager Approval Status",
           "SchemaName": "cai_ManagerApprovalStatus",
           "AttributeType": "Picklist",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_managerreviewcompletedbyid",
           "DisplayName": "Manager Review Completed By",
           "SchemaName": "cai_ManagerReviewCompletedById",
           "AttributeType": "Lookup",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": [
+            "systemuser"
+          ]
         },
         {
           "LogicalName": "cai_managerreviewdate",
           "DisplayName": "Manager Review Date",
           "SchemaName": "cai_ManagerReviewDate",
           "AttributeType": "DateTime",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "ownerid",
           "DisplayName": "Owner",
           "SchemaName": "OwnerId",
           "AttributeType": "Owner",
-          "IsCustomAttribute": false
+          "IsCustomAttribute": false,
+          "Targets": [
+            "systemuser",
+            "team"
+          ]
         },
         {
           "LogicalName": "cai_allocationperiodid",
           "DisplayName": "Period",
           "SchemaName": "cai_AllocationPeriodId",
           "AttributeType": "Lookup",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": [
+            "cai_allocationperiod"
+          ]
         },
         {
           "LogicalName": "tov2_positionid",
           "DisplayName": "Position",
           "SchemaName": "tov2_PositionId",
           "AttributeType": "Lookup",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": [
+            "tov2_position"
+          ]
         },
         {
           "LogicalName": "cai_position_management_status",
           "DisplayName": "Position Management Status",
           "SchemaName": "cai_position_management_status",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_positionstatus",
           "DisplayName": "Position Status",
           "SchemaName": "cai_PositionStatus",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_position_subtype",
           "DisplayName": "Position Subtype",
           "SchemaName": "cai_position_subtype",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_position_type",
           "DisplayName": "Position Type",
           "SchemaName": "cai_position_type",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_reports_to_manager",
           "DisplayName": "Reports To Manager",
           "SchemaName": "cai_reports_to_manager",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_resourceid",
           "DisplayName": "Resource",
           "SchemaName": "cai_Resourceid",
           "AttributeType": "Lookup",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": [
+            "cai_resource"
+          ]
         },
         {
           "LogicalName": "cai_sec_functional_area",
           "DisplayName": "SEC Func Area",
           "SchemaName": "cai_sec_functional_area",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_serviceorinitiativeid",
           "DisplayName": "Service or Initiative",
           "SchemaName": "cai_ServiceorInitiativeId",
           "AttributeType": "Lookup",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": [
+            "cai_serviceorinitiative"
+          ]
         },
         {
           "LogicalName": "cai_totalallocatedperuserperperiod",
           "DisplayName": "Total % Allocated for this user this Period",
           "SchemaName": "cai_TotalAllocatedPerUserPerPeriod",
           "AttributeType": "Integer",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         }
       ]
     },
@@ -260,9 +352,10 @@
       "LogicalName": "cai_allocationperiod",
       "DisplayName": "Allocation Period",
       "SchemaName": "cai_AllocationPeriod",
-      "ObjectTypeCode": 10622,
+      "ObjectTypeCode": 0,
       "PrimaryIdAttribute": "cai_allocationperiodid",
       "PrimaryNameAttribute": "cai_periodname",
+      "Role": "Dimension",
       "Forms": [
         {
           "FormId": "accdf496-68a8-4acd-9823-95cd375c233e",
@@ -281,198 +374,51 @@
           "DisplayName": "Allocation Period",
           "SchemaName": "cai_AllocationPeriodId",
           "AttributeType": "Uniqueidentifier",
-          "IsCustomAttribute": false
+          "IsCustomAttribute": false,
+          "Targets": null
         },
         {
           "LogicalName": "cai_allocationperiod_end",
           "DisplayName": "Allocation Period End",
           "SchemaName": "cai_AllocationPeriod_End",
           "AttributeType": "DateTime",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_allocationperiod_start",
           "DisplayName": "Allocation Period Start",
           "SchemaName": "cai_AllocationPeriod_Start",
           "AttributeType": "DateTime",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_fiscalyear",
           "DisplayName": "Fiscal Year",
           "SchemaName": "cai_FiscalYear",
           "AttributeType": "Picklist",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "ownerid",
           "DisplayName": "Owner",
           "SchemaName": "OwnerId",
           "AttributeType": "Owner",
-          "IsCustomAttribute": false
+          "IsCustomAttribute": false,
+          "Targets": [
+            "systemuser",
+            "team"
+          ]
         },
         {
           "LogicalName": "cai_periodname",
           "DisplayName": "Period Name",
           "SchemaName": "cai_PeriodName",
           "AttributeType": "String",
-          "IsCustomAttribute": true
-        }
-      ]
-    },
-    {
-      "LogicalName": "cai_area",
-      "DisplayName": "Area",
-      "SchemaName": "cai_Area",
-      "ObjectTypeCode": 10746,
-      "PrimaryIdAttribute": "cai_areaid",
-      "PrimaryNameAttribute": "cai_areaname",
-      "Forms": [
-        {
-          "FormId": "ec2055b2-aedd-4d1f-9b13-6ae9bd30ed39",
-          "FormName": "Information",
-          "FieldCount": 6
-        }
-      ],
-      "View": {
-        "ViewId": "82d9810f-53fb-4539-8901-0dd173971dde",
-        "ViewName": "Active Areas",
-        "FetchXml": null
-      },
-      "Attributes": [
-        {
-          "LogicalName": "cai_areaid",
-          "DisplayName": "Area ID",
-          "SchemaName": "cai_AreaId",
-          "AttributeType": "Uniqueidentifier",
-          "IsCustomAttribute": false
-        },
-        {
-          "LogicalName": "cai_areaname",
-          "DisplayName": "Area Name",
-          "SchemaName": "cai_AreaName",
-          "AttributeType": "String",
-          "IsCustomAttribute": true
-        },
-        {
-          "LogicalName": "cai_description",
-          "DisplayName": "Description",
-          "SchemaName": "cai_Description",
-          "AttributeType": "String",
-          "IsCustomAttribute": true
-        },
-        {
-          "LogicalName": "cai_mission",
-          "DisplayName": "Mission",
-          "SchemaName": "cai_Mission",
-          "AttributeType": "String",
-          "IsCustomAttribute": true
-        },
-        {
-          "LogicalName": "cai_missionsubcategory",
-          "DisplayName": "Mission sub-category",
-          "SchemaName": "cai_Missionsubcategory",
-          "AttributeType": "String",
-          "IsCustomAttribute": true
-        },
-        {
-          "LogicalName": "cai_mode",
-          "DisplayName": "Mode",
-          "SchemaName": "cai_Mode",
-          "AttributeType": "Picklist",
-          "IsCustomAttribute": true
-        },
-        {
-          "LogicalName": "ownerid",
-          "DisplayName": "Owner\\DRI",
-          "SchemaName": "OwnerId",
-          "AttributeType": "Owner",
-          "IsCustomAttribute": false
-        }
-      ]
-    },
-    {
-      "LogicalName": "cai_areachangerequest",
-      "DisplayName": "Area Change Request",
-      "SchemaName": "cai_AreaChangeRequest",
-      "ObjectTypeCode": 10814,
-      "PrimaryIdAttribute": "cai_areachangerequestid",
-      "PrimaryNameAttribute": "cai_name",
-      "Forms": [
-        {
-          "FormId": "a8b432d6-6d79-46bd-8056-fb1069eed4df",
-          "FormName": "Information",
-          "FieldCount": 8
-        }
-      ],
-      "View": {
-        "ViewId": "251fb6ba-1095-4bc6-a32c-e43bca823475",
-        "ViewName": "Active Area Change Requests",
-        "FetchXml": null
-      },
-      "Attributes": [
-        {
-          "LogicalName": "cai_areachangerequestid",
-          "DisplayName": "Area Change Request",
-          "SchemaName": "cai_AreaChangeRequestId",
-          "AttributeType": "Uniqueidentifier",
-          "IsCustomAttribute": false
-        },
-        {
-          "LogicalName": "cai_changetype",
-          "DisplayName": "Change Type",
-          "SchemaName": "cai_ChangeType",
-          "AttributeType": "Picklist",
-          "IsCustomAttribute": true
-        },
-        {
-          "LogicalName": "createdon",
-          "DisplayName": "Created On",
-          "SchemaName": "CreatedOn",
-          "AttributeType": "DateTime",
-          "IsCustomAttribute": false
-        },
-        {
-          "LogicalName": "cai_description",
-          "DisplayName": "Description",
-          "SchemaName": "cai_Description",
-          "AttributeType": "String",
-          "IsCustomAttribute": true
-        },
-        {
-          "LogicalName": "ownerid",
-          "DisplayName": "Owner",
-          "SchemaName": "OwnerId",
-          "AttributeType": "Owner",
-          "IsCustomAttribute": false
-        },
-        {
-          "LogicalName": "cai_regardingid",
-          "DisplayName": "Regarding",
-          "SchemaName": "cai_RegardingId",
-          "AttributeType": "Lookup",
-          "IsCustomAttribute": true
-        },
-        {
-          "LogicalName": "cai_requestedbyid",
-          "DisplayName": "Requested By",
-          "SchemaName": "cai_RequestedById",
-          "AttributeType": "Lookup",
-          "IsCustomAttribute": true
-        },
-        {
-          "LogicalName": "cai_name",
-          "DisplayName": "Requested Change",
-          "SchemaName": "cai_Name",
-          "AttributeType": "String",
-          "IsCustomAttribute": true
-        },
-        {
-          "LogicalName": "statecode",
-          "DisplayName": "Status",
-          "SchemaName": "statecode",
-          "AttributeType": "State",
-          "IsCustomAttribute": false
+          "IsCustomAttribute": true,
+          "Targets": null
         }
       ]
     },
@@ -480,9 +426,10 @@
       "LogicalName": "tov2_position",
       "DisplayName": "Position",
       "SchemaName": "tov2_Position",
-      "ObjectTypeCode": 10503,
+      "ObjectTypeCode": 0,
       "PrimaryIdAttribute": "tov2_positionid",
       "PrimaryNameAttribute": "tov2_positionnumber",
+      "Role": "Dimension",
       "Forms": [
         {
           "FormId": "f1438227-bb90-464b-8b80-64cc3f99b13e",
@@ -501,196 +448,233 @@
           "DisplayName": "Alias",
           "SchemaName": "tov2_Alias",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_city",
           "DisplayName": "City",
           "SchemaName": "tov2_city",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_companycode",
           "DisplayName": "Company Code",
           "SchemaName": "tov2_CompanyCode",
           "AttributeType": "Lookup",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": [
+            "tov2_company"
+          ]
         },
         {
           "LogicalName": "tov2_costcenter",
           "DisplayName": "Cost Center",
           "SchemaName": "tov2_CostCenter",
           "AttributeType": "Lookup",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": [
+            "tov2_costcenter"
+          ]
         },
         {
           "LogicalName": "tov2_employee_name",
           "DisplayName": "Employee Name",
           "SchemaName": "tov2_employee_name",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_location",
           "DisplayName": "Location",
           "SchemaName": "tov2_location",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "ownerid",
           "DisplayName": "Owner",
           "SchemaName": "OwnerId",
           "AttributeType": "Owner",
-          "IsCustomAttribute": false
+          "IsCustomAttribute": false,
+          "Targets": [
+            "systemuser",
+            "team"
+          ]
         },
         {
           "LogicalName": "owningbusinessunit",
           "DisplayName": "Owning Business Unit",
           "SchemaName": "OwningBusinessUnit",
           "AttributeType": "Lookup",
-          "IsCustomAttribute": false
+          "IsCustomAttribute": false,
+          "Targets": [
+            "businessunit"
+          ]
         },
         {
           "LogicalName": "tov2_positionid",
           "DisplayName": "Position",
           "SchemaName": "tov2_PositionId",
           "AttributeType": "Uniqueidentifier",
-          "IsCustomAttribute": false
+          "IsCustomAttribute": false,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_positionnumber",
           "DisplayName": "Position Number",
           "SchemaName": "tov2_PositionNumber",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_positionstatus",
           "DisplayName": "Position Status",
           "SchemaName": "tov2_PositionStatus",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_position_subtype",
           "DisplayName": "Position Subtype",
           "SchemaName": "tov2_position_subtype",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_position_type",
           "DisplayName": "Position Type",
           "SchemaName": "tov2_position_type",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_profession",
           "DisplayName": "Profession",
           "SchemaName": "tov2_profession",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_project_code",
           "DisplayName": "Project Code",
           "SchemaName": "tov2_project_code",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_project_description",
           "DisplayName": "Project Description",
           "SchemaName": "tov2_project_description",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_project_name",
           "DisplayName": "Project Name",
           "SchemaName": "tov2_project_name",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_reports_to_level1",
           "DisplayName": "Reports To L1",
           "SchemaName": "tov2_reports_to_level1",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_reports_to_level2",
           "DisplayName": "Reports To L2",
           "SchemaName": "tov2_reports_to_level2",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_reports_to_level3",
           "DisplayName": "Reports To L3",
           "SchemaName": "tov2_reports_to_level3",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_reports_to_level4",
           "DisplayName": "Reports To L4",
           "SchemaName": "tov2_reports_to_level4",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_reports_to_level5",
           "DisplayName": "Reports To L5",
           "SchemaName": "tov2_reports_to_level5",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_reports_to_level6",
           "DisplayName": "Reports To L6",
           "SchemaName": "tov2_reports_to_level6",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_reports_to_level7",
           "DisplayName": "Reports To L7",
           "SchemaName": "tov2_reports_to_level7",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_reports_to_manager",
           "DisplayName": "Reports To Manager",
           "SchemaName": "tov2_reports_to_manager",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_requisitionnumbers",
           "DisplayName": "Req Numbers",
           "SchemaName": "tov2_RequisitionNumbers",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_sec_functional_area",
           "DisplayName": "SEC Func Area",
           "SchemaName": "tov2_sec_functional_area",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "tov2_standard_title",
           "DisplayName": "Standard Title",
           "SchemaName": "tov2_standard_title",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         }
       ]
     },
@@ -698,9 +682,10 @@
       "LogicalName": "cai_resource",
       "DisplayName": "Resource",
       "SchemaName": "cai_Resource",
-      "ObjectTypeCode": 10612,
+      "ObjectTypeCode": 0,
       "PrimaryIdAttribute": "cai_resourceid",
       "PrimaryNameAttribute": "cai_resourcelabel",
+      "Role": "Dimension",
       "Forms": [
         {
           "FormId": "ba95014d-fe1c-4bb6-9330-0e9873942e07",
@@ -719,63 +704,81 @@
           "DisplayName": "Alias",
           "SchemaName": "cai_Alias",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_displayname",
           "DisplayName": "Display Name",
           "SchemaName": "cai_DisplayName",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_managerresourceid",
           "DisplayName": "Manager (Resource)",
           "SchemaName": "cai_ManagerResourceId",
           "AttributeType": "Lookup",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": [
+            "cai_resource"
+          ]
         },
         {
           "LogicalName": "cai_manageruserid",
           "DisplayName": "Manager (User)",
           "SchemaName": "cai_ManagerUserId",
           "AttributeType": "Lookup",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": [
+            "systemuser"
+          ]
         },
         {
           "LogicalName": "ownerid",
           "DisplayName": "Owner",
           "SchemaName": "OwnerId",
           "AttributeType": "Owner",
-          "IsCustomAttribute": false
+          "IsCustomAttribute": false,
+          "Targets": [
+            "systemuser",
+            "team"
+          ]
         },
         {
           "LogicalName": "cai_reports_to_manager",
           "DisplayName": "Reports to Manager",
           "SchemaName": "cai_reports_to_manager",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_resourceid",
           "DisplayName": "Resource",
           "SchemaName": "cai_ResourceId",
           "AttributeType": "Uniqueidentifier",
-          "IsCustomAttribute": false
+          "IsCustomAttribute": false,
+          "Targets": null
         },
         {
           "LogicalName": "cai_resourcelabel",
           "DisplayName": "Resource Label",
           "SchemaName": "cai_ResourceLabel",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_userid",
           "DisplayName": "User",
           "SchemaName": "cai_UserId",
           "AttributeType": "Lookup",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": [
+            "systemuser"
+          ]
         }
       ]
     },
@@ -783,9 +786,10 @@
       "LogicalName": "cai_serviceorinitiative",
       "DisplayName": "Service or Initiative",
       "SchemaName": "cai_ServiceorInitiative",
-      "ObjectTypeCode": 10815,
+      "ObjectTypeCode": 0,
       "PrimaryIdAttribute": "cai_serviceorinitiativeid",
       "PrimaryNameAttribute": "cai_name",
+      "Role": "Dimension",
       "Forms": [
         {
           "FormId": "050b9f0b-3e44-4994-9d76-bb11473017f2",
@@ -804,140 +808,249 @@
           "DisplayName": "Description",
           "SchemaName": "cai_Description",
           "AttributeType": "Memo",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_docslink",
           "DisplayName": "Docs Link",
           "SchemaName": "cai_DocsLink",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_feedbacklink",
           "DisplayName": "Feedback Link",
           "SchemaName": "cai_FeedbackLink",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level",
           "DisplayName": "Hierarchy Level",
           "SchemaName": "cai_Level",
           "AttributeType": "Integer",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level_1",
           "DisplayName": "Hierarchy Level 1",
           "SchemaName": "cai_Level_1",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level_2",
           "DisplayName": "Hierarchy Level 2",
           "SchemaName": "cai_Level_2",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level_3",
           "DisplayName": "Hierarchy Level 3",
           "SchemaName": "cai_Level_3",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level_4",
           "DisplayName": "Hierarchy Level 4",
           "SchemaName": "cai_Level_4",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level_5",
           "DisplayName": "Hierarchy Level 5",
           "SchemaName": "cai_Level_5",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level_6",
           "DisplayName": "Hierarchy Level 6",
           "SchemaName": "cai_Level_6",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level_7",
           "DisplayName": "Hierarchy Level 7",
           "SchemaName": "cai_Level_7",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level_8",
           "DisplayName": "Hierarchy Level 8",
           "SchemaName": "cai_Level_8",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_level_9",
           "DisplayName": "Hierarchy Level 9",
           "SchemaName": "cai_Level_9",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_name",
           "DisplayName": "Name",
           "SchemaName": "cai_Name",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "ownerid",
           "DisplayName": "Owner\\DRI",
           "SchemaName": "OwnerId",
           "AttributeType": "Owner",
-          "IsCustomAttribute": false
+          "IsCustomAttribute": false,
+          "Targets": [
+            "systemuser",
+            "team"
+          ]
         },
         {
           "LogicalName": "cai_area",
           "DisplayName": "Parent Area",
           "SchemaName": "cai_Area",
           "AttributeType": "Lookup",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": [
+            "cai_area"
+          ]
         },
         {
           "LogicalName": "cai_parentserviceorinitiativeid",
           "DisplayName": "Parent Service or Initiative",
           "SchemaName": "cai_ParentServiceorInitiativeId",
           "AttributeType": "Lookup",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": [
+            "cai_serviceorinitiative"
+          ]
         },
         {
           "LogicalName": "cai_repolink",
           "DisplayName": "Repo Link",
           "SchemaName": "cai_RepoLink",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
         },
         {
           "LogicalName": "cai_serviceorinitiativeid",
           "DisplayName": "Service or Initiative",
           "SchemaName": "cai_ServiceorInitiativeId",
           "AttributeType": "Uniqueidentifier",
-          "IsCustomAttribute": false
+          "IsCustomAttribute": false,
+          "Targets": null
         },
         {
           "LogicalName": "cai_temporaryimportnote",
           "DisplayName": "Temporary Import Note",
           "SchemaName": "cai_TemporaryImportNote",
           "AttributeType": "String",
-          "IsCustomAttribute": true
+          "IsCustomAttribute": true,
+          "Targets": null
+        }
+      ]
+    },
+    {
+      "LogicalName": "cai_area",
+      "DisplayName": "Area",
+      "SchemaName": "cai_Area",
+      "ObjectTypeCode": 0,
+      "PrimaryIdAttribute": "cai_areaid",
+      "PrimaryNameAttribute": "cai_areaname",
+      "Role": "Dimension",
+      "Forms": [
+        {
+          "FormId": "ec2055b2-aedd-4d1f-9b13-6ae9bd30ed39",
+          "FormName": "Information",
+          "FieldCount": 6
+        }
+      ],
+      "View": {
+        "ViewId": "82d9810f-53fb-4539-8901-0dd173971dde",
+        "ViewName": "Active Areas",
+        "FetchXml": null
+      },
+      "Attributes": [
+        {
+          "LogicalName": "cai_areaid",
+          "DisplayName": "Area ID",
+          "SchemaName": "cai_AreaId",
+          "AttributeType": "Uniqueidentifier",
+          "IsCustomAttribute": false,
+          "Targets": null
+        },
+        {
+          "LogicalName": "cai_areaname",
+          "DisplayName": "Area Name",
+          "SchemaName": "cai_AreaName",
+          "AttributeType": "String",
+          "IsCustomAttribute": true,
+          "Targets": null
+        },
+        {
+          "LogicalName": "cai_description",
+          "DisplayName": "Description",
+          "SchemaName": "cai_Description",
+          "AttributeType": "String",
+          "IsCustomAttribute": true,
+          "Targets": null
+        },
+        {
+          "LogicalName": "cai_mission",
+          "DisplayName": "Mission",
+          "SchemaName": "cai_Mission",
+          "AttributeType": "String",
+          "IsCustomAttribute": true,
+          "Targets": null
+        },
+        {
+          "LogicalName": "cai_missionsubcategory",
+          "DisplayName": "Mission sub-category",
+          "SchemaName": "cai_Missionsubcategory",
+          "AttributeType": "String",
+          "IsCustomAttribute": true,
+          "Targets": null
+        },
+        {
+          "LogicalName": "cai_mode",
+          "DisplayName": "Mode",
+          "SchemaName": "cai_Mode",
+          "AttributeType": "Picklist",
+          "IsCustomAttribute": true,
+          "Targets": null
+        },
+        {
+          "LogicalName": "ownerid",
+          "DisplayName": "Owner\\DRI",
+          "SchemaName": "OwnerId",
+          "AttributeType": "Owner",
+          "IsCustomAttribute": false,
+          "Targets": [
+            "systemuser",
+            "team"
+          ]
         }
       ]
     }

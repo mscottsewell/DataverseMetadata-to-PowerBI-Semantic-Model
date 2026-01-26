@@ -26,6 +26,10 @@ namespace DataverseMetadataExtractor.Forms
         private Dictionary<string, HashSet<string>> _selectedAttributes = new();  // logicalName -> selected attr names
         private Dictionary<string, string> _selectedViews = new();  // logicalName -> selected view id
         private Dictionary<string, bool> _loadingStates = new();  // logicalName -> is loading
+
+        // Star-schema state
+        private string? _factTable = null;  // Logical name of the fact table
+        private List<RelationshipConfig> _relationships = new();  // Configured relationships
         
         // Sorting state
         private int _selectedTablesSortColumn = -1;
@@ -41,11 +45,16 @@ namespace DataverseMetadataExtractor.Forms
             InitializeComponent();
             _settingsManager = new SettingsManager();
             _settings = _settingsManager.LoadSettings();
-            _cache = _settingsManager.LoadCache() ?? new MetadataCache();
+            // Load cache for the current configuration
+            var currentConfig = _settingsManager.GetCurrentConfigurationName();
+            _cache = _settingsManager.LoadCache(currentConfig) ?? new MetadataCache();
         }
 
         private void MainForm_Load(object sender, EventArgs e)
         {
+            Services.DebugLogger.Log($"=== Application Started ===");
+            Services.DebugLogger.Log($"Debug log: {Services.DebugLogger.GetLogPath()}");
+            
             _isLoading = true;  // Prevent SaveSettings during initialization
             
             // Disable connection-dependent controls
@@ -59,7 +68,9 @@ namespace DataverseMetadataExtractor.Forms
                     url = url.Substring(8);
                 txtEnvironmentUrl.Text = url;
                 
-                txtProjectName.Text = _settings.ProjectName ?? "";
+                // Project name matches configuration name
+                var configName = _settingsManager.GetCurrentConfigurationName();
+                txtProjectName.Text = configName;
                 txtOutputFolder.Text = _settings.OutputFolder ?? "";
                 
                 // Restore radio button state (only set one since they're mutually exclusive)
@@ -71,18 +82,24 @@ namespace DataverseMetadataExtractor.Forms
                 // Restore current solution name
                 _currentSolutionName = _settings.LastSolution;
 
+                // Restore star-schema configuration
+                _factTable = _settings.FactTable;
+                _relationships = _settings.Relationships ?? new List<RelationshipConfig>();
+
                 // Restore from cache if valid
                 if (!string.IsNullOrEmpty(_settings.LastEnvironmentUrl) && 
                     !string.IsNullOrEmpty(_settings.LastSolution) &&
                     _cache.IsValidFor(_settings.LastEnvironmentUrl, _settings.LastSolution))
                 {
+                    Services.DebugLogger.Log($"Cache is VALID - calling RestoreFromCache()");
                     SetStatus($"Loaded cache from {_cache.CachedDate:g}");
                     RestoreFromCache();
                     // Cache is valid, enable metadata-dependent controls
-                    EnableMetadataDependentControls(true);
+                   EnableMetadataDependentControls(true);
                 }
                 else if (_settings.SelectedTables.Any())
                 {
+                    Services.DebugLogger.Log($"Cache is INVALID - calling RestoreFromSettings()");
                     // Cache is invalid but we have settings - restore minimal state without metadata
                     RestoreFromSettings();
                     // No valid metadata, disable controls and force "Selected" mode
@@ -99,12 +116,14 @@ namespace DataverseMetadataExtractor.Forms
             finally
             {
                 _isLoading = false;  // Re-enable SaveSettings
-            }
-            
-            // Save settings if we populated display info from cache
-            if (_settings.TableDisplayInfo.Any() || _settings.AttributeDisplayInfo.Any())
-            {
-                SaveSettings();
+                
+                // Update window title with current configuration name
+                var configName = _settingsManager.GetCurrentConfigurationName();
+                this.Text = $"Dataverse Metadata Extractor for Power BI - {configName}";
+                
+                // Log where debug log is saved
+                Services.DebugLogger.Log($"=== MainForm_Load Complete ===");
+                Services.DebugLogger.Log($"Debug log location: {Services.DebugLogger.GetLogPath()}");
             }
         }
 
@@ -112,6 +131,11 @@ namespace DataverseMetadataExtractor.Forms
         {
             // Restore minimal state from settings (without full metadata)
             // This prevents SaveSettings() from clearing everything when cache is expired
+            
+            // DEBUG: Check AttributeDisplayInfo on entry
+            var attrInfoCount = _settings.AttributeDisplayInfo?.Sum(t => t.Value.Count) ?? 0;
+            Services.DebugLogger.LogSection("RestoreFromSettings - Entry",
+                $"AttributeDisplayInfo: {attrInfoCount} total attributes across {_settings.AttributeDisplayInfo?.Count ?? 0} tables");
             
             foreach (var tableName in _settings.SelectedTables)
             {
@@ -151,7 +175,7 @@ namespace DataverseMetadataExtractor.Forms
                             var info = _settings.AttributeDisplayInfo[tableName][attrName];
                             attrList.Add(new AttributeMetadata
                             {
-                                LogicalName = info.LogicalName,
+                                LogicalName = attrName, // Use key instead of info.LogicalName (which has [JsonIgnore])
                                 DisplayName = info.DisplayName,
                                 SchemaName = info.SchemaName,
                                 AttributeType = info.AttributeType
@@ -179,29 +203,48 @@ namespace DataverseMetadataExtractor.Forms
                 }
                 
                 // Add to UI with display name
+                var isFact = tableName == _factTable;
+                var roleText = isFact ? "⭐ Fact" : "Dim";
                 var formName = _settings.TableFormNames.ContainsKey(tableName)
                     ? _settings.TableFormNames[tableName]
                     : "(reconnect to load)";
                 var viewName = _settings.TableViewNames.ContainsKey(tableName)
                     ? _settings.TableViewNames[tableName]
                     : "(reconnect to load)";
-                    
+
                 var item = new ListViewItem("✏️");  // Edit column
                 item.Name = tableName;
+                item.SubItems.Add(roleText);  // Role column
                 item.SubItems.Add(tableInfo.DisplayName ?? tableName);  // Table column
                 item.SubItems.Add(formName);  // Form column
                 item.SubItems.Add(viewName);  // View column
-                item.SubItems.Add(_settings.TableAttributes.ContainsKey(tableName) 
-                    ? _settings.TableAttributes[tableName].Count.ToString() 
+                item.SubItems.Add(_settings.TableAttributes.ContainsKey(tableName)
+                    ? _settings.TableAttributes[tableName].Count.ToString()
                     : "0");  // Attrs column
+
+                // Highlight fact table row
+                if (isFact)
+                {
+                    item.BackColor = System.Drawing.Color.LightYellow;
+                    item.Font = new System.Drawing.Font(listViewSelectedTables.Font, System.Drawing.FontStyle.Bold);
+                }
+
                 listViewSelectedTables.Items.Add(item);
             }
             
-            // Auto-select first table
+            // Auto-select first table and show its attributes
             if (listViewSelectedTables.Items.Count > 0)
             {
                 listViewSelectedTables.Items[0].Selected = true;
+                // Manually trigger attribute display since event may not fire during form load
+                var firstTableName = listViewSelectedTables.Items[0].Name;
+                UpdateAttributesDisplay(firstTableName);
             }
+            
+            // DEBUG: Check _tableAttributes after restore
+            var tableAttrCount = _tableAttributes.Sum(t => t.Value.Count);
+            Services.DebugLogger.LogSection("RestoreFromSettings - Complete",
+                $"_tableAttributes: {tableAttrCount} total attributes across {_tableAttributes.Count} tables");
             
             SetStatus("Previous session restored. Please reconnect to refresh metadata.");
         }
@@ -286,11 +329,22 @@ namespace DataverseMetadataExtractor.Forms
             
             UpdateTableCount();
             
-            // Auto-select first table
+            // Auto-select first table and show its attributes
             if (listViewSelectedTables.Items.Count > 0)
             {
                 listViewSelectedTables.Items[0].Selected = true;
+                // Manually trigger attribute display since event may not fire during form load
+                var firstTableName = listViewSelectedTables.Items[0].Name;
+                UpdateAttributesDisplay(firstTableName);
             }
+            
+            // DEBUG: Log state after cache restore
+            var cacheAttrCount = _tableAttributes.Sum(t => t.Value.Count);
+            var cacheSelectedCount = _selectedAttributes.Sum(t => t.Value.Count);
+            Services.DebugLogger.LogSection("RestoreFromCache - Complete",
+                $"_tableAttributes: {cacheAttrCount} total attributes across {_tableAttributes.Count} tables\n" +
+                $"_selectedAttributes: {cacheSelectedCount} selected attributes across {_selectedAttributes.Count} tables\n" +
+                $"_settings.AttributeDisplayInfo: {_settings.AttributeDisplayInfo.Sum(t => t.Value.Count)} attrs across {_settings.AttributeDisplayInfo.Count} tables");
         }
 
         private HashSet<string> GetRequiredAttributes(TableInfo table)
@@ -348,6 +402,16 @@ namespace DataverseMetadataExtractor.Forms
         {
             if (_isLoading) return;  // Don't save during initial load
             
+            // DEBUG: Check state before save
+            var beforeAttrInfoCount = _settings.AttributeDisplayInfo?.Sum(t => t.Value.Count) ?? 0;
+            var tableAttrCount = _tableAttributes.Sum(t => t.Value.Count);
+            Services.DebugLogger.LogSection("SaveSettings - Entry",
+                $"_settings.AttributeDisplayInfo: {beforeAttrInfoCount} attrs across {_settings.AttributeDisplayInfo?.Count ?? 0} tables\n" +
+                $"_tableAttributes: {tableAttrCount} attrs across {_tableAttributes.Count} tables\n" +
+                $"_selectedAttributes: {_selectedAttributes.Sum(t => t.Value.Count)} attrs across {_selectedAttributes.Count} tables\n" +
+                $"_selectedTables: {_selectedTables.Count} tables\n" +
+                $"_tableAttributes.Any(): {_tableAttributes.Any()}");
+            
             // Store URL without https:// prefix
             var url = txtEnvironmentUrl.Text.Trim();
             if (url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
@@ -379,42 +443,99 @@ namespace DataverseMetadataExtractor.Forms
             );
             
             // Save attribute display info
-            _settings.AttributeDisplayInfo = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>();
-            foreach (var tableName in _selectedAttributes.Keys)
+            // Only update if we have full metadata loaded, otherwise preserve existing display info
+            if (_tableAttributes.Any())
             {
-                if (!_tableAttributes.ContainsKey(tableName))
-                    continue;
+                Services.DebugLogger.Log($"Rebuilding AttributeDisplayInfo from {_selectedAttributes.Count} tables in _selectedAttributes");
                 
-                if (!_selectedTables.ContainsKey(tableName))
-                    continue;
-                
-                var requiredAttrs = GetRequiredAttributes(_selectedTables[tableName]);
-                var attrDict = new Dictionary<string, AttributeDisplayInfo>();
-                foreach (var attrLogicalName in _selectedAttributes[tableName])
+                // DEBUG: Log what's actually in _tableAttributes
+                foreach (var tableKvp in _tableAttributes)
                 {
-                    var attrMeta = _tableAttributes[tableName].FirstOrDefault(a => a.LogicalName == attrLogicalName);
-                    if (attrMeta != null)
-                    {
-                        attrDict[attrLogicalName] = new AttributeDisplayInfo
-                        {
-                            LogicalName = attrMeta.LogicalName,
-                            DisplayName = attrMeta.DisplayName,
-                            SchemaName = attrMeta.SchemaName,
-                            AttributeType = attrMeta.AttributeType,
-                            IsRequired = requiredAttrs.Contains(attrLogicalName),
-                            Targets = attrMeta.Targets  // Lookup target tables
-                        };
-                    }
+                    var attrNames = string.Join(", ", tableKvp.Value.Select(a => a.LogicalName).Take(3));
+                    Services.DebugLogger.Log($"  _tableAttributes[{tableKvp.Key}] has {tableKvp.Value.Count} attrs: {attrNames}...");
                 }
-                if (attrDict.Any())
-                    _settings.AttributeDisplayInfo[tableName] = attrDict;
+                
+                _settings.AttributeDisplayInfo = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>();
+                foreach (var tableName in _selectedAttributes.Keys)
+                {
+                    Services.DebugLogger.Log($"  Processing table: {tableName}");
+                    
+                    // DEBUG: Show what's being looked for
+                    var selectedNames = string.Join(", ", _selectedAttributes[tableName].Take(3));
+                    Services.DebugLogger.Log($"    _selectedAttributes has: {selectedNames}...");
+                    
+                    if (!_tableAttributes.ContainsKey(tableName))
+                    {
+                        Services.DebugLogger.Log($"    SKIPPED: Not in _tableAttributes");
+                        continue;
+                    }
+                    
+                    if (!_selectedTables.ContainsKey(tableName))
+                    {
+                        Services.DebugLogger.Log($"    SKIPPED: Not in _selectedTables");
+                        continue;
+                    }
+                    
+                    var requiredAttrs = GetRequiredAttributes(_selectedTables[tableName]);
+                    var attrDict = new Dictionary<string, AttributeDisplayInfo>();
+                    var selectedAttrCount = _selectedAttributes[tableName].Count;
+                    Services.DebugLogger.Log($"    Has {selectedAttrCount} selected attributes");
+                    
+                    foreach (var attrLogicalName in _selectedAttributes[tableName])
+                    {
+                        var attrMeta = _tableAttributes[tableName].FirstOrDefault(a => a.LogicalName == attrLogicalName);
+                        if (attrMeta != null)
+                        {
+                            attrDict[attrLogicalName] = new AttributeDisplayInfo
+                            {
+                                LogicalName = attrMeta.LogicalName,
+                                DisplayName = attrMeta.DisplayName,
+                                SchemaName = attrMeta.SchemaName,
+                                AttributeType = attrMeta.AttributeType,
+                                IsRequired = requiredAttrs.Contains(attrLogicalName),
+                                Targets = attrMeta.Targets  // Lookup target tables
+                            };
+                        }
+                        else
+                        {
+                            Services.DebugLogger.Log($"      Attribute {attrLogicalName} not found in _tableAttributes[{tableName}]");
+                        }
+                    }
+                    
+                    Services.DebugLogger.Log($"    attrDict has {attrDict.Count} attributes, attrDict.Any() = {attrDict.Any()}");
+                    
+                    if (attrDict.Any())
+                        _settings.AttributeDisplayInfo[tableName] = attrDict;
+                    else
+                        Services.DebugLogger.Log($"    SKIPPED: attrDict is empty");
+                }
+                
+                Services.DebugLogger.Log($"Final AttributeDisplayInfo has {_settings.AttributeDisplayInfo.Sum(t => t.Value.Count)} attributes across {_settings.AttributeDisplayInfo.Count} tables");
             }
+            // else: keep existing AttributeDisplayInfo from loaded settings
             
-            _settings.ProjectName = txtProjectName.Text;
+            // DEBUG: Check AttributeDisplayInfo after update
+            var afterAttrInfoCount = _settings.AttributeDisplayInfo?.Sum(t => t.Value.Count) ?? 0;
+            Services.DebugLogger.LogSection("SaveSettings - After AttributeDisplayInfo Update",
+                $"_settings.AttributeDisplayInfo: {afterAttrInfoCount} attrs across {_settings.AttributeDisplayInfo?.Count ?? 0} tables\n" +
+                $"Updated: {_tableAttributes.Any()}");
+            
+            // Project name always matches configuration name
+            var configName = _settingsManager.GetCurrentConfigurationName();
+            _settings.ProjectName = configName;
+            
             _settings.OutputFolder = txtOutputFolder.Text;
             _settings.WindowGeometry = $"{Width},{Height}";
             _settings.ShowAllAttributes = radioShowAll.Checked;
-            
+
+            // Save star-schema configuration
+            _settings.FactTable = _factTable;
+            _settings.Relationships = _relationships;
+            _settings.TableRoles = _selectedTables.ToDictionary(
+                k => k.Key,
+                v => v.Key == _factTable ? TableRole.Fact : TableRole.Dimension
+            );
+
             _settingsManager.SaveSettings(_settings);
         }
 
@@ -424,8 +545,9 @@ namespace DataverseMetadataExtractor.Forms
             foreach (ListViewItem item in listViewSelectedTables.Items)
             {
                 var logicalName = item.Name;
-                var formName = item.SubItems[1].Text;
-                
+                // Column indices: 0=Edit, 1=Role, 2=Table, 3=Form, 4=View, 5=Attrs
+                var formName = item.SubItems[3].Text;
+
                 if (_tableForms.ContainsKey(logicalName))
                 {
                     var form = _tableForms[logicalName].FirstOrDefault(f => f.Name == formName);
@@ -435,17 +557,18 @@ namespace DataverseMetadataExtractor.Forms
             }
             return result;
         }
-        
+
         private Dictionary<string, string> GetSelectedFormNames()
         {
             var result = new Dictionary<string, string>();
             foreach (ListViewItem item in listViewSelectedTables.Items)
             {
                 var logicalName = item.Name;
-                var formName = item.SubItems[1].Text;
-                
+                // Column indices: 0=Edit, 1=Role, 2=Table, 3=Form, 4=View, 5=Attrs
+                var formName = item.SubItems[3].Text;
+
                 // Only save if it's not a placeholder
-                if (!formName.Contains("loading") && !formName.Contains("not loaded") && 
+                if (!formName.Contains("loading") && !formName.Contains("not loaded") &&
                     !formName.Contains("no forms") && !formName.Contains("reconnect"))
                 {
                     result[logicalName] = formName;
@@ -453,17 +576,18 @@ namespace DataverseMetadataExtractor.Forms
             }
             return result;
         }
-        
+
         private Dictionary<string, string> GetSelectedViewNames()
         {
             var result = new Dictionary<string, string>();
             foreach (ListViewItem item in listViewSelectedTables.Items)
             {
                 var logicalName = item.Name;
-                var viewName = item.SubItems[2].Text;
-                
+                // Column indices: 0=Edit, 1=Role, 2=Table, 3=Form, 4=View, 5=Attrs
+                var viewName = item.SubItems[4].Text;
+
                 // Only save if it's not a placeholder
-                if (!viewName.Contains("loading") && !viewName.Contains("not loaded") && 
+                if (!viewName.Contains("loading") && !viewName.Contains("not loaded") &&
                     !viewName.Contains("no views") && !viewName.Contains("reconnect"))
                 {
                     result[logicalName] = viewName;
@@ -490,15 +614,27 @@ namespace DataverseMetadataExtractor.Forms
             _cache.TableViews = _tableViews.ToDictionary(k => k.Key, v => v.Value);
             _cache.TableAttributes = _tableAttributes.ToDictionary(k => k.Key, v => v.Value);
             
-            _settingsManager.SaveCache(_cache);
+            // Explicitly save cache for current configuration
+            var currentConfig = _settingsManager.GetCurrentConfigurationName();
+            _settingsManager.SaveCache(_cache, currentConfig);
         }
 
         private void UpdateTableCount()
         {
             var count = _selectedTables.Count;
-            lblTableCount.Text = count == 0 ? "No tables selected" :
-                                count == 1 ? "1 table selected" :
-                                $"{count} tables selected";
+            if (count == 0)
+            {
+                lblTableCount.Text = "No tables selected";
+            }
+            else if (_factTable != null)
+            {
+                var dimCount = count - 1;
+                lblTableCount.Text = $"1 Fact + {dimCount} Dimension{(dimCount != 1 ? "s" : "")} selected";
+            }
+            else
+            {
+                lblTableCount.Text = count == 1 ? "1 table selected" : $"{count} tables selected";
+            }
         }
 
         private void SetStatus(string message)
@@ -526,6 +662,27 @@ namespace DataverseMetadataExtractor.Forms
             var connectionUrl = url;
             if (!connectionUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                 connectionUrl = "https://" + connectionUrl;
+
+            // Check if there's a different configuration for this environment URL
+            var mostRecentConfigForUrl = _settingsManager.GetMostRecentConfigurationForEnvironment(connectionUrl);
+            var currentConfig = _settingsManager.GetCurrentConfigurationName();
+
+            if (!string.IsNullOrEmpty(mostRecentConfigForUrl) && mostRecentConfigForUrl != currentConfig)
+            {
+                var result = MessageBox.Show(
+                    $"You previously used the configuration '{mostRecentConfigForUrl}' for this environment.\n\n" +
+                    $"Would you like to switch to it?\n\n" +
+                    $"(Current configuration: '{currentConfig}')",
+                    "Switch Configuration?",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (result == DialogResult.Yes)
+                {
+                    SwitchToConfiguration(mostRecentConfigForUrl);
+                    return; // Don't connect yet, let user click Connect again
+                }
+            }
 
             try
             {
@@ -572,19 +729,45 @@ namespace DataverseMetadataExtractor.Forms
                 return;
             }
 
-            // Show table selector dialog with currently selected tables
-            var currentlySelectedTables = _selectedTables.Keys.ToList();
-            using var dialog = new TableSelectorDialog(_client, _currentSolutionName, currentlySelectedTables);
+            // Show Fact & Dimension selector dialog
+            using var dialog = new FactDimensionSelectorDialog(
+                _client,
+                _currentSolutionName,
+                _factTable,
+                _relationships);
+
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 _currentSolutionName = dialog.SelectedSolutionName;
-                var selectedTables = dialog.SelectedTables;
-                
-                if (selectedTables.Any())
+
+                // Clear existing tables and relationships
+                ClearAllTables();
+
+                // Store fact table and relationships
+                _factTable = dialog.SelectedFactTable?.LogicalName;
+                _relationships = dialog.SelectedRelationships;
+
+                // Add all selected tables (Fact + Dimensions)
+                if (dialog.AllSelectedTables.Any())
                 {
-                    AddTablesInBulk(selectedTables);
+                    AddTablesInBulk(dialog.AllSelectedTables);
                 }
+
+                SaveSettings();
             }
+        }
+
+        private void ClearAllTables()
+        {
+            _selectedTables.Clear();
+            _tableForms.Clear();
+            _tableViews.Clear();
+            _tableAttributes.Clear();
+            _selectedAttributes.Clear();
+            _selectedViews.Clear();
+            _loadingStates.Clear();
+            listViewSelectedTables.Items.Clear();
+            listViewAttributes.Items.Clear();
         }
 
         private async void AddTablesInBulk(List<TableInfo> tables)
@@ -835,18 +1018,28 @@ namespace DataverseMetadataExtractor.Forms
         private void AddTableToSelectedList(TableInfo table, bool loading = false)
         {
             var logicalName = table.LogicalName;
+            var isFact = logicalName == _factTable;
+            var roleText = isFact ? "⭐ Fact" : "Dim";
             var formText = loading ? "(loading...)" : GetFormDisplayText(logicalName);
             var viewText = loading ? "(loading...)" : GetViewDisplayText(logicalName);
-            var attrCount = _selectedAttributes.ContainsKey(logicalName) 
+            var attrCount = _selectedAttributes.ContainsKey(logicalName)
                 ? _selectedAttributes[logicalName].Count.ToString()
                 : "0";
 
             var item = new ListViewItem("✏️");  // Edit column
             item.Name = logicalName;
+            item.SubItems.Add(roleText);  // Role column
             item.SubItems.Add(table.DisplayName ?? logicalName);  // Table column
             item.SubItems.Add(formText);  // Form column
             item.SubItems.Add(viewText);  // View column
             item.SubItems.Add(attrCount);  // Attrs column
+
+            // Highlight fact table row
+            if (isFact)
+            {
+                item.BackColor = System.Drawing.Color.LightYellow;
+                item.Font = new System.Drawing.Font(listViewSelectedTables.Font, System.Drawing.FontStyle.Bold);
+            }
 
             listViewSelectedTables.Items.Add(item);
         }
@@ -855,15 +1048,29 @@ namespace DataverseMetadataExtractor.Forms
         {
             var item = listViewSelectedTables.Items.Cast<ListViewItem>()
                 .FirstOrDefault(i => i.Name == logicalName);
-            
+
             if (item != null)
             {
-                // Column indices: 0=Edit, 1=Table, 2=Form, 3=View, 4=Attrs
-                item.SubItems[2].Text = GetFormDisplayText(logicalName);
-                item.SubItems[3].Text = GetViewDisplayText(logicalName);
-                item.SubItems[4].Text = _selectedAttributes.ContainsKey(logicalName)
+                // Column indices: 0=Edit, 1=Role, 2=Table, 3=Form, 4=View, 5=Attrs
+                var isFact = logicalName == _factTable;
+                item.SubItems[1].Text = isFact ? "⭐ Fact" : "Dim";
+                item.SubItems[3].Text = GetFormDisplayText(logicalName);
+                item.SubItems[4].Text = GetViewDisplayText(logicalName);
+                item.SubItems[5].Text = _selectedAttributes.ContainsKey(logicalName)
                     ? _selectedAttributes[logicalName].Count.ToString()
                     : "0";
+
+                // Update styling
+                if (isFact)
+                {
+                    item.BackColor = System.Drawing.Color.LightYellow;
+                    item.Font = new System.Drawing.Font(listViewSelectedTables.Font, System.Drawing.FontStyle.Bold);
+                }
+                else
+                {
+                    item.BackColor = System.Drawing.Color.White;
+                    item.Font = listViewSelectedTables.Font;
+                }
             }
         }
 
@@ -1320,6 +1527,37 @@ namespace DataverseMetadataExtractor.Forms
 
         private void TxtProjectName_TextChanged(object sender, EventArgs e)
         {
+            if (_isLoading)
+                return;
+
+            var newProjectName = txtProjectName.Text.Trim();
+            if (string.IsNullOrWhiteSpace(newProjectName))
+            {
+                SaveSettings();
+                return;
+            }
+
+            var currentConfigName = _settingsManager.GetCurrentConfigurationName();
+            
+            // If project name changed, rename the configuration to match
+            if (newProjectName != currentConfigName)
+            {
+                try
+                {
+                    _settingsManager.RenameConfiguration(currentConfigName, newProjectName);
+                    this.Text = $"Dataverse Metadata Extractor for Power BI - {newProjectName}";
+                }
+                catch
+                {
+                    // If rename fails (e.g., name already exists), revert the text
+                    _isLoading = true;
+                    txtProjectName.Text = currentConfigName;
+                    _isLoading = false;
+                    MessageBox.Show($"Cannot rename configuration to '{newProjectName}' - a configuration with that name already exists.", "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            
             SaveSettings();
         }
 
@@ -1383,10 +1621,20 @@ namespace DataverseMetadataExtractor.Forms
                 ShowProgress(false);
 
                 var totalAttrs = _selectedAttributes.Values.Sum(s => s.Count);
+                var factDisplay = _factTable != null && _selectedTables.ContainsKey(_factTable)
+                    ? _selectedTables[_factTable].DisplayName ?? _factTable
+                    : "(none)";
+                var directRels = _relationships.Count(r => !r.IsSnowflake);
+                var snowflakeRels = _relationships.Count(r => r.IsSnowflake);
+                var relInfo = snowflakeRels > 0
+                    ? $"{directRels} direct + {snowflakeRels} snowflake"
+                    : $"{directRels}";
                 MessageBox.Show(
                     $"Metadata exported successfully!\n\n" +
                     $"File: {Path.Combine(outputFolder, semanticModelName + " Metadata Dictionary.json")}\n" +
-                    $"Tables: {_selectedTables.Count}\n" +
+                    $"Fact Table: {factDisplay}\n" +
+                    $"Dimension Tables: {_selectedTables.Count - (_factTable != null ? 1 : 0)}\n" +
+                    $"Relationships: {relInfo}\n" +
                     $"Total Attributes: {totalAttrs}",
                     "Export Complete",
                     MessageBoxButtons.OK,
@@ -1411,12 +1659,25 @@ namespace DataverseMetadataExtractor.Forms
             var envUrl = txtEnvironmentUrl.Text.Trim();
             if (!envUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                 envUrl = "https://" + envUrl;
-            
+
+            // Export relationships
+            var exportRelationships = _relationships.Select(r => new ExportRelationship
+            {
+                SourceTable = r.SourceTable,
+                SourceAttribute = r.SourceAttribute,
+                TargetTable = r.TargetTable,
+                DisplayName = r.DisplayName,
+                IsActive = r.IsActive,
+                IsSnowflake = r.IsSnowflake
+            }).ToList();
+
             var metadata = new ExportMetadata
             {
                 Environment = envUrl,
                 Solution = _currentSolutionName ?? "",
                 ProjectName = projectName,
+                FactTable = _factTable,
+                Relationships = exportRelationships,
                 Tables = new List<ExportTable>()
             };
 
@@ -1471,6 +1732,9 @@ namespace DataverseMetadataExtractor.Forms
                     .Where(a => selectedAttrNames.Contains(a.LogicalName))
                     .ToList();
 
+                // Determine table role
+                var role = logicalName == _factTable ? "Fact" : "Dimension";
+
                 metadata.Tables.Add(new ExportTable
                 {
                     LogicalName = table.LogicalName,
@@ -1479,6 +1743,7 @@ namespace DataverseMetadataExtractor.Forms
                     ObjectTypeCode = table.ObjectTypeCode,
                     PrimaryIdAttribute = table.PrimaryIdAttribute,
                     PrimaryNameAttribute = table.PrimaryNameAttribute,
+                    Role = role,
                     Forms = forms,
                     View = view,
                     Attributes = attributes
@@ -1554,10 +1819,281 @@ namespace DataverseMetadataExtractor.Forms
             listViewAttributes.ItemChecked += ListViewAttributes_ItemChecked;
         }
 
+        private void ConfigurationsToolStripMenuItem_DropDownOpening(object sender, EventArgs e)
+        {
+            // Populate the Switch Configuration submenu
+            switchConfigurationToolStripMenuItem.DropDownItems.Clear();
+
+            var currentConfig = _settingsManager.GetCurrentConfigurationName();
+            var allConfigs = _settingsManager.GetConfigurationNames();
+
+            foreach (var configName in allConfigs)
+            {
+                var item = new ToolStripMenuItem(configName);
+                item.Click += (s, args) => SwitchToConfiguration(configName);
+                
+                // Check the current configuration
+                if (configName == currentConfig)
+                {
+                    item.Checked = true;
+                    item.Enabled = false; // Can't switch to current
+                }
+
+                switchConfigurationToolStripMenuItem.DropDownItems.Add(item);
+            }
+
+            // Update title to show current configuration
+            this.Text = $"Dataverse Metadata Extractor for Power BI - {currentConfig}";
+        }
+
+        private void SwitchToConfiguration(string configurationName)
+        {
+            try
+            {
+                // Save current settings and cache first
+                SaveSettings();
+
+                // Switch to the new configuration
+                _settingsManager.SwitchToConfiguration(configurationName);
+
+                // Load the new configuration
+                _settings = _settingsManager.GetConfiguration(configurationName);
+                
+                // Load the cache for this configuration
+                _cache = _settingsManager.LoadCache(configurationName) ?? new MetadataCache();
+
+                // Apply to UI - Configuration name IS the project name
+                _isLoading = true;
+                txtEnvironmentUrl.Text = _settings.LastEnvironmentUrl ?? "";
+                txtProjectName.Text = configurationName;  // Use config name as project name
+                txtOutputFolder.Text = _settings.OutputFolder ?? "";
+                
+                // Restore radio button state
+                if (_settings.ShowAllAttributes)
+                    radioShowAll.Checked = true;
+                else
+                    radioShowSelected.Checked = true;
+
+                // Restore current solution name
+                _currentSolutionName = _settings.LastSolution;
+
+                // Restore star-schema configuration
+                _factTable = _settings.FactTable;
+                _relationships = _settings.Relationships ?? new List<RelationshipConfig>();
+
+                // Clear UI first
+                listViewSelectedTables.Items.Clear();
+                listViewAttributes.Items.Clear();
+                _selectedTables.Clear();
+                _selectedAttributes.Clear();
+                _selectedViews.Clear();
+                _tableAttributes.Clear();
+                _tableForms.Clear();
+                _tableViews.Clear();
+
+                // Restore from cache if valid
+                var statusMsg = "";
+                if (!string.IsNullOrEmpty(_settings.LastEnvironmentUrl) && 
+                    !string.IsNullOrEmpty(_settings.LastSolution) &&
+                    _cache.IsValidFor(_settings.LastEnvironmentUrl, _settings.LastSolution))
+                {
+                    RestoreFromCache();
+                    EnableMetadataDependentControls(true);
+                    statusMsg = $"Loaded {_selectedTables.Count} tables from cache.";
+                }
+                else if (_settings.SelectedTables.Any())
+                {
+                    // Cache is invalid but we have settings - restore minimal state
+                    RestoreFromSettings();
+                    EnableMetadataDependentControls(false);
+                    statusMsg = $"Loaded {_selectedTables.Count} tables from settings. Reconnect to refresh metadata.";
+                }
+                else
+                {
+                    // No cache and no settings, disable controls
+                    EnableMetadataDependentControls(false);
+                    statusMsg = "No previous data for this configuration.";
+                }
+
+                UpdateTableCount();
+                _isLoading = false;
+
+                // Update title
+                this.Text = $"Dataverse Metadata Extractor for Power BI - {configurationName}";
+                
+                // Show status
+                SetStatus(statusMsg);
+
+                MessageBox.Show($"Switched to configuration '{configurationName}'.\n\n{statusMsg}", "Success",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                _isLoading = false;
+                MessageBox.Show($"Failed to switch configuration:\n{ex.Message}\n\n{ex.StackTrace}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void NewConfigurationToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            using (var inputDialog = new Form())
+            {
+                inputDialog.Text = "New Configuration";
+                inputDialog.Width = 400;
+                inputDialog.Height = 150;
+                inputDialog.StartPosition = FormStartPosition.CenterParent;
+
+                var label = new Label { Text = "Configuration Name:", Left = 20, Top = 20, Width = 340 };
+                var textBox = new TextBox { Left = 20, Top = 45, Width = 340 };
+                var btnOk = new Button { Text = "Create", Left = 220, Top = 80, DialogResult = DialogResult.OK };
+                var btnCancel = new Button { Text = "Cancel", Left = 300, Top = 80, DialogResult = DialogResult.Cancel };
+                
+                btnOk.Click += (s, args) => {
+                    if (string.IsNullOrWhiteSpace(textBox.Text))
+                    {
+                        MessageBox.Show("Please enter a configuration name.", "Error",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        inputDialog.DialogResult = DialogResult.None;
+                    }
+                };
+
+                inputDialog.Controls.AddRange(new Control[] { label, textBox, btnOk, btnCancel });
+                inputDialog.AcceptButton = btnOk;
+                inputDialog.CancelButton = btnCancel;
+
+                if (inputDialog.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        var newName = textBox.Text.Trim();
+                        var newSettings = new AppSettings { ProjectName = newName };
+                        _settingsManager.CreateNewConfiguration(newName, newSettings);
+                        
+                        // Switch to the new configuration
+                        SwitchToConfiguration(newName);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Failed to create configuration:\n{ex.Message}", "Error",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+
+        private void RenameConfigurationToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var currentName = _settingsManager.GetCurrentConfigurationName();
+
+            using (var inputDialog = new Form())
+            {
+                inputDialog.Text = "Rename Configuration";
+                inputDialog.Width = 400;
+                inputDialog.Height = 150;
+                inputDialog.StartPosition = FormStartPosition.CenterParent;
+
+                var label = new Label { Text = $"Rename '{currentName}' to:", Left = 20, Top = 20, Width = 340 };
+                var textBox = new TextBox { Text = currentName, Left = 20, Top = 45, Width = 340 };
+                var btnOk = new Button { Text = "Rename", Left = 220, Top = 80, DialogResult = DialogResult.OK };
+                var btnCancel = new Button { Text = "Cancel", Left = 300, Top = 80, DialogResult = DialogResult.Cancel };
+                
+                btnOk.Click += (s, args) => {
+                    if (string.IsNullOrWhiteSpace(textBox.Text))
+                    {
+                        MessageBox.Show("Please enter a configuration name.", "Error",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        inputDialog.DialogResult = DialogResult.None;
+                    }
+                };
+
+                inputDialog.Controls.AddRange(new Control[] { label, textBox, btnOk, btnCancel });
+                inputDialog.AcceptButton = btnOk;
+                inputDialog.CancelButton = btnCancel;
+
+                if (inputDialog.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        var newName = textBox.Text.Trim();
+                        _settingsManager.RenameConfiguration(currentName, newName);
+                        
+                        // Update project name to match new config name
+                        _isLoading = true;
+                        txtProjectName.Text = newName;
+                        _isLoading = false;
+                        
+                        this.Text = $"Dataverse Metadata Extractor for Power BI - {newName}";
+
+                        MessageBox.Show($"Configuration renamed to '{newName}'.", "Success",
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Failed to rename configuration:\n{ex.Message}", "Error",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+
+        private void DeleteConfigurationToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var currentName = _settingsManager.GetCurrentConfigurationName();
+            
+            var result = MessageBox.Show(
+                $"Are you sure you want to delete the configuration '{currentName}'?\n\nThis cannot be undone.",
+                "Delete Configuration",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (result == DialogResult.Yes)
+            {
+                try
+                {
+                    _settingsManager.DeleteConfiguration(currentName);
+                    
+                    // Load the new current configuration
+                    _settings = _settingsManager.LoadSettings();
+                    var newCurrentName = _settingsManager.GetCurrentConfigurationName();
+
+                    // Apply to UI - project name matches config name
+                    _isLoading = true;
+                    txtEnvironmentUrl.Text = _settings.LastEnvironmentUrl ?? "";
+                    txtProjectName.Text = newCurrentName;
+                    txtOutputFolder.Text = _settings.OutputFolder ?? "";
+                    _isLoading = false;
+
+                    listViewSelectedTables.Items.Clear();
+                    listViewAttributes.Items.Clear();
+                    UpdateTableCount();
+
+                    this.Text = $"Dataverse Metadata Extractor for Power BI - {newCurrentName}";
+
+                    MessageBox.Show($"Configuration '{currentName}' deleted.\n\nSwitched to '{newCurrentName}'.", "Success",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Failed to delete configuration:\n{ex.Message}", "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
+            // DEBUG: Check state before closing
+            var attrInfoCount = _settings.AttributeDisplayInfo?.Sum(t => t.Value.Count) ?? 0;
+            var tableAttrCount = _tableAttributes.Sum(t => t.Value.Count);
+            Services.DebugLogger.LogSection("MainForm_FormClosing - Entry",
+                $"_settings.AttributeDisplayInfo: {attrInfoCount} attrs across {_settings.AttributeDisplayInfo?.Count ?? 0} tables\n" +
+                $"_tableAttributes: {tableAttrCount} attrs across {_tableAttributes.Count} tables");
+            
             SaveSettings();
             SaveCache();
+            
+            Services.DebugLogger.Log($"Log saved to: {Services.DebugLogger.GetLogPath()}");
         }
     }
 }
