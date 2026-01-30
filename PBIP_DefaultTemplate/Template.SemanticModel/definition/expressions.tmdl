@@ -1,5 +1,5 @@
-expression DataverseURL = "mydataverseURL.crm.dynamics.com" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
-	lineageTag: 8f051abc-86f1-459a-bbb1-08565985df7e
+expression DataverseURL = "MyDataverseEnvironment.crm.dynamics.com" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: fa3d2423-73bc-4e6f-b535-6bdedce1d904
 
 	annotation PBI_NavigationStepName = Navigation
 

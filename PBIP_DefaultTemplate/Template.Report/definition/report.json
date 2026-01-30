@@ -2,18 +2,18 @@
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/report/3.1.0/schema.json",
   "themeCollection": {
     "baseTheme": {
-      "name": "CY25SU12",
+      "name": "CY26SU02",
       "reportVersionAtImport": {
-        "visual": "2.5.0",
+        "visual": "2.6.0",
         "report": "3.1.0",
         "page": "2.3.0"
       },
       "type": "SharedResources"
     },
     "customTheme": {
-      "name": "D365_Light_Blue-Gray9315732436358833.json",
+      "name": "D365_Light_Blue-Gray3726426547215945.json",
       "reportVersionAtImport": {
-        "visual": "2.5.0",
+        "visual": "2.6.0",
         "report": "3.1.0",
         "page": "2.3.0"
       },
@@ -33,19 +33,6 @@
           }
         }
       }
-    ],
-    "outspacePane": [
-      {
-        "properties": {
-          "expanded": {
-            "expr": {
-              "Literal": {
-                "Value": "false"
-              }
-            }
-          }
-        }
-      }
     ]
   },
   "resourcePackages": [
@@ -54,8 +41,8 @@
       "type": "SharedResources",
       "items": [
         {
-          "name": "CY25SU12",
-          "path": "BaseThemes/CY25SU12.json",
+          "name": "CY26SU02",
+          "path": "BaseThemes/CY26SU02.json",
           "type": "BaseTheme"
         }
       ]
@@ -65,19 +52,22 @@
       "type": "RegisteredResources",
       "items": [
         {
-          "name": "D365_Light_Blue-Gray9315732436358833.json",
-          "path": "D365_Light_Blue-Gray9315732436358833.json",
+          "name": "D365_Light_Blue-Gray3726426547215945.json",
+          "path": "D365_Light_Blue-Gray3726426547215945.json",
           "type": "CustomTheme"
         }
       ]
     }
   ],
   "settings": {
+    "hideVisualContainerHeader": true,
     "useStylableVisualContainerHeader": true,
     "exportDataMode": "AllowSummarized",
     "defaultDrillFilterOtherVisuals": true,
     "allowChangeFilterTypes": true,
     "useEnhancedTooltips": true,
-    "useDefaultAggregateDisplayName": true
+    "useDefaultAggregateDisplayName": true,
+    "customMemoryLimit": "1048576",
+    "customTimeoutLimit": "225"
   }
 }

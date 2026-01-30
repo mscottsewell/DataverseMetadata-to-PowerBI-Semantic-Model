@@ -10,7 +10,7 @@ annotation __PBI_TimeIntelligenceEnabled = 0
 
 annotation PBI_QueryOrder = ["DataverseURL"]
 
-annotation PBI_ProTooling = ["TMDLView_Desktop","DevMode","TMDL-Extension"]
+annotation PBI_ProTooling = ["DevMode"]
 
 ref cultureInfo en-US
 
