@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{B8C9A3E4-2D6F-4A8B-9E5C-1F7D3A6B8C9E}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>DataverseToPowerBI.XrmToolBox</RootNamespace>
+    <AssemblyName>DataverseToPowerBI.XrmToolBox</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <LangVersion>9.0</LangVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.ComponentModel.Composition" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+    <Reference Include="..\DataverseToPowerBI.Core\bin\Release\netstandard2.0\DataverseToPowerBI.Core.dll">
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="XrmToolBox.Extensibility">
+      <HintPath>$(APPDATA)\MscrmTools\XrmToolBox\Plugins\XrmToolBox.Extensibility.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Microsoft.Xrm.Sdk">
+      <HintPath>$(APPDATA)\MscrmTools\XrmToolBox\Plugins\Microsoft.Xrm.Sdk.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="McTools.Xrm.Connection">
+      <HintPath>$(APPDATA)\MscrmTools\XrmToolBox\NugetPlugins\MscrmTools.Xrm.Connection.1.2025.9.64\McTools.Xrm.Connection.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="McTools.Xrm.Connection.WinForms">
+      <HintPath>$(APPDATA)\MscrmTools\XrmToolBox\NugetPlugins\MscrmTools.Xrm.Connection.1.2025.9.64\McTools.Xrm.Connection.WinForms.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="XrmToolBox.ToolLibrary">
+      <HintPath>$(APPDATA)\MscrmTools\XrmToolBox\Plugins\XrmToolBox.ToolLibrary.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System.Runtime.Serialization" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="PluginControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="PluginControl.Designer.cs">
+      <DependentUpon>PluginControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="TmdlPluginTool.cs" />
+    <Compile Include="XrmServiceAdapterImpl.cs" />
+    <Compile Include="FactDimensionSelectorForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="TableSelectorForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormViewSelectorForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SolutionSelectorForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SemanticModelSelectorDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SemanticModelManager.cs" />
+    <Compile Include="RibbonIcons.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\DataverseToPowerBI.Core\bin\Release\netstandard2.0\DataverseToPowerBI.Core.dll">
+      <Link>DataverseToPowerBI.Core.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

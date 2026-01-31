@@ -1,0 +1,17 @@
+Folder PATH listing for volume Local Disk
+Volume serial number is C078-4BF8
+C:\GITHUB\DATAVERSEMETADATA-TO-POWERBI-SEMANTIC-MODEL\DATAVERSETOPOWERBI.XRMTOOLBOX
+|   DataverseToPowerBI.XrmToolBox.csproj
+|   PluginControl.cs
+|   TmdlPluginTool.cs
+|   
++---obj
+|       DataverseToPowerBI.XrmToolBox.csproj.nuget.dgspec.json
+|       DataverseToPowerBI.XrmToolBox.csproj.nuget.g.props
+|       DataverseToPowerBI.XrmToolBox.csproj.nuget.g.targets
+|       project.assets.json
+|       project.nuget.cache
+|       
+\---Properties
+        AssemblyInfo.cs
+        

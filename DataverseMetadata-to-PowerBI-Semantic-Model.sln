@@ -1,19 +1,60 @@
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataverseToPowerBI.Configurator", "DataverseToPowerBI.Configurator\DataverseToPowerBI.Configurator.csproj", "{BF86B5B4-6658-1D00-ED82-7EE588AC0983}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataverseToPowerBI.Core", "DataverseToPowerBI.Core\DataverseToPowerBI.Core.csproj", "{F2698480-7EBD-46D6-929F-8C3B03896EDB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataverseToPowerBI.XrmToolBox", "DataverseToPowerBI.XrmToolBox\DataverseToPowerBI.XrmToolBox.csproj", "{B8C9A3E4-2D6F-4A8B-9E5C-1F7D3A6B8C9E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
 		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{BF86B5B4-6658-1D00-ED82-7EE588AC0983}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{BF86B5B4-6658-1D00-ED82-7EE588AC0983}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BF86B5B4-6658-1D00-ED82-7EE588AC0983}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{BF86B5B4-6658-1D00-ED82-7EE588AC0983}.Debug|x64.Build.0 = Debug|Any CPU
+		{BF86B5B4-6658-1D00-ED82-7EE588AC0983}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{BF86B5B4-6658-1D00-ED82-7EE588AC0983}.Debug|x86.Build.0 = Debug|Any CPU
 		{BF86B5B4-6658-1D00-ED82-7EE588AC0983}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BF86B5B4-6658-1D00-ED82-7EE588AC0983}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BF86B5B4-6658-1D00-ED82-7EE588AC0983}.Release|x64.ActiveCfg = Release|Any CPU
+		{BF86B5B4-6658-1D00-ED82-7EE588AC0983}.Release|x64.Build.0 = Release|Any CPU
+		{BF86B5B4-6658-1D00-ED82-7EE588AC0983}.Release|x86.ActiveCfg = Release|Any CPU
+		{BF86B5B4-6658-1D00-ED82-7EE588AC0983}.Release|x86.Build.0 = Release|Any CPU
+		{F2698480-7EBD-46D6-929F-8C3B03896EDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F2698480-7EBD-46D6-929F-8C3B03896EDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F2698480-7EBD-46D6-929F-8C3B03896EDB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F2698480-7EBD-46D6-929F-8C3B03896EDB}.Debug|x64.Build.0 = Debug|Any CPU
+		{F2698480-7EBD-46D6-929F-8C3B03896EDB}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F2698480-7EBD-46D6-929F-8C3B03896EDB}.Debug|x86.Build.0 = Debug|Any CPU
+		{F2698480-7EBD-46D6-929F-8C3B03896EDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F2698480-7EBD-46D6-929F-8C3B03896EDB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F2698480-7EBD-46D6-929F-8C3B03896EDB}.Release|x64.ActiveCfg = Release|Any CPU
+		{F2698480-7EBD-46D6-929F-8C3B03896EDB}.Release|x64.Build.0 = Release|Any CPU
+		{F2698480-7EBD-46D6-929F-8C3B03896EDB}.Release|x86.ActiveCfg = Release|Any CPU
+		{F2698480-7EBD-46D6-929F-8C3B03896EDB}.Release|x86.Build.0 = Release|Any CPU
+		{B8C9A3E4-2D6F-4A8B-9E5C-1F7D3A6B8C9E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8C9A3E4-2D6F-4A8B-9E5C-1F7D3A6B8C9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8C9A3E4-2D6F-4A8B-9E5C-1F7D3A6B8C9E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B8C9A3E4-2D6F-4A8B-9E5C-1F7D3A6B8C9E}.Debug|x64.Build.0 = Debug|Any CPU
+		{B8C9A3E4-2D6F-4A8B-9E5C-1F7D3A6B8C9E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B8C9A3E4-2D6F-4A8B-9E5C-1F7D3A6B8C9E}.Debug|x86.Build.0 = Debug|Any CPU
+		{B8C9A3E4-2D6F-4A8B-9E5C-1F7D3A6B8C9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8C9A3E4-2D6F-4A8B-9E5C-1F7D3A6B8C9E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8C9A3E4-2D6F-4A8B-9E5C-1F7D3A6B8C9E}.Release|x64.ActiveCfg = Release|Any CPU
+		{B8C9A3E4-2D6F-4A8B-9E5C-1F7D3A6B8C9E}.Release|x64.Build.0 = Release|Any CPU
+		{B8C9A3E4-2D6F-4A8B-9E5C-1F7D3A6B8C9E}.Release|x86.ActiveCfg = Release|Any CPU
+		{B8C9A3E4-2D6F-4A8B-9E5C-1F7D3A6B8C9E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

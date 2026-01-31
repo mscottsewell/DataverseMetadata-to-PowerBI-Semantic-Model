@@ -1,0 +1,43 @@
+Folder PATH listing for volume Local Disk
+Volume serial number is C078-4BF8
+C:\GITHUB\DATAVERSEMETADATA-TO-POWERBI-SEMANTIC-MODEL\DATAVERSETOPOWERBI.CORE
+|   DataverseToPowerBI.Core.csproj
+|   
++---bin
+|   \---Debug
+|       \---netstandard2.0
+|               DataverseToPowerBI.Core.deps.json
+|               DataverseToPowerBI.Core.dll
+|               DataverseToPowerBI.Core.pdb
+|               
++---Interfaces
+|       IDataverseConnection.cs
+|       
++---Models
+|       DataModels.cs
+|       
++---obj
+|   |   DataverseToPowerBI.Core.csproj.nuget.dgspec.json
+|   |   DataverseToPowerBI.Core.csproj.nuget.g.props
+|   |   DataverseToPowerBI.Core.csproj.nuget.g.targets
+|   |   project.assets.json
+|   |   project.nuget.cache
+|   |   
+|   \---Debug
+|       \---netstandard2.0
+|               .NETStandard,Version=v2.0.AssemblyAttributes.cs
+|               DataverseToPowerBI.Core.AssemblyInfo.cs
+|               DataverseToPowerBI.Core.AssemblyInfoInputs.cache
+|               DataverseToPowerBI.Core.assets.cache
+|               DataverseToPowerBI.Core.csproj.AssemblyReference.cache
+|               DataverseToPowerBI.Core.csproj.CoreCompileInputs.cache
+|               DataverseToPowerBI.Core.csproj.FileListAbsolute.txt
+|               DataverseToPowerBI.Core.dll
+|               DataverseToPowerBI.Core.GeneratedMSBuildEditorConfig.editorconfig
+|               DataverseToPowerBI.Core.pdb
+|               DataverseToPowerBI.Core.sourcelink.json
+|               
+\---Services
+        DataverseClientAdapter.cs
+        XrmServiceAdapter.cs
+        
