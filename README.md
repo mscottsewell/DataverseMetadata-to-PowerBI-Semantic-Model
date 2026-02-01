@@ -11,7 +11,8 @@ This XrmToolBox plugin helps you create optimized Power BI data models from your
 If you've ever tried to connect Power BI to Dataverse, you know it can be challenging:
 - Which tables should you include?
 - How do you handle relationships?
-- Why is my report so slow?
+- I chose the defaults, why is my report so slow?
+- Why can't I see the tables' and fields' Display Names?
 
 This tool solves these problems by:
 
@@ -19,7 +20,7 @@ This tool solves these problems by:
 2. **Automatically building relationships** based on your lookup fields
 3. **Creating an optimized star-schema** for fast, intuitive reporting
 4. **Generating a complete Power BI project** ready to open and customize
-
+5. **Imports Metadata for Formatting** clean and user-friendly model
 ---
 
 ## ✨ Key Features
