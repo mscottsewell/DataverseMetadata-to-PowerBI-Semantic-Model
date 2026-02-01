@@ -136,6 +136,71 @@ namespace DataverseToPowerBI.XrmToolBox
         }
 
         /// <summary>
+        /// Retrieves all tables (entities) from the Dataverse environment.
+        /// Use this when the user doesn't have permission to view solutions (prvReadSolution).
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This method can return hundreds of tables. Activity and Intersect entities
+        /// are filtered out as they're typically not suitable for Power BI semantic models.
+        /// </para>
+        /// <para>
+        /// Consider this a fallback when GetSolutionsSync fails due to privilege errors.
+        /// </para>
+        /// </remarks>
+        public List<TableInfo> GetAllTablesSync(IOrganizationService service)
+        {
+            var tables = new List<TableInfo>();
+            
+            // Use RetrieveAllEntitiesRequest to get all entities
+            var request = new RetrieveAllEntitiesRequest
+            {
+                EntityFilters = EntityFilters.Entity,
+                RetrieveAsIfPublished = true
+            };
+            
+            var response = (RetrieveAllEntitiesResponse)service.Execute(request);
+            
+            if (response.EntityMetadata != null)
+            {
+                foreach (var item in response.EntityMetadata)
+                {
+                    // Skip Activity entities (tasks, emails, etc.) - these have special handling
+                    // Skip Intersect entities (N:N relationship tables) - not useful for reporting
+                    if (item.IsActivity == true || item.IsIntersect == true)
+                        continue;
+                    
+                    // Skip system entities that are typically not useful for reporting
+                    // These include internal entities that users rarely need
+                    var logicalName = item.LogicalName ?? "";
+                    if (logicalName.StartsWith("msdyn_") && logicalName.Contains("_migration"))
+                        continue;
+                    
+                    string displayName = logicalName;
+                    if (item.DisplayName?.UserLocalizedLabel != null)
+                    {
+                        displayName = item.DisplayName.UserLocalizedLabel.Label ?? logicalName;
+                    }
+                    
+                    var metadataId = item.MetadataId;
+                    
+                    tables.Add(new TableInfo
+                    {
+                        LogicalName = logicalName,
+                        DisplayName = displayName,
+                        SchemaName = item.SchemaName,
+                        PrimaryIdAttribute = item.PrimaryIdAttribute,
+                        PrimaryNameAttribute = item.PrimaryNameAttribute,
+                        ObjectTypeCode = item.ObjectTypeCode ?? 0,
+                        MetadataId = metadataId?.ToString()
+                    });
+                }
+            }
+
+            return tables.OrderBy(t => t.DisplayName ?? t.LogicalName).ToList();
+        }
+
+        /// <summary>
         /// Synchronous version for WorkAsync pattern
         /// </summary>
         public List<TableInfo> GetSolutionTablesSync(IOrganizationService service, string solutionId)

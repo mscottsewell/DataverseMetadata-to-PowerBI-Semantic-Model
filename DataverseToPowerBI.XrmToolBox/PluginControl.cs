@@ -377,12 +377,75 @@ namespace DataverseToPowerBI.XrmToolBox
                 {
                     if (args.Error != null)
                     {
+                        // Check if this is a privilege error for reading solutions
+                        var errorMessage = args.Error.Message ?? "";
+                        if (errorMessage.Contains("prvReadSolution") || 
+                            errorMessage.Contains("missing") && errorMessage.Contains("privilege") && errorMessage.Contains("solution"))
+                        {
+                            // User doesn't have permission to view solutions - gracefully fall back to all tables
+                            var result = MessageBox.Show(
+                                "You don't have permission to view Solutions in this Dataverse environment.\n\n" +
+                                "You can still select tables from the complete list of all tables in the environment.\n" +
+                                "Note: This list may contain hundreds of tables.\n\n" +
+                                "Would you like to continue and select from all available tables?",
+                                "Solution Access Limited",
+                                MessageBoxButtons.YesNo,
+                                MessageBoxIcon.Information);
+                            
+                            if (result == DialogResult.Yes)
+                            {
+                                LoadAllTablesAndShowSelector();
+                            }
+                            return;
+                        }
+                        
                         MessageBox.Show($"Error: {args.Error.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
                     
                     var solutions = args.Result as List<DataverseSolution> ?? new List<DataverseSolution>();
                     ShowSolutionAndTableSelector(solutions);
+                }
+            });
+        }
+        
+        /// <summary>
+        /// Loads all tables from Dataverse (fallback when user doesn't have prvReadSolution privilege)
+        /// </summary>
+        private void LoadAllTablesAndShowSelector()
+        {
+            if (_xrmAdapter == null) return;
+            
+            WorkAsync(new WorkAsyncInfo
+            {
+                Message = "Loading all tables (this may take a moment)...",
+                Work = (worker, args) =>
+                {
+                    args.Result = _xrmAdapter.GetAllTablesSync(Service);
+                },
+                PostWorkCallBack = (args) =>
+                {
+                    if (args.Error != null)
+                    {
+                        MessageBox.Show($"Error loading tables: {args.Error.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    
+                    var allTables = args.Result as List<TableInfo> ?? new List<TableInfo>();
+                    
+                    if (allTables.Count == 0)
+                    {
+                        MessageBox.Show("No tables found in the environment.", "No Tables", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    
+                    // Set solution info to indicate using all tables
+                    _currentSolutionId = null;
+                    _currentSolutionName = $"All Tables ({allTables.Count})";
+                    _solutionTables = allTables;
+                    
+                    // Proceed to fact/dimension selector
+                    ShowFactDimensionSelector();
                 }
             });
         }
