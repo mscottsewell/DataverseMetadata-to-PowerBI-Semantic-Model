@@ -121,10 +121,19 @@ namespace DataverseToPowerBI.XrmToolBox
                 Font = new Font(SystemFonts.MessageBoxFont.FontFamily, SystemFonts.MessageBoxFont.Size, FontStyle.Regular)
             };
 
+            // Add info label about grayed items under the header
+            var lblGrayedInfo = new Label
+            {
+                Text = "ℹ️ Grayed models are from other environments.",
+                Location = new Point(35, 35),
+                Size = new Size(400, 18),
+                ForeColor = Color.Gray
+            };
+
             listViewModels = new ListView
             {
-                Location = new Point(35, 40),
-                Size = new Size(450, 380),
+                Location = new Point(35, 58),
+                Size = new Size(450, 362),
                 View = View.Details,
                 FullRowSelect = true,
                 MultiSelect = false,
@@ -147,7 +156,7 @@ namespace DataverseToPowerBI.XrmToolBox
             btnNew = new Button
             {
                 Text = "New...",
-                Location = new Point(35, 430),
+                Location = new Point(35, 428),
                 Size = new Size(70, 28)
             };
             btnNew.Click += BtnNew_Click;
@@ -155,7 +164,7 @@ namespace DataverseToPowerBI.XrmToolBox
             btnCopy = new Button
             {
                 Text = "Copy...",
-                Location = new Point(110, 430),
+                Location = new Point(110, 428),
                 Size = new Size(70, 28),
                 Enabled = false
             };
@@ -164,7 +173,7 @@ namespace DataverseToPowerBI.XrmToolBox
             btnRename = new Button
             {
                 Text = "Rename...",
-                Location = new Point(185, 430),
+                Location = new Point(185, 428),
                 Size = new Size(80, 28),
                 Enabled = false
             };
@@ -173,7 +182,7 @@ namespace DataverseToPowerBI.XrmToolBox
             btnDelete = new Button
             {
                 Text = "Delete",
-                Location = new Point(270, 430),
+                Location = new Point(270, 428),
                 Size = new Size(70, 28),
                 Enabled = false
             };
@@ -217,65 +226,17 @@ namespace DataverseToPowerBI.XrmToolBox
                 BackColor = SystemColors.Control
             };
 
-            lblConnectionType = new Label
-            {
-                Text = "Connection Type:",
-                Location = new Point(15, 145),
-                AutoSize = true
-            };
-
-            cboConnectionType = new ComboBox
-            {
-                Location = new Point(15, 165),
-                Size = new Size(365, 23),
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-            cboConnectionType.Items.AddRange(new object[] { "Dataverse TDS Endpoint", "FabricLink Lakehouse SQL" });
-            cboConnectionType.SelectedIndex = 0;
-            cboConnectionType.SelectedIndexChanged += CboConnectionType_SelectedIndexChanged;
-
-            lblFabricEndpoint = new Label
-            {
-                Text = "FabricLink SQL Endpoint:",
-                Location = new Point(15, 205),
-                AutoSize = true,
-                Visible = false
-            };
-
-            txtFabricEndpoint = new TextBox
-            {
-                Location = new Point(15, 225),
-                Size = new Size(365, 23),
-                Visible = false
-            };
-            txtFabricEndpoint.TextChanged += TxtFabricEndpoint_TextChanged;
-
-            lblFabricDatabase = new Label
-            {
-                Text = "FabricLink SQL Database:",
-                Location = new Point(15, 265),
-                AutoSize = true,
-                Visible = false
-            };
-
-            txtFabricDatabase = new TextBox
-            {
-                Location = new Point(15, 285),
-                Size = new Size(365, 23),
-                Visible = false
-            };
-            txtFabricDatabase.TextChanged += TxtFabricDatabase_TextChanged;
-
+            // Working Folder - moved up under Environment URL
             lblWorkingFolder = new Label
             {
                 Text = "Working Folder:",
-                Location = new Point(15, 325),
+                Location = new Point(15, 145),
                 AutoSize = true
             };
 
             txtWorkingFolder = new TextBox
             {
-                Location = new Point(15, 345),
+                Location = new Point(15, 165),
                 Size = new Size(270, 23),
                 ReadOnly = true,
                 BackColor = SystemColors.Window
@@ -284,22 +245,23 @@ namespace DataverseToPowerBI.XrmToolBox
             btnChangeFolder = new Button
             {
                 Text = "Change...",
-                Location = new Point(295, 344),
+                Location = new Point(295, 164),
                 Size = new Size(85, 25),
                 Enabled = false
             };
             btnChangeFolder.Click += BtnChangeFolder_Click;
 
+            // PBIP Template - moved up under Working Folder
             lblTemplatePath = new Label
             {
                 Text = "PBIP Template:",
-                Location = new Point(15, 385),
+                Location = new Point(15, 205),
                 AutoSize = true
             };
 
             txtTemplatePath = new TextBox
             {
-                Location = new Point(15, 405),
+                Location = new Point(15, 225),
                 Size = new Size(270, 23),
                 ReadOnly = true,
                 BackColor = SystemColors.Window
@@ -308,39 +270,79 @@ namespace DataverseToPowerBI.XrmToolBox
             btnChangeTemplate = new Button
             {
                 Text = "Change...",
-                Location = new Point(295, 404),
+                Location = new Point(295, 224),
                 Size = new Size(85, 25),
                 Enabled = false
             };
             btnChangeTemplate.Click += BtnChangeTemplate_Click;
 
-            // Add info label about grayed items
-            var lblInfo = new Label
+            // Connection Type - moved down below PBIP Template
+            lblConnectionType = new Label
             {
-                Text = "ℹ️ Grayed models are from other environments.\n" +
-                       "   Selecting one will offer to update its URL.",
-                Location = new Point(15, 450),
-                Size = new Size(370, 40),
-                ForeColor = Color.Gray
+                Text = "Connection Type:",
+                Location = new Point(15, 265),
+                AutoSize = true
             };
+
+            cboConnectionType = new ComboBox
+            {
+                Location = new Point(15, 285),
+                Size = new Size(365, 23),
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            cboConnectionType.Items.AddRange(new object[] { "Dataverse TDS Endpoint", "FabricLink Lakehouse SQL" });
+            cboConnectionType.SelectedIndex = 0;
+            cboConnectionType.SelectedIndexChanged += CboConnectionType_SelectedIndexChanged;
+
+            // Fabric fields - below Connection Type
+            lblFabricEndpoint = new Label
+            {
+                Text = "FabricLink SQL Endpoint:",
+                Location = new Point(15, 325),
+                AutoSize = true,
+                Visible = false
+            };
+
+            txtFabricEndpoint = new TextBox
+            {
+                Location = new Point(15, 345),
+                Size = new Size(365, 23),
+                Visible = false
+            };
+            txtFabricEndpoint.TextChanged += TxtFabricEndpoint_TextChanged;
+
+            lblFabricDatabase = new Label
+            {
+                Text = "FabricLink SQL Database:",
+                Location = new Point(15, 385),
+                AutoSize = true,
+                Visible = false
+            };
+
+            txtFabricDatabase = new TextBox
+            {
+                Location = new Point(15, 405),
+                Size = new Size(365, 23),
+                Visible = false
+            };
+            txtFabricDatabase.TextChanged += TxtFabricDatabase_TextChanged;
 
             groupDetails.Controls.Add(lblName);
             groupDetails.Controls.Add(txtName);
             groupDetails.Controls.Add(lblEnvironmentUrl);
             groupDetails.Controls.Add(txtEnvironmentUrl);
-            groupDetails.Controls.Add(lblConnectionType);
-            groupDetails.Controls.Add(cboConnectionType);
-            groupDetails.Controls.Add(lblFabricEndpoint);
-            groupDetails.Controls.Add(txtFabricEndpoint);
-            groupDetails.Controls.Add(lblFabricDatabase);
-            groupDetails.Controls.Add(txtFabricDatabase);
             groupDetails.Controls.Add(lblWorkingFolder);
             groupDetails.Controls.Add(txtWorkingFolder);
             groupDetails.Controls.Add(btnChangeFolder);
             groupDetails.Controls.Add(lblTemplatePath);
             groupDetails.Controls.Add(txtTemplatePath);
             groupDetails.Controls.Add(btnChangeTemplate);
-            groupDetails.Controls.Add(lblInfo);
+            groupDetails.Controls.Add(lblConnectionType);
+            groupDetails.Controls.Add(cboConnectionType);
+            groupDetails.Controls.Add(lblFabricEndpoint);
+            groupDetails.Controls.Add(txtFabricEndpoint);
+            groupDetails.Controls.Add(lblFabricDatabase);
+            groupDetails.Controls.Add(txtFabricDatabase);
 
             // Bottom buttons
             btnSelect = new Button
@@ -362,6 +364,7 @@ namespace DataverseToPowerBI.XrmToolBox
             };
 
             this.Controls.Add(lblModels);
+            this.Controls.Add(lblGrayedInfo);
             this.Controls.Add(listViewModels);
             this.Controls.Add(btnNew);
             this.Controls.Add(btnCopy);
@@ -1069,6 +1072,7 @@ namespace DataverseToPowerBI.XrmToolBox
             this.MinimizeBox = false;
             this.StartPosition = FormStartPosition.CenterParent;
 
+            // Name field
             var lblName = new Label
             {
                 Text = "Semantic Model Name:",
@@ -1083,6 +1087,7 @@ namespace DataverseToPowerBI.XrmToolBox
             };
             txtName.TextChanged += TxtName_TextChanged;
 
+            // Environment URL
             var lblEnv = new Label
             {
                 Text = $"Environment: {environmentUrl}",
@@ -1091,63 +1096,17 @@ namespace DataverseToPowerBI.XrmToolBox
                 ForeColor = Color.Gray
             };
 
-            var lblConnectionType = new Label
-            {
-                Text = "Connection Type:",
-                Location = new Point(20, 110),
-                AutoSize = true
-            };
-
-            cboConnectionType = new ComboBox
-            {
-                Location = new Point(20, 135),
-                Size = new Size(460, 23),
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-            cboConnectionType.Items.AddRange(new object[] { "Dataverse TDS Endpoint", "FabricLink Lakehouse SQL" });
-            cboConnectionType.SelectedIndex = 0;
-            cboConnectionType.SelectedIndexChanged += CboConnectionType_SelectedIndexChanged;
-
-            lblFabricEndpoint = new Label
-            {
-                Text = "FabricLink SQL Endpoint:",
-                Location = new Point(20, 175),
-                AutoSize = true,
-                Visible = false
-            };
-
-            txtFabricEndpoint = new TextBox
-            {
-                Location = new Point(20, 200),
-                Size = new Size(460, 23),
-                Visible = false
-            };
-
-            lblFabricDatabase = new Label
-            {
-                Text = "FabricLink SQL Database:",
-                Location = new Point(20, 240),
-                AutoSize = true,
-                Visible = false
-            };
-
-            txtFabricDatabase = new TextBox
-            {
-                Location = new Point(20, 265),
-                Size = new Size(460, 23),
-                Visible = false
-            };
-
+            // Working Folder - moved up
             var lblFolder = new Label
             {
                 Text = "Working Folder:",
-                Location = new Point(20, 305),
+                Location = new Point(20, 110),
                 AutoSize = true
             };
 
             txtFolder = new TextBox
             {
-                Location = new Point(20, 330),
+                Location = new Point(20, 135),
                 Size = new Size(360, 23),
                 ReadOnly = true,
                 BackColor = SystemColors.Window
@@ -1156,21 +1115,22 @@ namespace DataverseToPowerBI.XrmToolBox
             btnChangeFolder = new Button
             {
                 Text = "Change...",
-                Location = new Point(390, 329),
+                Location = new Point(390, 134),
                 Size = new Size(90, 25)
             };
             btnChangeFolder.Click += BtnChangeFolder_Click;
 
+            // PBIP Template - moved up
             var lblTemplate = new Label
             {
                 Text = "PBIP Template:",
-                Location = new Point(20, 370),
+                Location = new Point(20, 175),
                 AutoSize = true
             };
 
             txtTemplate = new TextBox
             {
-                Location = new Point(20, 395),
+                Location = new Point(20, 200),
                 Size = new Size(360, 23),
                 ReadOnly = true,
                 BackColor = SystemColors.Window
@@ -1179,15 +1139,16 @@ namespace DataverseToPowerBI.XrmToolBox
             btnChangeTemplate = new Button
             {
                 Text = "Change...",
-                Location = new Point(390, 394),
+                Location = new Point(390, 199),
                 Size = new Size(90, 25)
             };
             btnChangeTemplate.Click += BtnChangeTemplate_Click;
 
+            // Preview labels - moved up
             lblPreview = new Label
             {
                 Text = "Will be created at:",
-                Location = new Point(20, 435),
+                Location = new Point(20, 240),
                 AutoSize = true,
                 ForeColor = Color.Gray
             };
@@ -1195,16 +1156,65 @@ namespace DataverseToPowerBI.XrmToolBox
             lblPreviewPath = new Label
             {
                 Text = "(enter a name)",
-                Location = new Point(20, 453),
+                Location = new Point(20, 258),
                 Size = new Size(460, 20),
                 ForeColor = Color.DarkBlue,
                 AutoEllipsis = true
             };
 
+            // Connection Type - moved down
+            var lblConnectionType = new Label
+            {
+                Text = "Connection Type:",
+                Location = new Point(20, 295),
+                AutoSize = true
+            };
+
+            cboConnectionType = new ComboBox
+            {
+                Location = new Point(20, 320),
+                Size = new Size(460, 23),
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            cboConnectionType.Items.AddRange(new object[] { "Dataverse TDS Endpoint", "FabricLink Lakehouse SQL" });
+            cboConnectionType.SelectedIndex = 0;
+            cboConnectionType.SelectedIndexChanged += CboConnectionType_SelectedIndexChanged;
+
+            // Fabric fields - moved down
+            lblFabricEndpoint = new Label
+            {
+                Text = "FabricLink SQL Endpoint:",
+                Location = new Point(20, 360),
+                AutoSize = true,
+                Visible = false
+            };
+
+            txtFabricEndpoint = new TextBox
+            {
+                Location = new Point(20, 385),
+                Size = new Size(460, 23),
+                Visible = false
+            };
+
+            lblFabricDatabase = new Label
+            {
+                Text = "FabricLink SQL Database:",
+                Location = new Point(20, 425),
+                AutoSize = true,
+                Visible = false
+            };
+
+            txtFabricDatabase = new TextBox
+            {
+                Location = new Point(20, 450),
+                Size = new Size(460, 23),
+                Visible = false
+            };
+
             btnCreate = new Button
             {
                 Text = "Create",
-                Location = new Point(310, 480),
+                Location = new Point(310, 485),
                 Size = new Size(80, 28),
                 DialogResult = DialogResult.OK,
                 Enabled = false
@@ -1214,7 +1224,7 @@ namespace DataverseToPowerBI.XrmToolBox
             btnCancelDlg = new Button
             {
                 Text = "Cancel",
-                Location = new Point(400, 480),
+                Location = new Point(400, 485),
                 Size = new Size(80, 28),
                 DialogResult = DialogResult.Cancel
             };
@@ -1222,12 +1232,6 @@ namespace DataverseToPowerBI.XrmToolBox
             this.Controls.Add(lblName);
             this.Controls.Add(txtName);
             this.Controls.Add(lblEnv);
-            this.Controls.Add(lblConnectionType);
-            this.Controls.Add(cboConnectionType);
-            this.Controls.Add(lblFabricEndpoint);
-            this.Controls.Add(txtFabricEndpoint);
-            this.Controls.Add(lblFabricDatabase);
-            this.Controls.Add(txtFabricDatabase);
             this.Controls.Add(lblFolder);
             this.Controls.Add(txtFolder);
             this.Controls.Add(btnChangeFolder);
@@ -1236,6 +1240,12 @@ namespace DataverseToPowerBI.XrmToolBox
             this.Controls.Add(btnChangeTemplate);
             this.Controls.Add(lblPreview);
             this.Controls.Add(lblPreviewPath);
+            this.Controls.Add(lblConnectionType);
+            this.Controls.Add(cboConnectionType);
+            this.Controls.Add(lblFabricEndpoint);
+            this.Controls.Add(txtFabricEndpoint);
+            this.Controls.Add(lblFabricDatabase);
+            this.Controls.Add(txtFabricDatabase);
             this.Controls.Add(btnCreate);
             this.Controls.Add(btnCancelDlg);
 

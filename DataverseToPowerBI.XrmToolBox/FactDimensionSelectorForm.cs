@@ -60,6 +60,8 @@ namespace DataverseToPowerBI.XrmToolBox
         private readonly IOrganizationService _service;
         private List<TableInfo> _tables;
         private Dictionary<string, List<CoreAttributeMetadata>> _tableAttributes = new Dictionary<string, List<CoreAttributeMetadata>>();
+        private List<DataverseSolution> _allSolutions;
+        private string _currentSolutionId;
 
         // Existing configuration (for editing)
         private string _currentFactTable;
@@ -67,7 +69,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
         // UI Controls
         private WinLabel lblSolution;
-        private WinLabel lblSolutionValue;
+        private ComboBox cmbSolution;
         private WinLabel lblFactTable;
         private ComboBox cmbFactTable;
         private WinLabel lblFactHint;
@@ -83,9 +85,13 @@ namespace DataverseToPowerBI.XrmToolBox
 
         // Results
         public string SelectedSolutionName { get; private set; }
+        public string SelectedSolutionId { get; private set; }
         public TableInfo SelectedFactTable { get; private set; }
         public List<ExportRelationship> SelectedRelationships { get; private set; } = new List<ExportRelationship>();
         public List<TableInfo> AllSelectedTables { get; private set; } = new List<TableInfo>();
+
+        // Callback for when solution changes and tables need to be reloaded
+        public Action<string, string, Action<List<TableInfo>>> OnSolutionChangeRequested;
 
         public FactDimensionSelectorForm(
             XrmServiceAdapterImpl adapter,
@@ -93,15 +99,21 @@ namespace DataverseToPowerBI.XrmToolBox
             string solutionName,
             List<TableInfo> tables,
             string currentFactTable = null,
-            List<ExportRelationship> currentRelationships = null)
+            List<ExportRelationship> currentRelationships = null,
+            List<DataverseSolution> allSolutions = null,
+            string currentSolutionId = null)
         {
             _adapter = adapter;
             _service = service;
             SelectedSolutionName = solutionName;
+            SelectedSolutionId = currentSolutionId;
             _tables = tables;
             _currentFactTable = currentFactTable;
             _currentRelationships = currentRelationships ?? new List<ExportRelationship>();
+            _allSolutions = allSolutions;
+            _currentSolutionId = currentSolutionId;
             InitializeComponent();
+            LoadSolutionDropdown();
             LoadFactTableDropdown();
         }
 
@@ -115,7 +127,7 @@ namespace DataverseToPowerBI.XrmToolBox
             this.MaximizeBox = false;
             this.MinimizeBox = false;
 
-            // Solution display (read-only since XrmToolBox already selected it)
+            // Solution dropdown (editable - allows changing solution)
             lblSolution = new WinLabel
             {
                 Text = "Solution:",
@@ -124,14 +136,14 @@ namespace DataverseToPowerBI.XrmToolBox
             };
             this.Controls.Add(lblSolution);
 
-            lblSolutionValue = new WinLabel
+            cmbSolution = new ComboBox
             {
-                Text = SelectedSolutionName ?? "(not selected)",
-                Location = new Point(80, 15),
-                AutoSize = true,
-                Font = new Font(this.Font, FontStyle.Bold)
+                Location = new Point(80, 12),
+                Width = 400,
+                DropDownStyle = ComboBoxStyle.DropDownList
             };
-            this.Controls.Add(lblSolutionValue);
+            cmbSolution.SelectedIndexChanged += CmbSolution_SelectedIndexChanged;
+            this.Controls.Add(cmbSolution);
 
             // Fact table selector (dropdown)
             lblFactTable = new WinLabel
@@ -203,12 +215,13 @@ namespace DataverseToPowerBI.XrmToolBox
                 CheckBoxes = true
             };
             listViewRelationships.Columns.Add("Include", 55);
-            listViewRelationships.Columns.Add("Cardinality", 90);
-            listViewRelationships.Columns.Add("Lookup Field", 180);
-            listViewRelationships.Columns.Add("Target Table", 180);
-            listViewRelationships.Columns.Add("Status", 100);
-            listViewRelationships.Columns.Add("Type", 80);
-            listViewRelationships.Columns.Add("Target Logical Name", 150);
+            listViewRelationships.Columns.Add("Cardinality", 70);
+            listViewRelationships.Columns.Add("Lookup Field", 145);
+            listViewRelationships.Columns.Add("Lookup Logical Name", 130);
+            listViewRelationships.Columns.Add("Target Table", 145);
+            listViewRelationships.Columns.Add("Status", 80);
+            listViewRelationships.Columns.Add("Type", 70);
+            listViewRelationships.Columns.Add("Target Logical Name", 130);
             listViewRelationships.ItemChecked += ListViewRelationships_ItemChecked;
             listViewRelationships.DoubleClick += ListViewRelationships_DoubleClick;
             listViewRelationships.SelectedIndexChanged += ListViewRelationships_SelectedIndexChanged;
@@ -267,6 +280,95 @@ namespace DataverseToPowerBI.XrmToolBox
             this.Controls.Add(btnCancel);
             
             this.CancelButton = btnCancel;
+        }
+
+        private void LoadSolutionDropdown()
+        {
+            cmbSolution.Items.Clear();
+
+            if (_allSolutions == null || _allSolutions.Count == 0)
+            {
+                // No solutions available (user doesn't have privilege) - show current name as only option
+                cmbSolution.Items.Add(SelectedSolutionName ?? "All Tables");
+                cmbSolution.SelectedIndex = 0;
+                cmbSolution.Enabled = false;
+                return;
+            }
+
+            int selectedIndex = 0;
+            int index = 0;
+            foreach (var solution in _allSolutions.OrderBy(s => s.FriendlyName))
+            {
+                cmbSolution.Items.Add(solution);
+                if (solution.SolutionId == _currentSolutionId)
+                {
+                    selectedIndex = index;
+                }
+                index++;
+            }
+
+            if (cmbSolution.Items.Count > 0)
+            {
+                cmbSolution.SelectedIndex = selectedIndex;
+            }
+        }
+
+        private bool _suppressSolutionChange = false;
+
+        private void CmbSolution_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (_suppressSolutionChange) return;
+
+            var selectedSolution = cmbSolution.SelectedItem as DataverseSolution;
+            if (selectedSolution == null) return;
+            if (selectedSolution.SolutionId == _currentSolutionId) return;
+
+            // Solution changed - need to reload tables
+            _currentSolutionId = selectedSolution.SolutionId;
+            SelectedSolutionName = selectedSolution.FriendlyName;
+            SelectedSolutionId = selectedSolution.SolutionId;
+
+            // Clear current selection
+            listViewRelationships.Items.Clear();
+            cmbFactTable.Items.Clear();
+            cmbFactTable.Items.Add("-- Loading... --");
+            cmbFactTable.SelectedIndex = 0;
+            cmbFactTable.Enabled = false;
+            SelectedFactTable = null;
+            _currentFactTable = null;
+            _currentRelationships = new List<ExportRelationship>();
+
+            lblStatus.Text = $"Loading tables from {SelectedSolutionName}...";
+
+            // Request table reload via callback
+            if (OnSolutionChangeRequested != null)
+            {
+                OnSolutionChangeRequested(selectedSolution.SolutionId, selectedSolution.FriendlyName, (tables) =>
+                {
+                    // Called when tables are loaded
+                    _tables = tables;
+                    _tableAttributes.Clear();
+                    cmbFactTable.Enabled = true;
+                    LoadFactTableDropdown();
+                });
+            }
+            else
+            {
+                // Fallback - load synchronously (not recommended)
+                try
+                {
+                    _tables = _adapter.GetSolutionTablesSync(_service, selectedSolution.SolutionId);
+                    _tableAttributes.Clear();
+                    cmbFactTable.Enabled = true;
+                    LoadFactTableDropdown();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error loading tables: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    cmbFactTable.Enabled = true;
+                    LoadFactTableDropdown();
+                }
+            }
         }
 
         private void LoadFactTableDropdown()
@@ -471,6 +573,7 @@ namespace DataverseToPowerBI.XrmToolBox
                     item.Checked = isChecked;
                     item.SubItems.Add(cardinalityText);
                     item.SubItems.Add(lookup.DisplayName ?? lookup.LogicalName);
+                    item.SubItems.Add(lookup.LogicalName);
                     item.SubItems.Add(targetDisplayName);
                     item.SubItems.Add(statusText);
                     item.SubItems.Add(typeText);
@@ -555,7 +658,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
             var statusText = config.IsActive ? "Active" : "Inactive";
             if (targetCount > 1) statusText += " ⚠";
-            item.SubItems[4].Text = statusText;
+            item.SubItems[5].Text = statusText;
         }
 
         private void UpdateFinishButtonState()
@@ -676,6 +779,7 @@ namespace DataverseToPowerBI.XrmToolBox
             item.Checked = true;
             item.SubItems.Add("Many:1");
             item.SubItems.Add(rel.DisplayName ?? rel.SourceAttribute);
+            item.SubItems.Add(rel.SourceAttribute);
             item.SubItems.Add(targetDisplayName);
             item.SubItems.Add(rel.IsActive ? "Active" : "Inactive");
             item.SubItems.Add("Snowflake");

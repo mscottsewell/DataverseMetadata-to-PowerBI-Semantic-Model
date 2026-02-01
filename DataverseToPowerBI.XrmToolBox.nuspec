@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>DataverseToPowerBI.XrmToolBox</id>
-    <version>1.3.39</version>
+    <version>1.3.40</version>
     <title>Dataverse to Power BI Semantic Model</title>
     <authors>Scott Sewell</authors>
     <owners>Scott Sewell</owners>

@@ -668,7 +668,20 @@ namespace DataverseToPowerBI.XrmToolBox
         
         private void ShowSolutionAndTableSelector(List<DataverseSolution> solutions)
         {
-            // Simple solution selector first
+            // If we already have a solution selected, skip the dialog and go directly to table loading
+            // The solution can still be changed via the Solution dropdown in the FactDimensionSelectorForm
+            if (!string.IsNullOrEmpty(_currentSolutionId))
+            {
+                var existingSolution = solutions.FirstOrDefault(s => s.SolutionId == _currentSolutionId);
+                if (existingSolution != null)
+                {
+                    // Proceed directly with existing solution
+                    LoadTablesForSolution(_currentSolutionId, _currentSolutionName, solutions);
+                    return;
+                }
+            }
+            
+            // Show solution selector first time or if previous solution is no longer available
             using (var solutionDialog = new SolutionSelectorForm(solutions, _currentSolutionId))
             {
                 if (solutionDialog.ShowDialog(this) != DialogResult.OK || solutionDialog.SelectedSolution == null)
@@ -677,30 +690,35 @@ namespace DataverseToPowerBI.XrmToolBox
                 _currentSolutionId = solutionDialog.SelectedSolution.SolutionId;
                 _currentSolutionName = solutionDialog.SelectedSolution.FriendlyName;
                 
-                // Now load tables for this solution
-                WorkAsync(new WorkAsyncInfo
-                {
-                    Message = $"Loading tables from {_currentSolutionName}...",
-                    Work = (worker, args) =>
-                    {
-                        args.Result = _xrmAdapter.GetSolutionTablesSync(Service, _currentSolutionId);
-                    },
-                    PostWorkCallBack = (args) =>
-                    {
-                        if (args.Error != null)
-                        {
-                            MessageBox.Show($"Error: {args.Error.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            return;
-                        }
-                        
-                        _solutionTables = args.Result as List<TableInfo> ?? new List<TableInfo>();
-                        ShowFactDimensionSelector();
-                    }
-                });
+                LoadTablesForSolution(_currentSolutionId, _currentSolutionName, solutions);
             }
         }
         
-        private void ShowFactDimensionSelector()
+        private void LoadTablesForSolution(string solutionId, string solutionName, List<DataverseSolution> allSolutions)
+        {
+            // Now load tables for this solution
+            WorkAsync(new WorkAsyncInfo
+            {
+                Message = $"Loading tables from {solutionName}...",
+                Work = (worker, args) =>
+                {
+                    args.Result = _xrmAdapter.GetSolutionTablesSync(Service, solutionId);
+                },
+                PostWorkCallBack = (args) =>
+                {
+                    if (args.Error != null)
+                    {
+                        MessageBox.Show($"Error: {args.Error.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    
+                    _solutionTables = args.Result as List<TableInfo> ?? new List<TableInfo>();
+                    ShowFactDimensionSelector(allSolutions);
+                }
+            });
+        }
+        
+        private void ShowFactDimensionSelector(List<DataverseSolution> allSolutions = null)
         {
             using (var dialog = new FactDimensionSelectorForm(
                 _xrmAdapter,
@@ -708,10 +726,48 @@ namespace DataverseToPowerBI.XrmToolBox
                 _currentSolutionName,
                 _solutionTables,
                 _factTable,
-                _relationships))
+                _relationships,
+                allSolutions,
+                _currentSolutionId))
             {
+                // Set up callback for when solution changes in the dialog
+                dialog.OnSolutionChangeRequested = (solutionId, solutionName, callback) =>
+                {
+                    // Load tables for the new solution
+                    WorkAsync(new WorkAsyncInfo
+                    {
+                        Message = $"Loading tables from {solutionName}...",
+                        Work = (worker, args) =>
+                        {
+                            args.Result = _xrmAdapter.GetSolutionTablesSync(Service, solutionId);
+                        },
+                        PostWorkCallBack = (args) =>
+                        {
+                            if (args.Error != null)
+                            {
+                                MessageBox.Show($"Error: {args.Error.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                callback(new List<TableInfo>());
+                                return;
+                            }
+                            
+                            var tables = args.Result as List<TableInfo> ?? new List<TableInfo>();
+                            _solutionTables = tables;
+                            _currentSolutionId = solutionId;
+                            _currentSolutionName = solutionName;
+                            callback(tables);
+                        }
+                    });
+                };
+                
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
+                    // Update solution if it was changed in the dialog
+                    if (!string.IsNullOrEmpty(dialog.SelectedSolutionId))
+                    {
+                        _currentSolutionId = dialog.SelectedSolutionId;
+                        _currentSolutionName = dialog.SelectedSolutionName;
+                    }
+                    
                     _selectedTables.Clear();
                     _factTable = dialog.SelectedFactTable?.LogicalName;
                     _relationships = dialog.SelectedRelationships;
@@ -1312,8 +1368,13 @@ namespace DataverseToPowerBI.XrmToolBox
             var searchText = txtAttrSearch.Text.ToLower();
             var showSelected = radioShowSelected.Checked;
             
-            // Get required attributes (primary ID and name)
-            var requiredAttrs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            // Use BeginUpdate/EndUpdate for better performance
+            listViewAttributes.BeginUpdate();
+            
+            try
+            {
+                // Get required attributes (primary ID and name)
+                var requiredAttrs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             string primaryIdAttr = null;
             string primaryNameAttr = null;
             if (_selectedTables.ContainsKey(logicalName))
@@ -1427,6 +1488,11 @@ namespace DataverseToPowerBI.XrmToolBox
                 }
                 
                 listViewAttributes.Items.Add(item);
+            }
+            }
+            finally
+            {
+                listViewAttributes.EndUpdate();
             }
         }
         

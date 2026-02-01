@@ -110,7 +110,8 @@ namespace DataverseToPowerBI.XrmToolBox
                 {
                     Conditions =
                     {
-                        new ConditionExpression("isvisible", ConditionOperator.Equal, true)
+                        new ConditionExpression("isvisible", ConditionOperator.Equal, true),
+                        new ConditionExpression("ismanaged", ConditionOperator.Equal, false)
                     }
                 },
                 Orders = { new OrderExpression("friendlyname", OrderType.Ascending) }
@@ -143,6 +144,7 @@ namespace DataverseToPowerBI.XrmToolBox
         /// <para>
         /// This method can return hundreds of tables. Activity and Intersect entities
         /// are filtered out as they're typically not suitable for Power BI semantic models.
+        /// Only tables that have at least one form are included.
         /// </para>
         /// <para>
         /// Consider this a fallback when GetSolutionsSync fails due to privilege errors.
@@ -151,6 +153,9 @@ namespace DataverseToPowerBI.XrmToolBox
         public List<TableInfo> GetAllTablesSync(IOrganizationService service)
         {
             var tables = new List<TableInfo>();
+            
+            // First, get all entity logical names that have at least one form
+            var entitiesWithForms = GetEntitiesWithFormsSync(service);
             
             // Use RetrieveAllEntitiesRequest to get all entities
             var request = new RetrieveAllEntitiesRequest
@@ -176,6 +181,10 @@ namespace DataverseToPowerBI.XrmToolBox
                     if (logicalName.StartsWith("msdyn_") && logicalName.Contains("_migration"))
                         continue;
                     
+                    // Skip tables that don't have any forms
+                    if (!entitiesWithForms.Contains(logicalName))
+                        continue;
+                    
                     string displayName = logicalName;
                     if (item.DisplayName?.UserLocalizedLabel != null)
                     {
@@ -198,6 +207,42 @@ namespace DataverseToPowerBI.XrmToolBox
             }
 
             return tables.OrderBy(t => t.DisplayName ?? t.LogicalName).ToList();
+        }
+        
+        /// <summary>
+        /// Gets a set of entity logical names that have at least one form defined.
+        /// Used to filter out tables that don't have UI forms.
+        /// </summary>
+        private HashSet<string> GetEntitiesWithFormsSync(IOrganizationService service)
+        {
+            var entitiesWithForms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            
+            // Query systemform to get distinct entity logical names that have forms
+            // Form type 2 = Main form (the most common type used for data entry)
+            var query = new QueryExpression("systemform")
+            {
+                ColumnSet = new ColumnSet("objecttypecode"),
+                Criteria = new FilterExpression
+                {
+                    Conditions =
+                    {
+                        new ConditionExpression("type", ConditionOperator.Equal, 2) // Main form
+                    }
+                }
+            };
+            
+            var results = service.RetrieveMultiple(query);
+            
+            foreach (var entity in results.Entities)
+            {
+                var objectTypeCode = entity.GetAttributeValue<string>("objecttypecode");
+                if (!string.IsNullOrEmpty(objectTypeCode))
+                {
+                    entitiesWithForms.Add(objectTypeCode);
+                }
+            }
+            
+            return entitiesWithForms;
         }
 
         /// <summary>

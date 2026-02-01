@@ -32,7 +32,7 @@ $repoRoot = $PSScriptRoot
 
 # VERSION CONFIGURATION - Update this version number for new releases
 # The script will automatically update the .nuspec file with this version
-$version = "1.3.39"
+$version = "1.3.40"
 
 Write-Host "=====================================" -ForegroundColor Cyan
 Write-Host "DataverseToPowerBI XrmToolBox Plugin" -ForegroundColor Cyan
