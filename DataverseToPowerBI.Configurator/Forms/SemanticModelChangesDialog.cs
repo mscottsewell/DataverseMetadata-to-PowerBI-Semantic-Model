@@ -1,3 +1,22 @@
+// =============================================================================
+// SemanticModelChangesDialog.cs - Change Review Dialog
+// =============================================================================
+// Purpose: Dialog for reviewing pending changes before applying to PBIP.
+//
+// When regenerating a semantic model that already exists, this dialog shows:
+//   - New tables/columns being added
+//   - Updated tables/columns being modified
+//   - Removed items (optional)
+//
+// Features:
+//   - ListView with change type, object, and description
+//   - Color-coded change types (New=green, Update=blue, Remove=red)
+//   - Option to create backup before applying changes
+//   - Summary statistics (count of new/updated/removed items)
+//
+// Used by SemanticModelBuilder.BuildIncremental() to get user approval.
+// =============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -5,6 +24,9 @@ using System.Windows.Forms;
 
 namespace DataverseToPowerBI.Configurator.Forms
 {
+    /// <summary>
+    /// Dialog for reviewing pending changes to a semantic model.
+    /// </summary>
     public class SemanticModelChangesDialog : Form
     {
         private ListView listViewChanges;

@@ -1,3 +1,24 @@
+// =============================================================================
+// RibbonIcons.cs - Toolbar Icon Generator
+// =============================================================================
+// Purpose: Generates simple icons for toolbar buttons using GDI+.
+//
+// Rather than embedding image resources, this class programmatically
+// draws icons for the main form toolbar. Icons are 20x20 pixels.
+//
+// Available Icons:
+//   - FolderIcon: Folder for working directory
+//   - OpenFolderIcon: Open folder with arrow
+//   - CloudIcon: Cloud/server for environment
+//   - TableIcon: Grid for table selection
+//   - BuildIcon: Gear for build action
+//   - ModelIcon: 3D cube for semantic model
+//   - CalendarIcon: Calendar for date table
+//   - RefreshIcon: Circular arrow for refresh
+//
+// All icons use GDI+ with anti-aliasing for smooth edges.
+// =============================================================================
+
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -5,8 +26,12 @@ using System.Drawing.Drawing2D;
 namespace DataverseToPowerBI.Configurator.Forms
 {
     /// <summary>
-    /// Generates simple icons for the ribbon toolbar buttons
+    /// Generates simple icons for the ribbon toolbar buttons.
     /// </summary>
+    /// <remarks>
+    /// Icons are drawn programmatically using GDI+ rather than embedded resources.
+    /// Each icon is a 20x20 pixel bitmap with anti-aliasing.
+    /// </remarks>
     public static class RibbonIcons
     {
         private const int IconSize = 20;

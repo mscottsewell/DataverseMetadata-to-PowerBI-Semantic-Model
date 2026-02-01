@@ -1,3 +1,37 @@
+// ===================================================================================
+// SemanticModelSelectorDialog.cs - Semantic Model Management Hub
+// ===================================================================================
+//
+// PURPOSE:
+// This dialog serves as the central management interface for semantic model
+// configurations. It allows users to create, edit, copy, rename, and delete
+// model configurations stored in the central settings file.
+//
+// FEATURES:
+// - ListView grouped by Dataverse environment URL
+// - Current environment shown first for quick access
+// - Full CRUD operations for model configurations
+// - Working folder and template path management
+// - Connection type selection (standard Dataverse or Fabric mirroring)
+//
+// MODEL CONFIGURATION INCLUDES:
+// - Name and Dataverse URL
+// - Working folder for PBIP output
+// - Template path for base PBIP project
+// - Connection type (OData/Fabric)
+// - Fabric endpoint and database (when applicable)
+// - All table/attribute/relationship selections
+//
+// DATA BINDING:
+// The dialog uses the SemanticModelManager for persistence and the
+// SemanticModelConfig class for individual model data.
+//
+// DIALOG RESULT:
+// Returns the selected SemanticModelConfig through SelectedSemanticModel property.
+// ConfigurationsChanged indicates if any models were modified.
+//
+// ===================================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Drawing;

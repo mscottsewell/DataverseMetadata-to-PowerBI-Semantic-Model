@@ -1,3 +1,25 @@
+// =============================================================================
+// CalendarTableDialog.cs - Date/Calendar Table Configuration Dialog
+// =============================================================================
+// Purpose: Configures the Date dimension table for the Power BI semantic model.
+//
+// The Date table is essential for time intelligence calculations in Power BI.
+// This dialog allows users to:
+//   - Select the primary date field that links to the calendar dimension
+//   - Choose a timezone for UTC-to-local date conversion
+//   - Set the date range (start/end year) for the generated calendar
+//   - Select additional DateTime fields for timezone adjustment
+//
+// Key Features:
+//   - Auto-detection of DateTime fields across all selected tables
+//   - Timezone selection with base UTC offset (not DST-aware)
+//   - Support for restoring existing configuration
+//   - Validation of user inputs before saving
+//
+// Output:
+//   DateTableConfig object containing all calendar configuration
+// =============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -7,6 +29,21 @@ using DataverseToPowerBI.Configurator.Models;
 
 namespace DataverseToPowerBI.Configurator.Forms
 {
+    /// <summary>
+    /// Dialog for configuring the Date/Calendar dimension table.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Power BI analytics rely on a proper Date dimension for time intelligence
+    /// functions like TOTALYTD, SAMEPERIODLASTYEAR, etc. This dialog configures:
+    /// </para>
+    /// <list type="bullet">
+    ///   <item>Primary date field for calendar relationship</item>
+    ///   <item>Timezone for UTC-to-local conversion</item>
+    ///   <item>Date range for the generated calendar rows</item>
+    ///   <item>Additional DateTime fields to adjust for timezone</item>
+    /// </list>
+    /// </remarks>
     public class CalendarTableDialog : Form
     {
         // UI Controls

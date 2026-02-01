@@ -1,3 +1,38 @@
+// ===================================================================================
+// FetchXmlToSqlConverter.cs - FetchXML to SQL WHERE Clause Translation
+// ===================================================================================
+//
+// PURPOSE:
+// Converts Dataverse FetchXML filter conditions to SQL WHERE clauses for use in
+// Power BI DirectQuery partition expressions. This enables view-based filtering
+// to be applied directly in the TMDL table definitions.
+//
+// THIS IS A COPY OF THE CONFIGURATOR VERSION:
+// XrmToolBox uses .NET Framework 4.6.2 which has some limitations. This copy exists
+// in the XrmToolBox project to maintain compatibility while sharing the same logic.
+//
+// SUPPORTED OPERATORS:
+// Basic Comparison: eq, ne, gt, ge, lt, le
+// Null Checking: null, not-null
+// String Matching: like, not-like, begins-with, ends-with
+// Date Relative: today, yesterday, this-week, last-month, etc.
+// Date Dynamic: last-x-days, next-x-months, older-x-years, etc.
+// List Operations: in, not-in
+// User Context: eq-userid, ne-userid (partial support)
+//
+// TIMEZONE HANDLING:
+// All date comparisons include UTC offset adjustment using DATEADD(hour, offset, column)
+// to convert UTC-stored dates to the user's local timezone.
+//
+// OUTPUT FORMAT:
+// Returns a ConversionResult containing:
+// - SqlWhereClause: The generated SQL WHERE clause
+// - IsFullySupported: False if any operators couldn't be translated
+// - UnsupportedFeatures: List of operators that weren't converted
+// - DebugLog: Detailed conversion trace for troubleshooting
+//
+// ===================================================================================
+
 using System;
 using System.Collections.Generic;
 using System.IO;

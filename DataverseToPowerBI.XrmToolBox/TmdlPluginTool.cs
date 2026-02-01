@@ -1,3 +1,23 @@
+// =============================================================================
+// TmdlPluginTool.cs - XrmToolBox Plugin Entry Point
+// =============================================================================
+// Purpose: Plugin metadata and factory class for XrmToolBox integration.
+//
+// This class uses MEF (Managed Extensibility Framework) attributes to register
+// the plugin with XrmToolBox. The ExportMetadata attributes define:
+//   - Plugin name and description
+//   - Icon images (small and big, Base64 encoded PNG)
+//   - Color scheme for the plugin tile
+//
+// XrmToolBox Integration:
+//   - Inherits from PluginBase (XrmToolBox.Extensibility)
+//   - Implements GetControl() to return the plugin's UI control
+//   - Uses MEF [Export] to be discovered by XrmToolBox
+//
+// The actual plugin UI is in PluginControl.cs, which mirrors the functionality
+// of MainForm from the standalone Configurator application.
+// =============================================================================
+
 using System;
 using System.ComponentModel.Composition;
 using XrmToolBox.Extensibility;
@@ -6,8 +26,18 @@ using XrmToolBox.Extensibility.Interfaces;
 namespace DataverseToPowerBI.XrmToolBox
 {
     /// <summary>
-    /// XrmToolBox plugin metadata and factory
+    /// XrmToolBox plugin metadata and factory class.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This class registers the plugin with XrmToolBox using MEF attributes.
+    /// It provides the plugin's display name, description, and icon images.
+    /// </para>
+    /// <para>
+    /// When the user opens the plugin, XrmToolBox calls GetControl() to
+    /// instantiate the plugin UI (PluginControl).
+    /// </para>
+    /// </remarks>
     [Export(typeof(IXrmToolBoxPlugin)),
      ExportMetadata("Name", "Dataverse to Power BI Semantic Model"),
      ExportMetadata("Description", "Extract Dataverse metadata and generate Power BI TMDL/PBIP semantic models"),

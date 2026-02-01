@@ -1,3 +1,21 @@
+// =============================================================================
+// FormViewSelectorDialog.cs - Form and View Selection Dialog
+// =============================================================================
+// Purpose: Dialog for selecting a form and view for a specific table.
+//
+// This dialog is shown when editing a table's configuration. It allows:
+//   - Selecting a Dataverse form (determines which fields to include)
+//   - Selecting a Dataverse view (determines filter conditions)
+//
+// Forms:
+//   Main forms (type=2) define the UI layout. The form's fields are used
+//   to determine which columns to include in the Power BI model.
+//
+// Views:
+//   Saved queries with FetchXML filters. The view's filter is converted
+//   to SQL and applied as a partition WHERE clause.
+// =============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,6 +24,9 @@ using DataverseToPowerBI.Configurator.Models;
 
 namespace DataverseToPowerBI.Configurator.Forms
 {
+    /// <summary>
+    /// Dialog for selecting a form and view for a table.
+    /// </summary>
     public class FormViewSelectorDialog : Form
     {
         private ComboBox cmbForm;

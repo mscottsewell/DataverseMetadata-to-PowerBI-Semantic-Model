@@ -1,9 +1,37 @@
+// =============================================================================
+// NewSemanticModelDialog.cs - Create New Semantic Model Dialog
+// =============================================================================
+// Purpose: Dialog for creating a new Power BI semantic model configuration.
+//
+// This dialog collects all required information to create a new semantic model:
+//   - Semantic model name (becomes folder name and configuration name)
+//   - Dataverse environment URL
+//   - Connection type (Dataverse TDS or FabricLink)
+//   - Working folder location
+//   - PBIP template folder path
+//
+// Connection Types:
+//   - Dataverse TDS Endpoint: Native TDS connector for Dataverse
+//   - FabricLink Lakehouse SQL: Azure Synapse Link with Fabric Lakehouse
+//
+// Output:
+//   Properties are populated on OK: SemanticModelName, EnvironmentUrl,
+//   ConnectionType, WorkingFolder, TemplatePath, etc.
+// =============================================================================
+
 using System;
 using System.IO;
 using System.Windows.Forms;
 
 namespace DataverseToPowerBI.Configurator.Forms
 {
+    /// <summary>
+    /// Dialog for creating a new Power BI semantic model configuration.
+    /// </summary>
+    /// <remarks>
+    /// Collects semantic model name, environment URL, connection type,
+    /// and output folder. Validates inputs and shows preview path.
+    /// </remarks>
     public class NewSemanticModelDialog : Form
     {
         private TextBox txtName = null!;

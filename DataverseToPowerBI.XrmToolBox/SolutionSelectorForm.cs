@@ -1,3 +1,26 @@
+// ===================================================================================
+// SolutionSelectorForm.cs - Dataverse Solution Selection Dialog
+// ===================================================================================
+//
+// PURPOSE:
+// Displays a dropdown of available Dataverse solutions and lets the user select
+// one to load tables from. This is typically the first step in configuring a
+// new semantic model.
+//
+// WHY SOLUTIONS:
+// Solutions in Dataverse are containers for tables, forms, views, and other
+// components. Selecting by solution:
+// - Filters to relevant business tables (excludes system entities)
+// - Provides a logical grouping of related tables
+// - Matches how administrators organize their Dataverse customizations
+//
+// DISPLAY:
+// - Dropdown sorted alphabetically by friendly name
+// - Pre-selects the current solution if editing an existing model
+// - Simple OK/Cancel dialog pattern
+//
+// ===================================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Drawing;

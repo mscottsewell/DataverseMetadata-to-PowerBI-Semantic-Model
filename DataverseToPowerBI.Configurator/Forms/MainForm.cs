@@ -1,3 +1,58 @@
+// =============================================================================
+// MainForm.cs - Main Application Window for Dataverse Metadata Extractor
+// =============================================================================
+// Purpose: Primary WinForms interface for the Configurator application.
+//
+// This form provides the complete workflow for creating Power BI semantic
+// models from Dataverse metadata:
+//
+//   1. Connection Management
+//      - Connect to Dataverse environments via MSAL OAuth
+//      - Solution selection and table discovery
+//      - Metadata caching for offline access
+//
+//   2. Table Configuration
+//      - Select tables from solutions
+//      - Designate Fact vs Dimension roles (star-schema)
+//      - Configure snowflake relationships
+//
+//   3. Column/Attribute Selection
+//      - Select columns for each table
+//      - Filter by form fields (use form layout as column template)
+//      - View all or selected attributes
+//
+//   4. View/Filter Configuration
+//      - Select views to apply filter conditions
+//      - FetchXML filters converted to SQL WHERE clauses
+//
+//   5. Calendar/Date Table
+//      - Configure date dimension with timezone adjustment
+//      - Set primary date field for relationships
+//
+//   6. Semantic Model Generation
+//      - Generate TMDL files for Power BI .pbip projects
+//      - Incremental updates with change detection
+//      - Launch Power BI Desktop on completion
+//
+// UI Structure:
+//   - Semantic Model Dropdown: Switch between configurations
+//   - Tables ListView: Selected tables with role, form, view, attribute count
+//   - Attributes ListView: Columns for the selected table
+//   - Relationships ListView: Star-schema relationships
+//   - Status Bar: Connection status and progress
+//
+// Settings Persistence:
+//   - SettingsManager handles configuration storage
+//   - MetadataCache for offline Dataverse metadata
+//   - Multiple named configurations supported
+//
+// Related Classes:
+//   - DataverseClient: API communication
+//   - SettingsManager: Configuration persistence
+//   - SemanticModelBuilder: TMDL generation
+//   - FetchXmlToSqlConverter: View filter conversion
+// =============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -12,36 +67,95 @@ using Newtonsoft.Json;
 
 namespace DataverseToPowerBI.Configurator.Forms
 {
+    /// <summary>
+    /// Main application window for the Dataverse Metadata Extractor for Power BI.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This form orchestrates the complete workflow for generating Power BI
+    /// semantic models from Dataverse metadata. Key features include:
+    /// </para>
+    /// <list type="bullet">
+    ///   <item>OAuth authentication to Dataverse environments</item>
+    ///   <item>Solution-based table discovery</item>
+    ///   <item>Star-schema modeling (Fact/Dimension designation)</item>
+    ///   <item>Form-based column selection</item>
+    ///   <item>View-based filter configuration</item>
+    ///   <item>Date table generation with timezone handling</item>
+    ///   <item>TMDL file generation for Power BI Desktop</item>
+    /// </list>
+    /// <para>
+    /// State is managed through in-memory dictionaries that are persisted
+    /// via SettingsManager and MetadataCache for session continuity.
+    /// </para>
+    /// </remarks>
     public partial class MainForm : Form
     {
+        #region Private Fields
+
+        /// <summary>Dataverse API client (null when disconnected).</summary>
         private DataverseClient? _client;
+
+        /// <summary>Settings persistence manager.</summary>
         private readonly SettingsManager _settingsManager;
+
+        /// <summary>Current application settings.</summary>
         private AppSettings _settings;
+
+        /// <summary>Cached Dataverse metadata for offline access.</summary>
         private MetadataCache _cache;
         
-        // State management
-        private Dictionary<string, TableInfo> _selectedTables = new();  // logicalName -> table
-        private Dictionary<string, List<FormMetadata>> _tableForms = new();  // logicalName -> forms
-        private Dictionary<string, List<ViewMetadata>> _tableViews = new();  // logicalName -> views
-        private Dictionary<string, List<AttributeMetadata>> _tableAttributes = new();  // logicalName -> attributes
-        private Dictionary<string, HashSet<string>> _selectedAttributes = new();  // logicalName -> selected attr names
-        private Dictionary<string, string> _selectedViews = new();  // logicalName -> selected view id
-        private Dictionary<string, bool> _loadingStates = new();  // logicalName -> is loading
+        // Table state management
+        /// <summary>Selected tables indexed by logical name.</summary>
+        private Dictionary<string, TableInfo> _selectedTables = new();
+
+        /// <summary>Forms per table (logicalName -> forms).</summary>
+        private Dictionary<string, List<FormMetadata>> _tableForms = new();
+
+        /// <summary>Views per table (logicalName -> views).</summary>
+        private Dictionary<string, List<ViewMetadata>> _tableViews = new();
+
+        /// <summary>Attributes per table (logicalName -> attributes).</summary>
+        private Dictionary<string, List<AttributeMetadata>> _tableAttributes = new();
+
+        /// <summary>Selected attribute names per table.</summary>
+        private Dictionary<string, HashSet<string>> _selectedAttributes = new();
+
+        /// <summary>Selected view ID per table.</summary>
+        private Dictionary<string, string> _selectedViews = new();
+
+        /// <summary>Loading state flags per table.</summary>
+        private Dictionary<string, bool> _loadingStates = new();
 
         // Star-schema state
-        private string? _factTable = null;  // Logical name of the fact table
-        private List<RelationshipConfig> _relationships = new();  // Configured relationships
-        private DateTableConfig? _dateTableConfig = null;  // Calendar/Date table configuration
+        /// <summary>Logical name of the fact table (null if not designated).</summary>
+        private string? _factTable = null;
+
+        /// <summary>Configured star-schema relationships.</summary>
+        private List<RelationshipConfig> _relationships = new();
+
+        /// <summary>Calendar/Date table configuration.</summary>
+        private DateTableConfig? _dateTableConfig = null;
         
-        // Sorting state
+        // ListView sorting state
         private int _selectedTablesSortColumn = -1;
         private bool _selectedTablesSortAscending = true;
         private int _attributesSortColumn = -1;
         private bool _attributesSortAscending = true;
         
+        /// <summary>Currently selected solution name.</summary>
         private string? _currentSolutionName;
-        private bool _isLoading = false;  // Prevent SaveSettings during initial load
 
+        /// <summary>Flag to prevent settings save during initialization.</summary>
+        private bool _isLoading = false;
+
+        #endregion
+
+        #region Constructor and Initialization
+
+        /// <summary>
+        /// Initializes a new instance of the MainForm class.
+        /// </summary>
         public MainForm()
         {
             InitializeComponent();

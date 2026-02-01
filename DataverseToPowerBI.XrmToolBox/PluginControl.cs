@@ -1,3 +1,31 @@
+// =============================================================================
+// PluginControl.cs - XrmToolBox Plugin User Interface
+// =============================================================================
+// Purpose: Main UI control for the XrmToolBox plugin version.
+//
+// This control mirrors the functionality of MainForm from the standalone
+// Configurator application, but integrates with XrmToolBox for:
+//   - Connection management (uses XrmToolBox connection manager)
+//   - Authentication (inherits CRM authentication from XrmToolBox)
+//   - Plugin lifecycle (Load, Unload, ConnectionUpdated events)
+//
+// Key Differences from MainForm:
+//   - Uses IOrganizationService via XrmServiceAdapterImpl instead of Web API
+//   - Integrates with XrmToolBox settings storage
+//   - No custom OAuth - uses XrmToolBox connection
+//
+// Features:
+//   - Solution and table selection
+//   - Star-schema modeling (Fact/Dimension)
+//   - Form and view selection
+//   - Attribute selection with form-based presets
+//   - Relationship configuration including snowflake
+//   - TMDL generation for Power BI projects
+//
+// The plugin stores configuration per-environment in the XrmToolBox settings
+// folder using SemanticModelManager.
+// =============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -18,9 +46,23 @@ using XrmModels = DataverseToPowerBI.XrmToolBox.Models;
 namespace DataverseToPowerBI.XrmToolBox
 {
     /// <summary>
-    /// XrmToolBox plugin control - mirrors MainForm from standalone app
-    /// Only difference: authentication via XrmToolBox instead of custom OAuth
+    /// XrmToolBox plugin control - main UI for the Dataverse to Power BI tool.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This control provides the same functionality as MainForm from the standalone
+    /// Configurator, but integrates with XrmToolBox for connection management.
+    /// </para>
+    /// <para>
+    /// Key workflow:
+    /// </para>
+    /// <list type="number">
+    ///   <item>User connects via XrmToolBox connection manager</item>
+    ///   <item>Select solution and tables (same as standalone)</item>
+    ///   <item>Configure star-schema, forms, views, attributes</item>
+    ///   <item>Generate TMDL files for Power BI Desktop</item>
+    /// </list>
+    /// </remarks>
     public partial class PluginControl : PluginControlBase
     {
         private XrmServiceAdapterImpl _xrmAdapter;

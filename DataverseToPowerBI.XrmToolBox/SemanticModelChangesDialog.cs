@@ -1,3 +1,34 @@
+// ===================================================================================
+// SemanticModelChangesDialog.cs - Change Preview and Confirmation Dialog
+// ===================================================================================
+//
+// PURPOSE:
+// Displays a detailed preview of all changes that will be made to the Power BI
+// semantic model files before applying them. This gives users visibility into
+// what's being modified and an opportunity to cancel or create a backup.
+//
+// CHANGE TYPES DISPLAYED:
+// - New: Tables, columns, or relationships being added
+// - Update: Existing elements being modified
+// - Preserve: User customizations that will be kept (e.g., measures)
+// - Warning: Issues like orphaned tables or partial FetchXML support
+//
+// COLOR CODING:
+// - Green: New additions
+// - Yellow: Updates and modifications
+// - Gray: Preserved elements (no changes)
+// - Orange: Warnings requiring attention
+//
+// BACKUP OPTION:
+// Users can opt to create a timestamped backup of the PBIP folder before
+// changes are applied. This provides a recovery point.
+//
+// OUTPUT:
+// - UserApproved: True if user clicked Apply
+// - CreateBackup: True if backup checkbox was checked
+//
+// ===================================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Drawing;

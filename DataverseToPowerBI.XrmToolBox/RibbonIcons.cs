@@ -1,3 +1,29 @@
+// ===================================================================================
+// RibbonIcons.cs - GDI+ Icon Generation for XrmToolBox Toolbar
+// ===================================================================================
+//
+// PURPOSE:
+// Generates simple 20x20 pixel icons for the XrmToolBox plugin toolbar buttons
+// using GDI+ drawing primitives. This avoids external image file dependencies.
+//
+// ICONS PROVIDED:
+// - FolderIcon: Yellow folder for "Change Working Folder"
+// - TableIcon: Blue grid for "Select Tables"
+// - ColumnsIcon: Columns representation for "Select Columns"
+// - RelationshipIcon: Connected nodes for "Configure Relationships"
+// - CalendarIcon: Calendar grid for "Configure Date Table"
+// - SaveIcon: Floppy disk for "Save/Export"
+// - SyncIcon: Circular arrows for "Sync/Refresh"
+// - BuildIcon: Hammer/wrench for "Build Model"
+//
+// DESIGN PRINCIPLES:
+// - Simple geometric shapes for clarity at small sizes
+// - Consistent color palette (blue, yellow, green, gray)
+// - Anti-aliased rendering for smooth edges
+// - Transparent backgrounds for toolbar integration
+//
+// ===================================================================================
+
 using System.Drawing;
 using System.Drawing.Drawing2D;
 

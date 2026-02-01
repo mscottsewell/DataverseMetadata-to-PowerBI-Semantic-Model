@@ -1,3 +1,29 @@
+// ===================================================================================
+// FormViewSelectorForm.cs - Form and View Selection Dialog for XrmToolBox
+// ===================================================================================
+//
+// PURPOSE:
+// This dialog allows users to select a specific System Form and Saved View for
+// a table when configuring the semantic model. This enables:
+//
+// FORM SELECTION (Column Source):
+// - System forms define which fields appear in the UI
+// - Using form columns ensures only expose user-facing fields
+// - Reduces model size by excluding internal/system fields
+//
+// VIEW SELECTION (Row Filter):
+// - Saved views contain FetchXML filters that limit which rows are returned
+// - The FetchXML is converted to SQL WHERE clauses for DirectQuery
+// - Enables pre-filtered tables (e.g., "Active Accounts Only")
+//
+// DISPLAY:
+// Shows available forms and views in dropdowns with:
+// - Form/View name and type
+// - Number of columns/fields for forms
+// - Preview information to help users choose
+//
+// ===================================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Drawing;

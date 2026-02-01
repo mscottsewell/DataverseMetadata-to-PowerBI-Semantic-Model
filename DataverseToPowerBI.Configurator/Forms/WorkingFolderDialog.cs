@@ -1,3 +1,18 @@
+// =============================================================================
+// WorkingFolderDialog.cs - Working Folder Selection Dialog
+// =============================================================================
+// Purpose: Simple dialog for selecting the working folder where semantic
+// model PBIP files will be generated.
+//
+// Features:
+//   - Browse for folder using FolderBrowserDialog
+//   - Open current folder in Windows Explorer
+//   - Create folder if it doesn't exist (with confirmation)
+//
+// The working folder is the parent directory that contains individual
+// semantic model folders (e.g., Reports/MyModel/MyModel.pbip).
+// =============================================================================
+
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -5,6 +20,9 @@ using System.Windows.Forms;
 
 namespace DataverseToPowerBI.Configurator.Forms
 {
+    /// <summary>
+    /// Dialog for selecting the working folder for semantic model output.
+    /// </summary>
     public class WorkingFolderDialog : Form
     {
         private TextBox txtFolder = null!;

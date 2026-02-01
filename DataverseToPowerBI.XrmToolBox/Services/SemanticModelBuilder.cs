@@ -1,3 +1,47 @@
+// ===================================================================================
+// SemanticModelBuilder.cs - TMDL Generation for Power BI Semantic Models
+// ===================================================================================
+//
+// PURPOSE:
+// This class generates Power BI Semantic Model (PBIP) projects from Dataverse
+// metadata. It creates TMDL (Tabular Model Definition Language) files that define
+// tables, columns, relationships, and expressions for DirectQuery access to Dataverse.
+//
+// THIS IS A COPY OF THE CONFIGURATOR VERSION:
+// XrmToolBox uses .NET Framework 4.6.2 which has some limitations. This copy exists
+// in the XrmToolBox project to maintain compatibility while sharing the same logic.
+//
+// OUTPUT STRUCTURE:
+// {WorkingFolder}/
+// └─ {EnvironmentName}/
+//    └─ {ModelName}/
+//       ├─ {ModelName}.pbip              - Power BI Project file
+//       ├─ {ModelName}.SemanticModel/    - Semantic model folder
+//       │  ├─ definition/
+//       │  │  ├─ model.tmdl            - Model metadata and table refs
+//       │  │  ├─ relationships.tmdl    - All relationship definitions
+//       │  │  └─ tables/               - Individual table TMDL files
+//       │  │     ├─ DataverseURL.tmdl
+//       │  │     ├─ Date.tmdl (if configured)
+//       │  │     └─ {TableName}.tmdl ...
+//       │  └─ .platform                 - Fabric platform metadata
+//       └─ {ModelName}.Report/            - Empty report folder
+//
+// KEY FEATURES:
+// - DirectQuery partitions using native SQL against Dataverse TDS endpoint
+// - Automatic relationship generation from lookup field metadata
+// - Date dimension table generation with timezone support
+// - FetchXML view filter translation to SQL WHERE clauses
+// - Incremental update support with user measure preservation
+// - Change analysis before applying updates
+//
+// TMDL FORMAT REQUIREMENTS:
+// - UTF-8 encoding without BOM
+// - CRLF line endings (Windows)
+// - Tab indentation
+//
+// ===================================================================================
+
 using System;
 using System.Collections.Generic;
 using System.IO;

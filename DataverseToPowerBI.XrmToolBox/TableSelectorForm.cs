@@ -1,3 +1,34 @@
+// ===================================================================================
+// TableSelectorForm.cs - Solution Table Selection Dialog for XrmToolBox
+// ===================================================================================
+//
+// PURPOSE:
+// This dialog displays all tables in a selected Dataverse solution and allows
+// users to choose which tables to include in their Power BI semantic model.
+//
+// FEATURES:
+// - ListView with checkboxes for multi-select
+// - Search/filter to find tables by name
+// - Select All / Deselect All buttons
+// - Fact Table dropdown to designate the central transactional table
+// - Shows both display name and logical name for each table
+//
+// FACT TABLE SELECTION:
+// When a fact table is selected, the system will:
+// 1. Treat it as the center of the star schema
+// 2. Auto-detect dimension relationships via lookups
+// 3. Generate appropriate many-to-one relationships
+//
+// PRE-SELECTION:
+// For edit scenarios, the dialog accepts a list of previously selected tables
+// and the current fact table to restore the user's prior choices.
+//
+// OUTPUT:
+// - SelectedTables: List of TableInfo objects for chosen tables
+// - FactTable: Logical name of the designated fact table
+//
+// ===================================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Drawing;

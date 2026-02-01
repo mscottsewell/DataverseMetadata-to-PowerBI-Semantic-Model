@@ -1,3 +1,48 @@
+// =============================================================================
+// SemanticModelBuilder.cs - Power BI Semantic Model Generator
+// =============================================================================
+// Purpose: Generates Power BI semantic models in TMDL (Tabular Model Definition
+//          Language) format from Dataverse metadata.
+//
+// This is the core engine that transforms Dataverse table/attribute selections
+// into a complete Power BI project (.pbip) ready for use in Power BI Desktop.
+//
+// Key Features:
+//   - TMDL Generation: Creates tables, columns, relationships, and partitions
+//   - Star Schema Support: Handles fact/dimension relationships properly
+//   - Calendar Table: Generates date tables with timezone adjustment
+//   - Incremental Updates: Can analyze and apply changes to existing models
+//   - User Content Preservation: Keeps user-created measures during updates
+//   - View Filter Support: Converts FetchXML to SQL WHERE clauses
+//
+// TMDL Structure Generated:
+//   PBIP/
+//   ├── {ProjectName}.pbip              # Main project file
+//   ├── {ProjectName}.Report/           # Empty report template
+//   └── {ProjectName}.SemanticModel/    # Semantic model definition
+//       ├── definition/
+//       │   ├── model.tmdl              # Model metadata and table refs
+//       │   ├── relationships.tmdl      # All table relationships
+//       │   └── tables/                 # One .tmdl file per table
+//       │       ├── DataverseURL.tmdl   # Connection parameter
+//       │       ├── Date.tmdl           # Calendar table (if configured)
+//       │       └── {TableName}.tmdl    # Entity tables
+//       └── definition.pbism            # Semantic model settings
+//
+// Data Types Mapping:
+//   Dataverse Type   ->  Power BI Type  ->  Format
+//   Integer          ->  int64          ->  0
+//   Decimal/Money    ->  decimal        ->  #,0.00 / $#,0.00
+//   DateTime         ->  dateTime       ->  Short Date
+//   Lookup           ->  string (GUID)  ->  (none)
+//   Picklist         ->  string (name)  ->  (none)
+//   String/Memo      ->  string         ->  (none)
+//
+// Usage:
+//   var builder = new SemanticModelBuilder(templatePath, statusCallback);
+//   builder.Build(projectName, outputFolder, dataverseUrl, tables, relationships, attrInfo);
+// =============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,20 +59,77 @@ using System.Xml.Linq;
 namespace DataverseToPowerBI.Configurator.Services
 {
     /// <summary>
-    /// Builds a Power BI Semantic Model (PBIP) from Dataverse metadata
+    /// Builds Power BI semantic models (PBIP format) from Dataverse metadata.
+    /// Generates TMDL files for tables, columns, relationships, and partitions.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The SemanticModelBuilder is the core workhorse of this application. It takes
+    /// the user's table/attribute selections and generates a complete Power BI
+    /// project that can be opened in Power BI Desktop.
+    /// </para>
+    /// <para>
+    /// Key capabilities:
+    /// </para>
+    /// <list type="bullet">
+    ///   <item>Generates TMDL from a template, replacing placeholders with actual data</item>
+    ///   <item>Creates DirectQuery partitions with proper SQL queries</item>
+    ///   <item>Handles star-schema relationships with proper cardinality</item>
+    ///   <item>Supports incremental updates that preserve user measures</item>
+    ///   <item>Converts FetchXML view filters to SQL WHERE clauses</item>
+    /// </list>
+    /// </remarks>
     public class SemanticModelBuilder
     {
+        #region Private Fields
+
+        /// <summary>
+        /// Path to the PBIP template folder.
+        /// The template contains the base project structure that gets copied and customized.
+        /// </summary>
         private readonly string _templatePath;
+
+        /// <summary>
+        /// Optional callback for status updates during build.
+        /// Called with progress messages that can be displayed in the UI.
+        /// </summary>
         private readonly Action<string>? _statusCallback;
+
+        /// <summary>
+        /// UTF-8 encoding without BOM (Byte Order Mark).
+        /// Power BI TMDL files must use UTF-8 without BOM for compatibility.
+        /// </summary>
         private static readonly Encoding Utf8WithoutBom = new UTF8Encoding(false);
 
+        #endregion
+
+        #region Constructor
+
+        /// <summary>
+        /// Initializes a new instance of the SemanticModelBuilder class.
+        /// </summary>
+        /// <param name="templatePath">
+        /// Path to the PBIP template folder. The template must contain a .pbip file
+        /// and the associated SemanticModel folder structure.
+        /// </param>
+        /// <param name="statusCallback">
+        /// Optional callback invoked with status messages during the build process.
+        /// Use this to update a progress indicator in the UI.
+        /// </param>
         public SemanticModelBuilder(string templatePath, Action<string>? statusCallback = null)
         {
             _templatePath = templatePath;
             _statusCallback = statusCallback;
         }
 
+        #endregion
+
+        #region Private Helper Methods
+
+        /// <summary>
+        /// Sends a status message to the callback and debug log.
+        /// </summary>
+        /// <param name="message">The status message to report.</param>
         private void SetStatus(string message)
         {
             _statusCallback?.Invoke(message);
@@ -35,8 +137,16 @@ namespace DataverseToPowerBI.Configurator.Services
         }
 
         /// <summary>
-        /// Writes text to a file using UTF-8 without BOM encoding and CRLF line endings
+        /// Writes text to a file using UTF-8 without BOM encoding and CRLF line endings.
         /// </summary>
+        /// <param name="path">The file path to write to.</param>
+        /// <param name="content">The content to write.</param>
+        /// <remarks>
+        /// Power BI Desktop expects:
+        /// - UTF-8 encoding without BOM (byte order mark)
+        /// - CRLF line endings (Windows standard)
+        /// Using incorrect encoding can cause Power BI to fail loading the model.
+        /// </remarks>
         private static void WriteTmdlFile(string path, string content)
         {
             // Ensure CRLF line endings (Power BI Desktop standard)
@@ -44,9 +154,35 @@ namespace DataverseToPowerBI.Configurator.Services
             File.WriteAllText(path, content, Utf8WithoutBom);
         }
 
+        #endregion
+
+        #region Main Build Methods
+
         /// <summary>
-        /// Builds the semantic model in the specified output folder
+        /// Builds the semantic model in the specified output folder.
+        /// Creates a fresh PBIP project from template, overwriting any existing content.
         /// </summary>
+        /// <param name="semanticModelName">
+        /// Name for the semantic model (used for folder names and display).
+        /// </param>
+        /// <param name="outputFolder">
+        /// Parent folder where the PBIP folder will be created.
+        /// </param>
+        /// <param name="dataverseUrl">
+        /// The Dataverse environment URL (e.g., "https://org.crm.dynamics.com").
+        /// </param>
+        /// <param name="tables">
+        /// List of tables to include in the model with their configuration.
+        /// </param>
+        /// <param name="relationships">
+        /// List of relationships to create between tables.
+        /// </param>
+        /// <param name="attributeDisplayInfo">
+        /// Display information for attributes, keyed by table then attribute logical name.
+        /// </param>
+        /// <param name="dateTableConfig">
+        /// Optional configuration for calendar/date table generation.
+        /// </param>
         public void Build(
             string semanticModelName,
             string outputFolder,

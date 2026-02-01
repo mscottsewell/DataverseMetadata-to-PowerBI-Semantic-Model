@@ -1,3 +1,43 @@
+// ===================================================================================
+// SemanticModelManager.cs - Central Configuration Management for Semantic Models
+// ===================================================================================
+//
+// PURPOSE:
+// This class manages the central registry of all semantic model configurations
+// across multiple Dataverse environments. It provides a single source of truth for
+// model settings, enabling users to switch between environments and models easily.
+//
+// STORAGE LOCATION:
+// All configurations are stored in:
+//   %APPDATA%\MscrmTools\XrmToolBox\Settings\DataverseToPowerBI\semantic-models.json
+//
+// This follows XrmToolBox conventions for plugin settings storage.
+//
+// DATA MODEL:
+// - SemanticModelsFile: Root container for all models and global settings
+// - SemanticModelConfig: Individual model configuration including:
+//   - Name and Dataverse URL
+//   - Selected solution, tables, and attributes
+//   - Star-schema configuration (fact table, relationships)
+//   - Date table settings
+//   - Working folder path
+//
+// KEY OPERATIONS:
+// - GetModelsForEnvironment(): List models for a specific Dataverse environment
+// - GetOrCreateModel(): Get existing or create new model by name
+// - SaveModel(): Persist model configuration to JSON
+// - DeleteModel(): Remove model from registry
+// - SetCurrentModel(): Track the active model for quick access
+//
+// SERIALIZATION:
+// Uses DataContractJsonSerializer for compatibility with .NET Framework 4.6.2
+// (required by XrmToolBox). This ensures proper handling of:
+// - Dictionary serialization
+// - Nullable types
+// - DateTime values
+//
+// ===================================================================================
+
 using System;
 using System.Collections.Generic;
 using System.IO;

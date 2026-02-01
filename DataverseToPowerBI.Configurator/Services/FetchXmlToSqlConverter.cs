@@ -1,3 +1,39 @@
+// =============================================================================
+// FetchXmlToSqlConverter.cs - FetchXML to SQL Converter
+// =============================================================================
+// Purpose: Converts Dataverse FetchXML filter conditions to SQL WHERE clauses.
+//
+// FetchXML is the proprietary query language used by Dataverse. When users
+// select a view for a table, the view's FetchXML filter needs to be converted
+// to SQL so it can be included in the Power BI DirectQuery partition.
+//
+// Supported Operators:
+//   Basic Comparison: eq, ne, gt, ge, lt, le
+//   Null Checks: null, not-null
+//   String Matching: like, not-like, begins-with, ends-with
+//   Date Absolute: today, yesterday, this-week, this-month, this-year, etc.
+//   Date Relative: last-x-days, next-x-months, older-x-years, etc.
+//   Date Comparison: on, on-or-after, on-or-before
+//   List Operators: in, not-in
+//   User Context: eq-userid, ne-userid
+//
+// Timezone Handling:
+//   Dataverse stores all DateTime values in UTC. This converter applies
+//   timezone adjustment using DATEADD(hour, offset, column) to convert
+//   UTC times to the user's local timezone before comparison.
+//
+// Limitations:
+//   - Some complex operators may not be fully supported
+//   - Link-entity filters are converted to EXISTS subqueries
+//   - Unsupported operators are logged for manual review
+//
+// Usage:
+//   var converter = new FetchXmlToSqlConverter(utcOffsetHours: -5);
+//   var result = converter.ConvertToWhereClause(fetchXml, "Base");
+//   if (result.IsFullySupported)
+//       // Use result.SqlWhereClause in your query
+// =============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,32 +43,143 @@ using System.Xml.Linq;
 namespace DataverseToPowerBI.Configurator.Services
 {
     /// <summary>
-    /// Converts FetchXML filter conditions to SQL WHERE clauses
+    /// Converts FetchXML filter conditions to SQL WHERE clauses for Power BI DirectQuery.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// FetchXML is Dataverse's proprietary query language. When generating Power BI
+    /// semantic models, view filters expressed in FetchXML must be converted to SQL
+    /// for use in DirectQuery partitions.
+    /// </para>
+    /// <para>
+    /// The converter handles:
+    /// </para>
+    /// <list type="bullet">
+    ///   <item>Basic comparisons (eq, ne, gt, lt, etc.)</item>
+    ///   <item>Date operators with timezone adjustment</item>
+    ///   <item>String pattern matching (like, begins-with, etc.)</item>
+    ///   <item>Nested filter groups with AND/OR logic</item>
+    ///   <item>Link-entity filters as EXISTS subqueries</item>
+    /// </list>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// var converter = new FetchXmlToSqlConverter(-5); // EST timezone
+    /// var result = converter.ConvertToWhereClause(fetchXml, "Base");
+    /// 
+    /// if (result.IsFullySupported)
+    ///     Console.WriteLine($"WHERE {result.SqlWhereClause}");
+    /// else
+    ///     Console.WriteLine($"Partial: {string.Join(", ", result.UnsupportedFeatures)}");
+    /// </code>
+    /// </example>
     public class FetchXmlToSqlConverter
     {
+        #region Private Fields
+
+        /// <summary>
+        /// Debug log entries captured during conversion for troubleshooting.
+        /// </summary>
         private readonly List<string> _debugLog = new();
+
+        /// <summary>
+        /// Features encountered that could not be converted to SQL.
+        /// </summary>
         private readonly List<string> _unsupportedFeatures = new();
+
+        /// <summary>
+        /// Flag indicating whether any unsupported features were encountered.
+        /// </summary>
         private bool _hasUnsupportedFeatures = false;
+
+        /// <summary>
+        /// UTC offset in hours for timezone adjustment.
+        /// Negative for timezones west of UTC (Americas), positive for east.
+        /// </summary>
         private readonly int _utcOffsetHours;
 
+        #endregion
+
+        #region Constructor
+
+        /// <summary>
+        /// Initializes a new instance of the FetchXmlToSqlConverter class.
+        /// </summary>
+        /// <param name="utcOffsetHours">
+        /// UTC offset in hours for timezone adjustment.
+        /// Use -5 for EST, -8 for PST, 0 for UTC, +1 for CET, etc.
+        /// Default is -6 (Central Time).
+        /// </param>
         public FetchXmlToSqlConverter(int utcOffsetHours = -6)
         {
             _utcOffsetHours = utcOffsetHours;
         }
 
+        #endregion
+
+        #region Nested Types
+
+        /// <summary>
+        /// Result of a FetchXML to SQL conversion operation.
+        /// Contains the generated SQL and diagnostic information.
+        /// </summary>
         public class ConversionResult
         {
+            /// <summary>
+            /// The generated SQL WHERE clause (without the "WHERE" keyword).
+            /// Empty string if no conditions could be converted.
+            /// </summary>
             public string SqlWhereClause { get; set; } = "";
+
+            /// <summary>
+            /// Whether all FetchXML conditions were successfully converted.
+            /// False if any operators or features were not supported.
+            /// </summary>
             public bool IsFullySupported { get; set; } = true;
+
+            /// <summary>
+            /// List of features that could not be converted to SQL.
+            /// Useful for warning users about potential filter gaps.
+            /// </summary>
             public List<string> UnsupportedFeatures { get; set; } = new();
+
+            /// <summary>
+            /// Detailed conversion debug log for troubleshooting.
+            /// </summary>
             public List<string> DebugLog { get; set; } = new();
+
+            /// <summary>
+            /// Human-readable summary of the conversion result.
+            /// </summary>
             public string Summary { get; set; } = "";
         }
 
+        #endregion
+
+        #region Main Conversion Method
+
         /// <summary>
-        /// Converts FetchXML to SQL WHERE clause
+        /// Converts FetchXML to a SQL WHERE clause.
         /// </summary>
+        /// <param name="fetchXml">The FetchXML query to convert.</param>
+        /// <param name="tableAlias">
+        /// SQL table alias to use in column references (default: "Base").
+        /// </param>
+        /// <returns>
+        /// A ConversionResult containing the SQL WHERE clause and diagnostic info.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// The conversion process:
+        /// </para>
+        /// <list type="number">
+        ///   <item>Parse the FetchXML document</item>
+        ///   <item>Extract filter elements from the main entity</item>
+        ///   <item>Process each condition and nested filter</item>
+        ///   <item>Handle link-entity filters as EXISTS subqueries</item>
+        ///   <item>Combine all clauses with appropriate AND/OR logic</item>
+        /// </list>
+        /// </remarks>
         public ConversionResult ConvertToWhereClause(string fetchXml, string tableAlias = "Base")
         {
             _debugLog.Clear();
@@ -112,6 +259,20 @@ namespace DataverseToPowerBI.Configurator.Services
             }
         }
 
+        #endregion
+
+        #region Filter Processing Methods
+
+        /// <summary>
+        /// Processes a filter element and returns the SQL clause.
+        /// </summary>
+        /// <param name="filter">The FetchXML filter element.</param>
+        /// <param name="tableAlias">SQL table alias for column references.</param>
+        /// <returns>SQL clause combining all conditions with AND/OR logic.</returns>
+        /// <remarks>
+        /// FetchXML filters contain conditions and can be nested. Each filter has a type
+        /// attribute (and/or) that determines how child conditions are combined.
+        /// </remarks>
         private string ProcessFilter(XElement filter, string tableAlias)
         {
             var filterType = filter.Attribute("type")?.Value ?? "and";
@@ -132,7 +293,7 @@ namespace DataverseToPowerBI.Configurator.Services
                 }
             }
 
-            // Process nested filters
+            // Process nested filters (recursive)
             foreach (var nestedFilter in nestedFilters)
             {
                 var clause = ProcessFilter(nestedFilter, tableAlias);
@@ -149,6 +310,16 @@ namespace DataverseToPowerBI.Configurator.Services
             return string.Join(separator, clauses);
         }
 
+        /// <summary>
+        /// Processes a single condition element and returns the SQL expression.
+        /// </summary>
+        /// <param name="condition">The FetchXML condition element.</param>
+        /// <param name="tableAlias">SQL table alias for column references.</param>
+        /// <returns>SQL expression for this condition, or empty string if unsupported.</returns>
+        /// <remarks>
+        /// This method handles all supported FetchXML operators including comparisons,
+        /// string matching, date operators (both absolute and relative), and list operators.
+        /// </remarks>
         private string ProcessCondition(XElement condition, string tableAlias)
         {
             var attribute = condition.Attribute("attribute")?.Value;
@@ -244,6 +415,21 @@ namespace DataverseToPowerBI.Configurator.Services
             }
         }
 
+        #endregion
+
+        #region Date Operator Conversion Methods
+
+        /// <summary>
+        /// Converts absolute date operators (today, this-week, this-month, etc.) to SQL.
+        /// </summary>
+        /// <param name="columnRef">Fully qualified column reference (alias.column).</param>
+        /// <param name="dateOperator">The FetchXML date operator name.</param>
+        /// <returns>SQL expression that evaluates the date condition.</returns>
+        /// <remarks>
+        /// All date comparisons apply timezone adjustment to convert UTC stored values
+        /// to local time before comparison. The adjustment uses DATEADD with the
+        /// _utcOffsetHours value provided at construction time.
+        /// </remarks>
         private string ConvertDateOperator(string columnRef, string dateOperator)
         {
             // Convert FetchXML date operators to SQL equivalents
@@ -273,6 +459,19 @@ namespace DataverseToPowerBI.Configurator.Services
             };
         }
 
+        /// <summary>
+        /// Converts relative date operators (last-x-days, next-x-months, etc.) to SQL.
+        /// </summary>
+        /// <param name="columnRef">Fully qualified column reference (alias.column).</param>
+        /// <param name="datepart">SQL DATEPART value (day, week, month, year).</param>
+        /// <param name="value">Number of units (e.g., "7" for last-7-days).</param>
+        /// <param name="direction">-1 for "last" (past), 1 for "next" (future).</param>
+        /// <returns>SQL expression with range bounds for the relative period.</returns>
+        /// <remarks>
+        /// Relative date operators create range queries. For example, "last-4-months"
+        /// generates a condition that matches dates from the start of 4 months ago
+        /// up to (but not including) the start of next month.
+        /// </remarks>
         private string ConvertRelativeDateOperator(string columnRef, string datepart, string value, int direction)
         {
             // direction: -1 for "last", 1 for "next"
@@ -309,6 +508,13 @@ namespace DataverseToPowerBI.Configurator.Services
             }
         }
 
+        /// <summary>
+        /// Converts "older-x-months/years" operators to SQL.
+        /// </summary>
+        /// <param name="columnRef">Fully qualified column reference.</param>
+        /// <param name="datepart">SQL DATEPART value (month, year).</param>
+        /// <param name="value">Number of units threshold.</param>
+        /// <returns>SQL expression matching dates older than the threshold.</returns>
         private string ConvertOlderThanOperator(string columnRef, string datepart, string value)
         {
             if (!int.TryParse(value, out int units))
@@ -326,6 +532,21 @@ namespace DataverseToPowerBI.Configurator.Services
             return $"{adjustedColumn} < {threshold}";
         }
 
+        #endregion
+
+        #region User Context and List Operators
+
+        /// <summary>
+        /// Converts user team membership operators to SQL subquery.
+        /// </summary>
+        /// <param name="columnRef">Fully qualified column reference.</param>
+        /// <param name="isEqual">True for eq-userteams, false for ne-userteams.</param>
+        /// <returns>SQL expression with subquery checking team membership.</returns>
+        /// <remarks>
+        /// User team operators require access to the TeamMembership table which may
+        /// not be available in the DirectQuery context. This is logged as a partially
+        /// supported feature.
+        /// </remarks>
         private string ConvertUserTeamsOperator(string columnRef, bool isEqual)
         {
             // User teams require checking if the value is in the user's teams
@@ -335,6 +556,16 @@ namespace DataverseToPowerBI.Configurator.Services
             return $"{columnRef} {comparison} ({userTeamsQuery})";
         }
 
+        /// <summary>
+        /// Processes the IN operator for list membership checks.
+        /// </summary>
+        /// <param name="condition">The FetchXML condition element containing values.</param>
+        /// <param name="columnRef">Fully qualified column reference.</param>
+        /// <returns>SQL IN expression, or empty string if no values found.</returns>
+        /// <remarks>
+        /// Values can be specified either as child &lt;value&gt; elements or as a
+        /// comma-separated list in the value attribute.
+        /// </remarks>
         private string ProcessInOperator(XElement condition, string columnRef)
         {
             var values = condition.Elements("value").Select(v => v.Value).ToList();
@@ -357,6 +588,12 @@ namespace DataverseToPowerBI.Configurator.Services
             return $"{columnRef} IN ({formattedValues})";
         }
 
+        /// <summary>
+        /// Processes the NOT IN operator (inverse of IN).
+        /// </summary>
+        /// <param name="condition">The FetchXML condition element.</param>
+        /// <param name="columnRef">Fully qualified column reference.</param>
+        /// <returns>SQL NOT IN expression.</returns>
         private string ProcessNotInOperator(XElement condition, string columnRef)
         {
             var inClause = ProcessInOperator(condition, columnRef);
@@ -366,6 +603,27 @@ namespace DataverseToPowerBI.Configurator.Services
             return inClause.Replace(" IN (", " NOT IN (");
         }
 
+        #endregion
+
+        #region Value Formatting and Helpers
+
+        /// <summary>
+        /// Formats a value for use in SQL based on its detected type.
+        /// </summary>
+        /// <param name="value">The raw value string from FetchXML.</param>
+        /// <returns>
+        /// SQL-formatted value: unquoted for numbers, quoted for strings and dates.
+        /// </returns>
+        /// <remarks>
+        /// <para>Type detection order:</para>
+        /// <list type="number">
+        ///   <item>Integer: returned as-is</item>
+        ///   <item>Boolean (0/1): returned as-is</item>
+        ///   <item>GUID: quoted with single quotes</item>
+        ///   <item>DateTime: quoted with single quotes</item>
+        ///   <item>String: quoted with escaped single quotes</item>
+        /// </list>
+        /// </remarks>
         private string FormatValue(string value)
         {
             if (string.IsNullOrWhiteSpace(value))
@@ -394,6 +652,13 @@ namespace DataverseToPowerBI.Configurator.Services
             return $"'{escapedValue}'";
         }
 
+        /// <summary>
+        /// Records an unsupported operator and returns empty string.
+        /// </summary>
+        /// <param name="operatorValue">The unsupported FetchXML operator.</param>
+        /// <param name="attribute">The attribute being filtered.</param>
+        /// <param name="value">The filter value (if any).</param>
+        /// <returns>Empty string (unsupported conditions are skipped).</returns>
         private string UnsupportedOperator(string operatorValue, string attribute, string value)
         {
             var message = $"Operator '{operatorValue}' for attribute '{attribute}'";
@@ -402,6 +667,27 @@ namespace DataverseToPowerBI.Configurator.Services
             return "";
         }
 
+        #endregion
+
+        #region Link-Entity Processing
+
+        /// <summary>
+        /// Processes link-entity elements and generates EXISTS subqueries.
+        /// </summary>
+        /// <param name="linkEntity">The FetchXML link-entity element.</param>
+        /// <param name="baseTableAlias">Alias of the parent table.</param>
+        /// <returns>List of SQL EXISTS clauses for the link-entity filters.</returns>
+        /// <remarks>
+        /// <para>
+        /// Link-entities represent JOIN relationships in FetchXML. Since Power BI
+        /// DirectQuery partitions cannot include JOINs directly, filters on linked
+        /// entities are converted to EXISTS subqueries.
+        /// </para>
+        /// <para>
+        /// For example, a filter on a related account would become:
+        /// EXISTS (SELECT 1 FROM account WHERE account.accountid = Base.accountid AND ...)
+        /// </para>
+        /// </remarks>
         private List<string> ProcessLinkEntityFilters(XElement linkEntity, string baseTableAlias)
         {
             var clauses = new List<string>();
@@ -450,6 +736,14 @@ namespace DataverseToPowerBI.Configurator.Services
             return clauses;
         }
 
+        #endregion
+
+        #region Result Building and Logging
+
+        /// <summary>
+        /// Records an unsupported feature for inclusion in the result.
+        /// </summary>
+        /// <param name="feature">Description of the unsupported feature.</param>
         private void LogUnsupported(string feature)
         {
             _hasUnsupportedFeatures = true;
@@ -459,6 +753,12 @@ namespace DataverseToPowerBI.Configurator.Services
             }
         }
 
+        /// <summary>
+        /// Creates a ConversionResult with current state.
+        /// </summary>
+        /// <param name="sqlClause">The generated SQL WHERE clause.</param>
+        /// <param name="isFullySupported">Whether all features were supported.</param>
+        /// <returns>A complete ConversionResult with summary and debug info.</returns>
         private ConversionResult CreateResult(string sqlClause, bool isFullySupported)
         {
             var summary = new StringBuilder();
@@ -494,8 +794,17 @@ namespace DataverseToPowerBI.Configurator.Services
         }
 
         /// <summary>
-        /// Logs detailed debugging information to a file
+        /// Logs detailed debugging information to a file for troubleshooting.
         /// </summary>
+        /// <param name="viewName">Name of the view being converted.</param>
+        /// <param name="fetchXml">The original FetchXML query.</param>
+        /// <param name="result">The conversion result with debug info.</param>
+        /// <param name="outputPath">Base output path for debug files.</param>
+        /// <remarks>
+        /// Creates a FetchXML_Debug subfolder and writes a timestamped file
+        /// containing the original FetchXML, conversion summary, and debug log.
+        /// Useful for diagnosing conversion issues.
+        /// </remarks>
         public static void LogConversionDebug(string viewName, string fetchXml, ConversionResult result, string outputPath)
         {
             try
@@ -547,6 +856,11 @@ namespace DataverseToPowerBI.Configurator.Services
             }
         }
 
+        /// <summary>
+        /// Formats XML for readable output in debug logs.
+        /// </summary>
+        /// <param name="xml">Raw XML string.</param>
+        /// <returns>Pretty-printed XML, or original string if parsing fails.</returns>
         private static string FormatXml(string xml)
         {
             try
@@ -560,10 +874,17 @@ namespace DataverseToPowerBI.Configurator.Services
             }
         }
 
+        /// <summary>
+        /// Removes invalid filename characters from a string.
+        /// </summary>
+        /// <param name="fileName">Original filename.</param>
+        /// <returns>Sanitized filename safe for file system use.</returns>
         private static string SanitizeFileName(string fileName)
         {
             var invalid = Path.GetInvalidFileNameChars();
             return string.Join("_", fileName.Split(invalid, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
         }
+
+        #endregion
     }
 }

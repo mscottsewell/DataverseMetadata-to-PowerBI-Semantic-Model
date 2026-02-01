@@ -1,3 +1,33 @@
+// ===================================================================================
+// XrmServiceAdapterImpl.cs - XrmToolBox IDataverseConnection Implementation
+// ===================================================================================
+//
+// PURPOSE:
+// This class implements the IDataverseConnection interface using the Dataverse SDK
+// (IOrganizationService) instead of the REST API. This allows the XrmToolBox plugin
+// to use the same shared Core library logic while leveraging XrmToolBox's built-in
+// connection management.
+//
+// KEY DIFFERENCES FROM CONFIGURATOR:
+// - Authentication: Handled externally by XrmToolBox (no MSAL required)
+// - API: Uses IOrganizationService (SDK) instead of HttpClient (Web API)
+// - Synchronous Methods: Provides sync versions for XrmToolBox WorkAsync pattern
+//
+// IMPLEMENTATION PATTERN:
+// The adapter wraps IOrganizationService calls to match the IDataverseConnection
+// interface contract:
+//   - GetSolutionsAsync() → QueryExpression on "solution" entity
+//   - GetSolutionTablesAsync() → QueryExpression on "solutioncomponent" entity
+//   - GetAttributesSync() → RetrieveEntityRequest for attribute metadata
+//   - GetFormsSync() → QueryExpression on "systemform" entity
+//   - GetViewsSync() → QueryExpression on "savedquery" entity
+//
+// THREAD SAFETY:
+// Methods are not thread-safe. In XrmToolBox, these should be called from
+// WorkAsync() callbacks which execute on a background thread.
+//
+// ===================================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Linq;

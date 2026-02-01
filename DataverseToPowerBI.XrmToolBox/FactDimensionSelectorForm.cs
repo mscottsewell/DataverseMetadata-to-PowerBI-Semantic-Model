@@ -1,3 +1,41 @@
+// ===================================================================================
+// FactDimensionSelectorForm.cs - Star Schema Configuration for XrmToolBox
+// ===================================================================================
+//
+// PURPOSE:
+// This dialog enables users to configure a star-schema data model by selecting a
+// central fact table and defining its relationships to dimension tables. It supports
+// both direct relationships and snowflake dimensions (dimension-to-parent-dimension).
+//
+// STAR SCHEMA MODELING:
+// - FACT TABLE: The central transactional table (e.g., Orders, Opportunities)
+// - DIMENSION TABLES: Reference tables linked via lookup fields (e.g., Account, Product)
+// - SNOWFLAKE: Parent dimensions linked from other dimensions (e.g., Account → Territory)
+//
+// RELATIONSHIP DETECTION:
+// The dialog automatically discovers relationships by:
+// 1. Loading all lookup-type attributes from the selected fact table
+// 2. For each lookup, identifying the target table(s) it references
+// 3. Grouping lookups by target to detect multiple paths to same table
+//
+// MULTIPLE RELATIONSHIPS TO SAME TABLE:
+// When multiple lookups point to the same table (e.g., "Primary Contact" and
+// "Secondary Contact" both pointing to Contact), only one can be "Active" in
+// Power BI. Others become "Inactive" and require USERELATIONSHIP() in DAX.
+// These are highlighted in yellow and marked with ⚠.
+//
+// USER INTERACTIONS:
+// - Checkbox: Include/exclude relationship from model
+// - Double-click: Toggle Active/Inactive status
+// - Add Snowflake: Recursively add parent dimensions to selected dimension
+//
+// OUTPUT:
+// - SelectedFactTable: The chosen fact table
+// - SelectedRelationships: List of ExportRelationship configurations
+// - AllSelectedTables: Complete list of tables to include in the model
+//
+// ===================================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Drawing;

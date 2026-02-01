@@ -1,8 +1,32 @@
+// =============================================================================
+// EnvironmentDialog.cs - Dataverse Environment URL Configuration
+// =============================================================================
+// Purpose: Simple dialog for entering or editing the Dataverse environment URL.
+//
+// Features:
+//   - Text input for environment URL (without https:// prefix)
+//   - "Save & Connect" button to save and initiate connection
+//   - "Save" button to save URL without connecting
+//   - Input validation
+//
+// Usage:
+//   var dialog = new EnvironmentDialog(currentUrl);
+//   if (dialog.ShowDialog() == DialogResult.OK)
+//   {
+//       var url = dialog.EnvironmentUrl;
+//       if (dialog.ShouldConnect)
+//           // Initiate connection
+//   }
+// =============================================================================
+
 using System;
 using System.Windows.Forms;
 
 namespace DataverseToPowerBI.Configurator.Forms
 {
+    /// <summary>
+    /// Dialog for entering or editing the Dataverse environment URL.
+    /// </summary>
     public class EnvironmentDialog : Form
     {
         private TextBox txtUrl;

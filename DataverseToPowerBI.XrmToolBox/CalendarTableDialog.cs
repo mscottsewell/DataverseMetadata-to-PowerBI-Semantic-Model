@@ -1,3 +1,40 @@
+// ===================================================================================
+// CalendarTableDialog.cs - Date Table Configuration Dialog for XrmToolBox
+// ===================================================================================
+//
+// PURPOSE:
+// This dialog configures the Date (calendar) dimension table for Power BI semantic
+// models. It enables timezone-aware date handling and establishes relationships
+// between datetime fields and the Date dimension.
+//
+// DATE TABLE CONFIGURATION:
+// Power BI semantic models benefit from a dedicated Date table for time intelligence
+// calculations. This dialog allows users to:
+//
+// 1. PRIMARY DATE FIELD:
+//    Select the main date field (e.g., "Created On") that will have an active
+//    relationship to the Date dimension. This drives default time analysis.
+//
+// 2. TIMEZONE ADJUSTMENT:
+//    Dataverse stores all dates in UTC. This setting adjusts dates to the user's
+//    local timezone for accurate daily reporting. The offset is applied via
+//    DATEADD() in the generated SQL queries.
+//    
+//    Note: Daylight saving time is NOT handled - uses base UTC offset only.
+//
+// 3. DATE RANGE:
+//    Defines the year range for the generated Date table (default: current year +/- 5).
+//
+// 4. ADDITIONAL DATETIME FIELDS:
+//    Other datetime fields can be wrapped to convert them to date-only values
+//    with the same timezone adjustment, enabling filtering and relationships.
+//
+// OUTPUT:
+// Returns a DateTableConfig object containing all settings, which is used by
+// SemanticModelBuilder to generate the Date table and relationships.
+//
+// ===================================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Drawing;

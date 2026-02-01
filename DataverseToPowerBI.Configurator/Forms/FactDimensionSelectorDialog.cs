@@ -1,3 +1,28 @@
+// =============================================================================
+// FactDimensionSelectorDialog.cs - Star-Schema Table Selector
+// =============================================================================
+// Purpose: Dialog for configuring star-schema model with Fact and Dimension tables.
+//
+// This is the primary dialog for designing the semantic model structure:
+//   1. Select a Dataverse solution
+//   2. Choose a Fact table from the solution's entities
+//   3. Configure relationships (dimensions) based on lookup fields
+//   4. Optionally add snowflake dimensions (dimension-to-dimension links)
+//
+// Star-Schema Concepts:
+//   - Fact Table: Central table containing measurable events (many side)
+//   - Dimension Tables: Lookup tables for slicing data (one side)
+//   - Snowflake Dimensions: Hierarchical dimensions (e.g., Account -> Parent)
+//
+// The dialog automatically discovers lookup relationships by analyzing
+// the Fact table's lookup attributes that reference other selected tables.
+//
+// Output:
+//   - SelectedFactTable: The chosen fact table
+//   - SelectedRelationships: List of configured relationships
+//   - AllSelectedTables: Combined list of fact + dimension tables
+// =============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Drawing;

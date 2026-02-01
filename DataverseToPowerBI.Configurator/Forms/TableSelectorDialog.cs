@@ -1,3 +1,24 @@
+// =============================================================================
+// TableSelectorDialog.cs - Solution and Table Selection Dialog
+// =============================================================================
+// Purpose: Dialog for selecting Dataverse tables from a solution.
+//
+// This dialog provides a two-step selection process:
+//   1. Select a solution from the dropdown (loads unmanaged solutions)
+//   2. Select tables from the solution's entities (checkbox list)
+//
+// Features:
+//   - Loads solutions asynchronously with progress indicator
+//   - Filters to unmanaged solutions only
+//   - Dynamically loads tables when solution is selected
+//   - Supports column sorting (click column header)
+//   - Pre-checks tables that are currently selected (for editing)
+//   - Returns list of selected TableInfo objects
+//
+// Note: This is a basic table selector. For star-schema configuration,
+// use FactDimensionSelectorDialog instead.
+// =============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,6 +29,13 @@ using DataverseToPowerBI.Configurator.Services;
 
 namespace DataverseToPowerBI.Configurator.Forms
 {
+    /// <summary>
+    /// Dialog for selecting Dataverse tables from a solution.
+    /// </summary>
+    /// <remarks>
+    /// Allows multi-selection of tables with checkbox list.
+    /// Tables are loaded dynamically when a solution is selected.
+    /// </remarks>
     public class TableSelectorDialog : Form
     {
         private readonly DataverseClient _client;

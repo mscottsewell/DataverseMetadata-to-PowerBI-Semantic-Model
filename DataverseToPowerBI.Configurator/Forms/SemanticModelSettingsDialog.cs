@@ -1,3 +1,23 @@
+// =============================================================================
+// SemanticModelSettingsDialog.cs - Configuration Management Dialog
+// =============================================================================
+// Purpose: Manages multiple semantic model configurations.
+//
+// This dialog provides CRUD operations for configurations:
+//   - View all available configurations in a list
+//   - Edit configuration details (URL, connection type, working folder)
+//   - Create new configurations
+//   - Copy existing configurations (with all settings and cache)
+//   - Rename configurations 
+//   - Delete configurations (keeps PBIP files on disk)
+//
+// Connection Types Supported:
+//   - Dataverse TDS Endpoint: Native TDS connector
+//   - FabricLink Lakehouse SQL: Azure Synapse Link with Fabric
+//
+// Note: Changes are saved immediately when editing fields.
+// =============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,6 +28,14 @@ using DataverseToPowerBI.Configurator.Services;
 
 namespace DataverseToPowerBI.Configurator.Forms
 {
+    /// <summary>
+    /// Dialog for managing multiple semantic model configurations.
+    /// </summary>
+    /// <remarks>
+    /// Allows users to view, edit, create, copy, rename, and delete
+    /// configurations. Each configuration represents a separate
+    /// Power BI semantic model setup with its own tables and settings.
+    /// </remarks>
     public class SemanticModelSettingsDialog : Form
     {
         private ListBox lstConfigurations = null!;
