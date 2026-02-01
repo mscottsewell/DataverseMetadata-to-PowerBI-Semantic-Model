@@ -1,3 +1,5 @@
+<img width="1248" alt="image" src="https://github.com/user-attachments/assets/97e24821-cf02-4600-ae6f-f45a0c784cc1" />
+
 # Dataverse to Power BI Semantic Model Generator
 
 **Transform your Dataverse data into professional Power BI reports in minutes, not days.**
@@ -57,21 +59,6 @@ A star-schema organizes your data into two types of tables:
 - Changes less frequently
 - Provides the "who, what, where, when" context for your facts
 
-```
-                    ┌──────────┐
-                    │ Customer │
-                    └────┬─────┘
-                         │
-    ┌──────────┐    ┌────┴─────┐    ┌──────────┐
-    │ Product  ├────┤  Orders  ├────┤   Date   │
-    └──────────┘    │  (Fact)  │    └──────────┘
-                    └────┬─────┘
-                         │
-                    ┌────┴─────┐
-                    │ Employee │
-                    └──────────┘
-```
-
 ### Why Star-Schema Matters
 
 - ✅ **Faster Performance** — Power BI's engine is optimized for this pattern  
@@ -91,9 +78,11 @@ Sometimes a dimension table has its own lookup to another table (for example, Cu
 **Our recommendation:** Keep your schema as flat as possible. Only add parent dimensions when you truly need to filter or group by those attributes.
 
 📚 **Learn More:**
-- [Star Schema in Power BI](https://learn.microsoft.com/en-us/power-bi/guidance/star-schema)
-- [Understand Star Schema Design](https://learn.microsoft.com/en-us/power-bi/guidance/star-schema#star-schema-overview)
-- [Importance of Star Schema](https://learn.microsoft.com/en-us/power-bi/guidance/star-schema#importance-of-star-schema-design)
+- [Star Schema in Power BI](https://learn.microsoft.com/power-bi/guidance/star-schema)
+- [Understand Star Schema Design](https://learn.microsoft.com/power-bi/guidance/star-schema#star-schema-overview)
+- [Importance of Star Schema](https://learn.microsoft.com/power-bi/guidance/star-schema#importance-of-star-schema-design)
+- I like this explanation from [Brian Julius](https://www.linkedin.com/in/brianjuliusdc/): 
+<img width="2048" alt="image of a Star Schema" src="https://github.com/user-attachments/assets/d558cd15-5b8d-4ae4-9a91-3d8413783ba1" />
 
 ---
 
