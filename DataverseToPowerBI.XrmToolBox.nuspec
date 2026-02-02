@@ -18,7 +18,7 @@
     <copyright>Copyright 2026 Scott Sewell</copyright>
     <tags>XrmToolBox PowerBI Dataverse TMDL PBIP SemanticModel D365</tags>
     <projectUrl>https://github.com/mscottsewell/DataverseMetadata-to-PowerBI-Semantic-Model</projectUrl>
-    <iconUrl>https://raw.githubusercontent.com/mscottsewell/DataverseMetadata-to-PowerBI-Semantic-Model/main/icon.png</iconUrl>
+    <iconUrl>https://github.com/mscottsewell/DataverseMetadata-to-PowerBI-Semantic-Model/blob/0e43211d814d8f0f717abc3ad96824434fb7f250/.Images/DataverseToPowerBI_128.png</iconUrl>
   </metadata>
   <files>
     <!-- Main plugin DLL -->
