@@ -2,7 +2,7 @@
 <package>
 	<metadata>
     <id>DataverseToPowerBI.XrmToolBox</id>
-    <version>1.2026.2.21</version>
+    <version>1.2026.2.22</version>
     <title>Dataverse to Power BI Semantic Model</title>
     <authors>Scott Sewell</authors>
     <owners>mScottSewell</owners>
@@ -22,7 +22,7 @@
     <file src="DataverseToPowerBI.XrmToolBox\bin\Release\DataverseToPowerBI.XrmToolBox.dll" target="lib\net48\Plugins\" />
     <file src="DataverseToPowerBI.Core\bin\Release\net48\DataverseToPowerBI.Core.dll" target="lib\net48\Plugins\" />
     <file src="DataverseToPowerBI.XrmToolBox\Assets\PBIP_DefaultTemplate\**\*.*" target="content\DataverseToPowerBI\PBIP_DefaultTemplate\" />
-    <file src=".images\DataverseToPowerBI_80.png" target="icon.png" />
+    <file src="Images\DataverseToPowerBI_80.png" target="icon.png" />
     <file src="README.md" target="README.md" />
     <file src="LICENSE" target="LICENSE" />
   </files>
