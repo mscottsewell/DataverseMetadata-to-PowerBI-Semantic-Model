@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>DataverseToPowerBI.XrmToolBox</id>
-    <version>1.2026.1</version>
+    <version>1.2026.1.1</version>
     <title>Dataverse to Power BI Semantic Model</title>
     <authors>Scott Sewell</authors>
     <owners>Scott Sewell</owners>
@@ -11,19 +11,14 @@
     <description>Extract Dataverse metadata and generate Power BI TMDL/PBIP semantic models with automatic table relationships, calendar tables, and incremental change detection.</description>
     <summary>XrmToolBox plugin for generating Power BI semantic models from Dataverse metadata</summary>
     <releaseNotes>
-      v1.3.24:
-      - Environment-specific folder organization based on Dataverse URL
-      - Removed extra PBIP subfolder for cleaner path structure
-      - Fixed file opening after build
-      - Full Calendar/Date Table support with relationship configuration
+      v1.2026.1.1:
+      - Initial Release - See Readme for details
+      A XrmToolBox Utility to use Dataverse Metadata to automatically build a TDS/Direct Query based Power BI Semantic Model
     </releaseNotes>
     <copyright>Copyright 2026 Scott Sewell</copyright>
     <tags>XrmToolBox PowerBI Dataverse TMDL PBIP SemanticModel D365</tags>
-    <projectUrl>https://github.com/scottmsewell/DataverseMetadata-to-PowerBI-Semantic-Model</projectUrl>
-    <iconUrl>https://raw.githubusercontent.com/scottmsewell/DataverseMetadata-to-PowerBI-Semantic-Model/main/icon.png</iconUrl>
-    <dependencies>
-      <dependency id="XrmToolBox" version="1.2024.0.0" />
-    </dependencies>
+    <projectUrl>https://github.com/mscottsewell/DataverseMetadata-to-PowerBI-Semantic-Model</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/mscottsewell/DataverseMetadata-to-PowerBI-Semantic-Model/main/icon.png</iconUrl>
   </metadata>
   <files>
     <!-- Main plugin DLL -->

@@ -10,6 +10,7 @@
     <RootNamespace>DataverseToPowerBI.XrmToolBox</RootNamespace>
     <AssemblyName>DataverseToPowerBI.XrmToolBox</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <RuntimeIdentifier>win</RuntimeIdentifier>
     <LangVersion>9.0</LangVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>

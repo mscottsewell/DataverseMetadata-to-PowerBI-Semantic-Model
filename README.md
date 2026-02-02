@@ -109,39 +109,43 @@ Sometimes a dimension table has its own lookup to another table (for example, Cu
 - Give it a meaningful name (e.g., "Sales Analytics" or "Case Management")
 - Set your **Working Folder** where the Power BI project will be saved
 
-#### Step 3: Select Your Solution and Tables
-- Click **Select Tables** to open the solution picker
+#### Step 3: Select Your Solution and tables
+- Click **Select Tables** to open the solution and table picker
 - **Choose your unmanaged solution** — this filters the list to tables relevant to your business app
-- Select the tables you want in your model from that solution
-- **Tip:** Start with a only a few tables to optimize performance.
-
 > **Why solutions matter:** Dataverse contains hundreds of system tables. By selecting your solution first, you'll only see the tables your team has customized—making it much easier to find what you need.
 
-#### Step 4: Configure the Star-Schema
-- Click **Star Schema** to designate your fact table
+#### Step 4: Choose your Fact Table
+- Select your **Fact Table** to designate the central entity of your model
+- Select the tables you want in your model from that solution
+
+#### Step 5: Choose your Dimension Tables
 - The tool will show all lookup relationships from your fact table
-- Check which dimensions to include
+- Check which dimensions to include and activate the relationship where needed.
+- Only one active relationship should exist between the Fact and a Dimension
 - Optionally add "snowflake" parent dimensions if needed
+- **Tip:** Start with a only a few tables to optimize performance.
+- **Finish Selection** when you're done.
 
-#### Step 5: Customize Columns
+#### Step 6: Customize the Queries
 - For each table, click the ✏️ icon to select a form and view
-- The **form** determines which columns appear in your model
+- The **form** determines which columns are selected by default to appear in your model
 - The **view** determines which rows are included (filtering data to current data helps improve performance.)
+- Check/Uncheck Attributes in the right column to include/exclude fields from the query.
+- **Tip:** Start with a only the needed columns to optimize performance. 
+- Memo (text area) fields with lots of text are the slowest fields to retrieve - use sparingly.
 
-#### Step 6: Add a Date Table (Recommended)
-- Click **Calendar Table** to configure your date dimension
+#### Step 7: Add a Date Table (Recommended)
+- Click **Dates** to configure your date dimension
 - Select your primary date field (e.g., "Created On")
-- Set the timezone adjustment for accurate daily reporting
 - Choose the year range for your date table
+- Set the timezone adjustment to adjust the GMT date/time stored to a standardized timezone.
+- Identify any other fields that you want standardized to the chosen timezone.
 
-#### Step 7: Build Your Model
+#### Step 8: Build Your Model
 - Click **Build Semantic Model**
 - Review the changes that will be made
 - Click **Apply** to generate your Power BI project
-
-#### Step 8: Open in Power BI Desktop
-- Navigate to your working folder
-- Open the `.pbip` file in Power BI Desktop
+- Once built, it will ask if you want to open the project.
 - Start building your reports!
 
 ---
@@ -344,11 +348,7 @@ Create drill-down paths in your dimension tables:
 - **Geography:** Country → State/Province → City
 - **Organization:** Business Unit → Team → Owner
 
-### 3. Apply Formatting
-- Set currency columns to display with $ symbols
-- Set percentage fields to show as percentages
-- Add column descriptions to help other report builders
-- Mark your key date column as the "Date table" for time intelligence
+### 3. Apply Any Additional Formatting Desired
 
 ### 4. Hide Technical Columns
 By default, this utility follows the best practice of hiding columns that end users don't need:

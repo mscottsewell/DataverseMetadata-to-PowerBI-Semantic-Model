@@ -288,11 +288,13 @@ namespace DataverseToPowerBI.XrmToolBox
             {
                 Location = new Point(15, 285),
                 Size = new Size(365, 23),
-                DropDownStyle = ComboBoxStyle.DropDownList
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Enabled = false  // Locked to TDS endpoint - FabricLink coming soon
             };
             cboConnectionType.Items.AddRange(new object[] { "Dataverse TDS Endpoint", "FabricLink Lakehouse SQL" });
             cboConnectionType.SelectedIndex = 0;
             cboConnectionType.SelectedIndexChanged += CboConnectionType_SelectedIndexChanged;
+            cboConnectionType.Click += CboConnectionType_Click;
 
             // Fabric fields - below Connection Type
             lblFabricEndpoint = new Label
@@ -546,6 +548,19 @@ namespace DataverseToPowerBI.XrmToolBox
             UpdateFabricLinkFieldsVisibility();
             txtWorkingFolder.Text = "";
             txtTemplatePath.Text = "";
+        }
+
+        private void CboConnectionType_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show(
+                "This application currently only supports the Dataverse TDS Endpoint.\n\n" +
+                "FabricLink Lakehouse SQL support is in active development and will be released soon!\n\n" +
+                "Interested in being the first to try it out?\n" +
+                "Visit our GitHub repository and let us know:\n" +
+                "https://github.com/microsoft/DataverseMetadata-to-PowerBI-Semantic-Model/issues",
+                "FabricLink Coming Soon",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
         }
 
         private void CboConnectionType_SelectedIndexChanged(object sender, EventArgs e)
@@ -1174,11 +1189,13 @@ namespace DataverseToPowerBI.XrmToolBox
             {
                 Location = new Point(20, 320),
                 Size = new Size(460, 23),
-                DropDownStyle = ComboBoxStyle.DropDownList
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Enabled = false  // Locked to TDS endpoint - FabricLink coming soon
             };
             cboConnectionType.Items.AddRange(new object[] { "Dataverse TDS Endpoint", "FabricLink Lakehouse SQL" });
             cboConnectionType.SelectedIndex = 0;
-            cboConnectionType.SelectedIndexChanged += CboConnectionType_SelectedIndexChanged;
+            cboConnectionType.SelectedIndexChanged += CboConnectionType_SelectedIndexChanged_New;
+            cboConnectionType.Click += CboConnectionType_Click_New;
 
             // Fabric fields - moved down
             lblFabricEndpoint = new Label
@@ -1253,7 +1270,20 @@ namespace DataverseToPowerBI.XrmToolBox
             this.CancelButton = btnCancelDlg;
         }
 
-        private void CboConnectionType_SelectedIndexChanged(object sender, EventArgs e)
+        private void CboConnectionType_Click_New(object sender, EventArgs e)
+        {
+            MessageBox.Show(
+                "This application currently only supports the Dataverse TDS Endpoint.\n\n" +
+                "FabricLink Lakehouse SQL support is in active development and will be released soon!\n\n" +
+                "Interested in being the first to try it out?\n" +
+                "Visit our GitHub repository and let us know:\n" +
+                "https://github.com/microsoft/DataverseMetadata-to-PowerBI-Semantic-Model/issues",
+                "FabricLink Coming Soon",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+
+        private void CboConnectionType_SelectedIndexChanged_New(object sender, EventArgs e)
         {
             bool isFabricLink = cboConnectionType.SelectedIndex == 1;
             lblFabricEndpoint.Visible = isFabricLink;

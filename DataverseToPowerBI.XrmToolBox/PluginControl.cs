@@ -226,6 +226,56 @@ namespace DataverseToPowerBI.XrmToolBox
                 ResizeTableColumns();
                 ResizeRelationshipColumns();
             }));
+            
+            // Check if XrmToolBox already has an active connection
+            // (UpdateConnection may not be called if the connection was established before the plugin loaded)
+            if (Service != null && ConnectionDetail != null)
+            {
+                // Defer initialization to allow the UI to finish loading
+                BeginInvoke(new Action(() =>
+                {
+                    InitializeFromExistingConnection();
+                }));
+            }
+        }
+        
+        /// <summary>
+        /// Initializes the plugin when XrmToolBox already has an active connection.
+        /// This handles the case where the user connects first, then opens the plugin.
+        /// </summary>
+        private void InitializeFromExistingConnection()
+        {
+            if (_xrmAdapter != null) return; // Already initialized
+            
+            var detail = ConnectionDetail;
+            var environmentUrl = detail.WebApplicationUrl ?? detail.OrganizationServiceUrl;
+            _currentEnvironmentUrl = NormalizeUrl(environmentUrl);
+            _xrmAdapter = new XrmServiceAdapterImpl(Service, environmentUrl);
+
+            btnRefreshMetadata.Enabled = true;
+            SetStatus($"Connected to {detail.OrganizationFriendlyName}");
+            
+            // Check for first-run experience
+            if (_modelManager.IsFirstRun())
+            {
+                PromptForFirstSemanticModel();
+                return;
+            }
+            
+            // Load the most recent model for this environment, or prompt to select
+            var recentModel = _modelManager.GetMostRecentModelForEnvironment(_currentEnvironmentUrl);
+            if (recentModel != null)
+            {
+                LoadSemanticModel(recentModel);
+            }
+            else
+            {
+                // No model for this environment - show selector dialog
+                ShowSemanticModelSelector();
+            }
+            
+            btnSelectTables.Enabled = true;
+            btnCalendarTable.Enabled = _selectedTables.Count > 0;
         }
         
         public override void UpdateConnection(IOrganizationService newService, ConnectionDetail detail, string actionName, object parameter)
