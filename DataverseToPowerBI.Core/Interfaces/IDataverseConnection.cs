@@ -3,18 +3,15 @@
 // =============================================================================
 // Purpose: Defines the contract for connecting to Microsoft Dataverse.
 // 
-// This interface provides an abstraction layer that allows the application to
-// work with different authentication methods:
-//   - MSAL (Microsoft Authentication Library) for standalone applications
-//   - IOrganizationService for XrmToolBox plugin hosting
+// This interface provides an abstraction layer for XrmToolBox plugin hosting
+// using IOrganizationService. Authentication is handled externally by XrmToolBox.
 //
 // The interface exposes methods to retrieve Dataverse metadata including:
 //   - Solutions and their components
 //   - Table (entity) definitions and attributes
 //   - Forms and Views with their XML definitions
 //
-// By coding against this interface, business logic can be shared between
-// the standalone Configurator app and the XrmToolBox plugin.
+// The concrete implementation (XrmServiceAdapterImpl) is used by the XrmToolBox plugin.
 // =============================================================================
 
 using System.Collections.Generic;
@@ -25,32 +22,22 @@ namespace DataverseToPowerBI.Core.Interfaces
 {
     /// <summary>
     /// Abstraction for connecting to Microsoft Dataverse.
-    /// Supports both MSAL-based authentication (standalone apps) and 
-    /// IOrganizationService (XrmToolBox plugin hosting).
+    /// Currently implemented by XrmServiceAdapterImpl for XrmToolBox plugin hosting.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This interface is the foundation for the adapter pattern used in this project.
-    /// Two concrete implementations exist:
+    /// This interface provides the foundation for the adapter pattern used in this project.
+    /// The concrete implementation is:
     /// </para>
     /// <list type="bullet">
     ///   <item>
-    ///     <term>DataverseClientAdapter</term>
-    ///     <description>Uses MSAL and HTTP/REST API calls for standalone applications</description>
-    ///   </item>
-    ///   <item>
     ///     <term>XrmServiceAdapterImpl</term>
-    ///     <description>Uses IOrganizationService SDK for XrmToolBox plugins</description>
+    ///     <description>Uses IOrganizationService SDK for XrmToolBox plugins - authentication handled by XrmToolBox</description>
     ///   </item>
     /// </list>
     /// </remarks>
     /// <example>
     /// <code>
-    /// // For standalone applications:
-    /// IDataverseConnection connection = new DataverseClientAdapter("https://myorg.crm.dynamics.com");
-    /// await connection.AuthenticateAsync();
-    /// var solutions = await connection.GetSolutionsAsync();
-    /// 
     /// // For XrmToolBox:
     /// IDataverseConnection connection = new XrmServiceAdapterImpl(organizationService, environmentUrl);
     /// // No authentication needed - XrmToolBox handles it

@@ -1,6 +1,7 @@
 # Developer Guide
 
-This document is for developers who want to build from source, contribute improvements, or understand the codebase architecture.
+This document is for developers who want to build from source, contribute
+improvements, or understand the codebase architecture.
 
 For user documentation, see [README.md](README.md).
 
@@ -13,10 +14,8 @@ DataverseMetadata-to-PowerBI-Semantic-Model/
 ├── DataverseToPowerBI.Core/           # Shared library (.NET Framework 4.8)
 │   ├── Interfaces/
 │   │   └── IDataverseConnection.cs    # Connection abstraction
-│   ├── Models/
-│   │   └── DataModels.cs              # Shared data models
-│   └── Services/
-│       └── DataverseClientAdapter.cs  # MSAL-based HTTP client
+│   └── Models/
+│       └── DataModels.cs              # Shared data models
 │
 ├── DataverseToPowerBI.XrmToolBox/     # XrmToolBox plugin (.NET Framework 4.8)
 │   ├── Assets/
@@ -58,12 +57,12 @@ DataverseMetadata-to-PowerBI-Semantic-Model/
 ### NuGet Packages (Restored Automatically)
 
 **Core Library:**
-- `Microsoft.Identity.Client` - MSAL authentication
 - `Newtonsoft.Json` - JSON serialization
 
 **XrmToolBox Plugin:**
-- `XrmToolBoxPackage` - Plugin hosting SDK
-- `Microsoft.CrmSdk.CoreAssemblies` - Dataverse SDK
+- Uses assemblies provided by XrmToolBox
+  (XrmToolBox.Extensibility, Microsoft.Xrm.Sdk, etc.)
+- All authentication is handled by XrmToolBox - no additional packages needed
 
 ---
 
@@ -117,7 +116,8 @@ Copy-Item $coreDll $plugins
 Copy-Item $pluginDll $plugins
 
 # Copy Assets folder
-Copy-Item "DataverseToPowerBI.XrmToolBox\Assets\*" "$plugins\DataverseToPowerBI" -Recurse
+Copy-Item "DataverseToPowerBI.XrmToolBox\Assets\*" "$plugins\DataverseToPowerBI"
+ -Recurse
 ```
 
 ---
@@ -152,7 +152,8 @@ public interface IDataverseConnection
 }
 ```
 
-**XrmServiceAdapterImpl** implements this interface using the Dataverse SDK (`IOrganizationService`), which XrmToolBox provides.
+**XrmServiceAdapterImpl** implements this interface using the Dataverse SDK
+ (`IOrganizationService`), which XrmToolBox provides.
 
 ### Data Flow
 
@@ -190,14 +191,16 @@ public interface IDataverseConnection
 The core TMDL generation engine (~2,500 lines). Key responsibilities:
 
 - **Template Management:** Copies and customizes the PBIP template
-- **Table Generation:** Creates `{TableName}.tmdl` files with columns, partitions, and annotations
+- **Table Generation:** Creates `{TableName}.tmdl` files with columns,
+ partitions, and annotations
 - **Relationship Generation:** Builds `relationships.tmdl` from lookup metadata
 - **Change Detection:** Compares existing model to detect incremental updates
 - **User Code Preservation:** Keeps custom measures when rebuilding
 
 ```csharp
 // Key methods
-public void Build(semanticModelName, outputFolder, dataverseUrl, tables, relationships, ...);
+public void Build(semanticModelName, outputFolder, dataverseUrl, tables,
+ relationships, ...);
 public List<SemanticModelChange> AnalyzeChanges(...);  // Preview changes
 public bool ApplyChanges(...);  // Apply with optional backup
 ```
@@ -300,7 +303,8 @@ private static XDocument ParseXmlSecurely(string xml)
 User-provided paths are validated to prevent directory traversal.
 
 ### No Credential Storage
-Authentication is handled by XrmToolBox's connection manager. The plugin never stores or accesses credentials directly.
+Authentication is handled by XrmToolBox's connection manager. The plugin never
+ stores or accesses credentials directly.
 
 ---
 

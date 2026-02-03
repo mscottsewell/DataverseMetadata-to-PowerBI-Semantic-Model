@@ -50,20 +50,19 @@ if ($assemblyContent -match '\[assembly: AssemblyVersion\("(\d+)\.(\d+)\.(\d+)\.
         $assemblyContent = $assemblyContent -replace '\[assembly: AssemblyVersion\(".*?"\)\]', "[assembly: AssemblyVersion(`"$fullVersion`")]"
         $assemblyContent = $assemblyContent -replace '\[assembly: AssemblyFileVersion\(".*?"\)\]', "[assembly: AssemblyFileVersion(`"$fullVersion`")]"
         Set-Content -Path $assemblyInfoPath -Value $assemblyContent -NoNewline
-        Write-Host "Auto-incremented version: $major.$minor.$revision (from AssemblyInfo.cs)" -ForegroundColor Magenta
+        Write-Host "Auto-incremented version: $fullVersion (from AssemblyInfo.cs)" -ForegroundColor Magenta
     } else {
         $fullVersion = "$major.$minor.$revision.$build"
-        Write-Host "Current version: $major.$minor.$revision (DeployOnly - no increment)" -ForegroundColor Gray
+        Write-Host "Current version: $fullVersion (DeployOnly - no increment)" -ForegroundColor Gray
     }
     
-    $version = "$major.$minor.$revision"
 } else {
     throw "Could not parse version from AssemblyInfo.cs"
 }
 
 Write-Host "=====================================" -ForegroundColor Cyan
 Write-Host "DataverseToPowerBI XrmToolBox Plugin" -ForegroundColor Cyan
-Write-Host "Complete Build & Deploy v$version" -ForegroundColor Cyan
+Write-Host "Complete Build & Deploy v$fullVersion" -ForegroundColor Cyan
 Write-Host "=====================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -185,25 +184,8 @@ if (-not $PackageOnly) {
     Copy-Item "$packageRoot\lib\net48\*.dll" $xrmToolBoxPluginsPath -Force
     Write-Host "  ✓ Copied DLLs to: $xrmToolBoxPluginsPath" -ForegroundColor Green
 
-    # Copy ALL dependency DLLs from Core library
-    $coreBinPath = Join-Path $repoRoot "DataverseToPowerBI.Core\bin\Release\net48"
-    $dependencyDlls = @(
-        "Microsoft.Identity.Client.dll",
-        "Microsoft.IdentityModel.Abstractions.dll", 
-        "System.Buffers.dll",
-        "System.Diagnostics.DiagnosticSource.dll",
-        "System.Memory.dll",
-        "System.Numerics.Vectors.dll",
-        "System.Runtime.CompilerServices.Unsafe.dll"
-    )
-
-    foreach ($dll in $dependencyDlls) {
-        $sourcePath = Join-Path $coreBinPath $dll
-        if (Test-Path $sourcePath) {
-            Copy-Item $sourcePath $xrmToolBoxPluginsPath -Force
-            Write-Host "  ✓ Copied dependency: $dll" -ForegroundColor Green
-        }
-    }
+    # Note: No additional dependencies needed - XrmToolBox handles authentication
+    # and Newtonsoft.Json is already provided by XrmToolBox
     
     # Copy Assets
     $targetAssetsPath = Join-Path $xrmToolBoxPluginsPath "DataverseToPowerBI"

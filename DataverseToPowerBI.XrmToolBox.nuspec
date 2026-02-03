@@ -2,7 +2,7 @@
 <package>
 	<metadata>
     <id>DataverseToPowerBI.XrmToolBox</id>
-    <version>1.2026.2.23</version>
+    <version>1.2026.2.35</version>
     <title>Dataverse to Power BI Semantic Model</title>
     <authors>Scott Sewell</authors>
     <owners>mScottSewell</owners>
@@ -15,7 +15,9 @@
     <projectUrl>https://github.com/mscottsewell/DataverseMetadata-to-PowerBI-Semantic-Model</projectUrl>
     <iconUrl>https://raw.githubusercontent.com/mscottsewell/DataverseMetadata-to-PowerBI-Semantic-Model/main/Images/DataverseToPowerBI_128.png</iconUrl>
     <dependencies>
-        <dependency id="XrmToolBox" version="1.2025.10.74" />
+        <group targetFramework="net48">
+            <dependency id="XrmToolBox" version="[1.2025.10.74,)" />
+        </group>
     </dependencies>
   </metadata>
   <files>

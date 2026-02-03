@@ -574,15 +574,24 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 var requiredLookupCols = requiredLookupColumns ?? new HashSet<string>();
                 var newQuery = GenerateMQuery(table, requiredLookupCols, dateTableConfig);
                 
+                // DEBUG: Log query comparison
+                DebugLogger.Log($"Query comparison for {table.DisplayName ?? table.LogicalName}:");
+                DebugLogger.Log($"  View: {table.View?.ViewName ?? "(none)"}");
+                DebugLogger.Log($"  Has FetchXML: {!string.IsNullOrWhiteSpace(table.View?.FetchXml)}");
+                
                 // Only flag as changed if queries actually differ
                 if (!string.IsNullOrEmpty(existingQuery) && !string.IsNullOrEmpty(newQuery))
                 {
                     if (!CompareQueries(existingQuery, newQuery))
                     {
                         analysis.QueryChanged = true;
-                        DebugLogger.Log($"Query mismatch for {table.DisplayName ?? table.LogicalName}");
-                        DebugLogger.Log($"Existing: {existingQuery.Substring(0, Math.Min(200, existingQuery.Length))}");
-                        DebugLogger.Log($"Expected: {newQuery.Substring(0, Math.Min(200, newQuery.Length))}");
+                        DebugLogger.Log($"  ✗ Query CHANGED");
+                        DebugLogger.Log($"  Existing (normalized): {existingQuery.Substring(0, Math.Min(150, existingQuery.Length))}");
+                        DebugLogger.Log($"  Expected (normalized): {newQuery.Substring(0, Math.Min(150, newQuery.Length))}");
+                    }
+                    else
+                    {
+                        DebugLogger.Log($"  ✓ Query unchanged");
                     }
                 }
             }
@@ -813,10 +822,20 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// </summary>
         private string ExtractMQuery(string tmdlContent)
         {
-            var partitionMatch = Regex.Match(tmdlContent, @"partition\s+.*?\s*=\s*\r?\n\s*m\r?\n(.*?)(?=\r?\n\s*annotation)", RegexOptions.Singleline);
-            if (partitionMatch.Success)
+            // Extract the SQL from inside Value.NativeQuery(Dataverse,"...SQL...")
+            // The partition format spans multiple lines:
+            //   Source = Value.NativeQuery(Dataverse,"
+            //
+            //       SELECT ... FROM ... WHERE ...
+            //
+            //   " ,null ,[EnableFolding=true])
+            
+            // Match from Value.NativeQuery to the closing quote before " ,null"
+            var queryMatch = Regex.Match(tmdlContent, @"Value\.NativeQuery\([^,]+,\s*""(.*?)""", RegexOptions.Singleline);
+            if (queryMatch.Success)
             {
-                return NormalizeQuery(partitionMatch.Groups[1].Value);
+                var sql = queryMatch.Groups[1].Value.Trim();
+                return NormalizeQuery(sql);
             }
             return string.Empty;
         }
@@ -914,15 +933,18 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         }
 
         /// <summary>
-        /// Normalizes queries for comparison (removes all whitespace and formatting differences)
+        /// Normalizes queries for comparison (removes all whitespace, formatting differences, and SQL comments)
         /// </summary>
         private string NormalizeQuery(string query)
         {
             if (string.IsNullOrEmpty(query)) return string.Empty;
             
+            // Remove SQL comments (-- comments) since they're metadata, not functional SQL
+            var withoutComments = Regex.Replace(query, @"--[^\r\n]*", "", RegexOptions.Multiline);
+            
             // Remove ALL whitespace for comparison - this handles different formatting styles
             // (single line vs multi-line, different indentation, etc.)
-            return Regex.Replace(query.Trim().ToUpperInvariant(), @"\s+", "");
+            return Regex.Replace(withoutComments.Trim().ToUpperInvariant(), @"\s+", "");
         }
 
         /// <summary>
@@ -1142,8 +1164,8 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             try
             {
                 var content = File.ReadAllText(dataverseUrlPath);
-                // Extract the URL from the partition source expression: expression = "portfolioshapingdev.crm.dynamics.com"
-                var urlMatch = Regex.Match(content, @"expression\s*=\s*""([^""]+)""");
+                // Extract the URL from the partition source: source = "portfolioshapingdev.crm.dynamics.com" meta [...]
+                var urlMatch = Regex.Match(content, @"source\s*=\s*""([^""]+)""");
                 if (urlMatch.Success)
                     return urlMatch.Groups[1].Value;
             }

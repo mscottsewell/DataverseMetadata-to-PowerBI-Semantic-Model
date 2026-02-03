@@ -10,10 +10,11 @@
     <RootNamespace>DataverseToPowerBI.XrmToolBox</RootNamespace>
     <AssemblyName>DataverseToPowerBI.XrmToolBox</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <RuntimeIdentifier>win</RuntimeIdentifier>
     <LangVersion>9.0</LangVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
+    <RuntimeIdentifier>win</RuntimeIdentifier>
+    <RuntimeIdentifiers>win</RuntimeIdentifiers>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -42,7 +43,6 @@
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
     <Reference Include="..\DataverseToPowerBI.Core\bin\Release\net48\DataverseToPowerBI.Core.dll">
       <Private>True</Private>
