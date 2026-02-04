@@ -57,7 +57,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private const string ModelsFileName = "semantic-models.json";
         private readonly string _settingsFolder;
         private readonly string _modelsFilePath;
-        private SemanticModelsFile _modelsFile;
+        private SemanticModelsFile _modelsFile = null!;
 
         public SemanticModelManager()
         {
@@ -346,7 +346,7 @@ namespace DataverseToPowerBI.XrmToolBox
         /// <summary>
         /// Get the path to the installed template
         /// </summary>
-        public string GetInstalledTemplatePath()
+        public string? GetInstalledTemplatePath()
         {
             var templatePath = Path.Combine(_settingsFolder, "PBIP_DefaultTemplate");
             if (Directory.Exists(templatePath))
@@ -433,7 +433,7 @@ namespace DataverseToPowerBI.XrmToolBox
         public List<SemanticModelConfig> Models { get; set; } = new List<SemanticModelConfig>();
 
         [DataMember]
-        public string CurrentModelName { get; set; }
+        public string CurrentModelName { get; set; } = "";
     }
 
     /// <summary>
@@ -443,16 +443,16 @@ namespace DataverseToPowerBI.XrmToolBox
     public class SemanticModelConfig
     {
         [DataMember]
-        public string Name { get; set; }
+        public string Name { get; set; } = "";
 
         [DataMember]
-        public string DataverseUrl { get; set; }
+        public string DataverseUrl { get; set; } = "";
 
         [DataMember]
-        public string WorkingFolder { get; set; }
+        public string WorkingFolder { get; set; } = "";
 
         [DataMember]
-        public string TemplatePath { get; set; }
+        public string TemplatePath { get; set; } = "";
 
         [DataMember]
         public DateTime CreatedDate { get; set; }

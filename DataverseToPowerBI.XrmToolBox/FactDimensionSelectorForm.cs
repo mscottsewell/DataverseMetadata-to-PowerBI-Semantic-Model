@@ -61,52 +61,52 @@ namespace DataverseToPowerBI.XrmToolBox
         private List<TableInfo> _tables;
         private Dictionary<string, List<CoreAttributeMetadata>> _tableAttributes = new Dictionary<string, List<CoreAttributeMetadata>>();
         private Dictionary<string, string> _allEntityDisplayNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        private List<DataverseSolution> _allSolutions;
-        private string _currentSolutionId;
+        private List<DataverseSolution> _allSolutions = null!;
+        private string _currentSolutionId = null!;
 
         // Existing configuration (for editing)
-        private string _currentFactTable;
+        private string _currentFactTable = null!;
         private List<ExportRelationship> _currentRelationships;
 
         // UI Controls
-        private WinLabel lblSolution;
-        private ComboBox cmbSolution;
-        private WinLabel lblFactTable;
-        private ComboBox cmbFactTable;
-        private WinLabel lblFactHint;
-        private WinLabel lblDimensions;
-        private WinLabel lblDimHint;
-        private CheckBox chkIncludeOneToMany;
-        private ListView listViewRelationships;
-        private Button btnAddSnowflake;
-        private Button btnFinish;
-        private Button btnCancel;
-        private WinLabel lblStatus;
-        private ProgressBar progressBar;
+        private WinLabel lblSolution = null!;
+        private ComboBox cmbSolution = null!;
+        private WinLabel lblFactTable = null!;
+        private ComboBox cmbFactTable = null!;
+        private WinLabel lblFactHint = null!;
+        private WinLabel lblDimensions = null!;
+        private WinLabel lblDimHint = null!;
+        private CheckBox chkIncludeOneToMany = null!;
+        private ListView listViewRelationships = null!;
+        private Button btnAddSnowflake = null!;
+        private Button btnFinish = null!;
+        private Button btnCancel = null!;
+        private WinLabel lblStatus = null!;
+        private ProgressBar progressBar = null!;
 
         // Results
         public string SelectedSolutionName { get; private set; }
-        public string SelectedSolutionId { get; private set; }
-        public TableInfo SelectedFactTable { get; private set; }
+        public string SelectedSolutionId { get; private set; } = null!;
+        public TableInfo SelectedFactTable { get; private set; } = null!;
         public List<ExportRelationship> SelectedRelationships { get; private set; } = new List<ExportRelationship>();
         public List<TableInfo> AllSelectedTables { get; private set; } = new List<TableInfo>();
 
         // Callback for when solution changes and tables need to be reloaded
-        public Action<string, string, Action<List<TableInfo>>> OnSolutionChangeRequested;
+        public Action<string, string, Action<List<TableInfo>>>? OnSolutionChangeRequested;
 
         public FactDimensionSelectorForm(
             XrmServiceAdapterImpl adapter,
             IOrganizationService service,
-            string solutionName,
+            string? solutionName,
             List<TableInfo> tables,
-            string currentFactTable = null,
-            List<ExportRelationship> currentRelationships = null,
-            List<DataverseSolution> allSolutions = null,
-            string currentSolutionId = null)
+            string? currentFactTable = null,
+            List<ExportRelationship>? currentRelationships = null,
+            List<DataverseSolution>? allSolutions = null,
+            string? currentSolutionId = null)
         {
             _adapter = adapter;
             _service = service;
-            SelectedSolutionName = solutionName;
+            SelectedSolutionName = solutionName ?? "All Tables";
             SelectedSolutionId = currentSolutionId;
             _tables = tables;
             _currentFactTable = currentFactTable;
@@ -580,7 +580,8 @@ namespace DataverseToPowerBI.XrmToolBox
                 var oneToManyCount = listViewRelationships.Items.Cast<ListViewItem>()
                     .Count(i => ((RelationshipTag)i.Tag).IsOneToMany);
                 
-                lblStatus.Text = $"Found {lookupCount} lookup fields + {oneToManyCount} one-to-many relationships on {SelectedFactTable.DisplayName}.";
+                var factDisplay = SelectedFactTable?.DisplayName ?? SelectedFactTable?.LogicalName ?? "fact table";
+                lblStatus.Text = $"Found {lookupCount} lookup fields + {oneToManyCount} one-to-many relationships on {factDisplay}.";
             }
             catch (Exception ex)
             {
@@ -598,13 +599,13 @@ namespace DataverseToPowerBI.XrmToolBox
 
             // Group by target table to identify multiple lookups to same table
             var targetGroups = lookups
-                .SelectMany(l => l.Targets.Select(t => new { Lookup = l, Target = t }))
+                .SelectMany(l => (l.Targets ?? new List<string>()).Select(t => new { Lookup = l, Target = t }))
                 .GroupBy(x => x.Target)
                 .ToDictionary(g => g.Key, g => g.Select(x => x.Lookup).ToList());
 
             foreach (var lookup in lookups)
             {
-                foreach (var target in lookup.Targets)
+                foreach (var target in lookup.Targets ?? new List<string>())
                 {
                     // Skip if this target is the fact table itself (self-reference)
                     if (target == SelectedFactTable?.LogicalName && !isSnowflake) continue;
@@ -659,7 +660,7 @@ namespace DataverseToPowerBI.XrmToolBox
                         SourceTable = sourceTable,
                         SourceAttribute = lookup.LogicalName,
                         TargetTable = target,
-                        DisplayName = lookup.DisplayName,
+                        DisplayName = lookup.DisplayName ?? lookup.LogicalName,
                         IsActive = isActive,
                         IsSnowflake = existingRel?.IsSnowflake ?? isSnowflake,
                         AssumeReferentialIntegrity = lookup.IsRequired
@@ -863,11 +864,13 @@ namespace DataverseToPowerBI.XrmToolBox
             var targetDisplayName = targetTable?.DisplayName 
                 ?? (_allEntityDisplayNames.TryGetValue(rel.TargetTable, out var entityDisplayName) ? entityDisplayName : rel.TargetTable);
 
+            var relationshipDisplayName = rel.DisplayName ?? rel.SourceAttribute ?? "";
+
             var item = new ListViewItem("");
             item.Checked = true;
             item.SubItems.Add("Many:1");
-            item.SubItems.Add(rel.DisplayName ?? rel.SourceAttribute);
-            item.SubItems.Add(rel.SourceAttribute);
+            item.SubItems.Add(relationshipDisplayName);
+            item.SubItems.Add(rel.SourceAttribute ?? "");
             item.SubItems.Add(targetDisplayName);
             item.SubItems.Add(rel.TargetTable);
             item.SubItems.Add(rel.IsActive ? "Active" : "Inactive");
@@ -875,9 +878,9 @@ namespace DataverseToPowerBI.XrmToolBox
             item.Tag = new RelationshipTag
             {
                 SourceTable = rel.SourceTable,
-                SourceAttribute = rel.SourceAttribute,
+                SourceAttribute = rel.SourceAttribute ?? "",
                 TargetTable = rel.TargetTable,
-                DisplayName = rel.DisplayName,
+                DisplayName = relationshipDisplayName,
                 IsActive = rel.IsActive,
                 IsSnowflake = true,
                 AssumeReferentialIntegrity = rel.AssumeReferentialIntegrity
@@ -979,10 +982,10 @@ namespace DataverseToPowerBI.XrmToolBox
         // Internal class for tag data
         private class RelationshipTag
         {
-            public string SourceTable { get; set; }
-            public string SourceAttribute { get; set; }
-            public string TargetTable { get; set; }
-            public string DisplayName { get; set; }
+            public string SourceTable { get; set; } = "";
+            public string SourceAttribute { get; set; } = "";
+            public string TargetTable { get; set; } = "";
+            public string DisplayName { get; set; } = "";
             public bool IsActive { get; set; }
             public bool IsSnowflake { get; set; }
             public bool IsOneToMany { get; set; }
@@ -1000,9 +1003,9 @@ namespace DataverseToPowerBI.XrmToolBox
         private readonly List<TableInfo> _allTables;
         private readonly List<ExportRelationship> _existingRelationships;
 
-        private ListView listViewParentTables;
-        private Button btnOK;
-        private Button btnCancel;
+        private ListView listViewParentTables = null!;
+        private Button btnOK = null!;
+        private Button btnCancel = null!;
 
         public List<ExportRelationship> SelectedRelationships { get; private set; } = new List<ExportRelationship>();
 
@@ -1093,13 +1096,13 @@ namespace DataverseToPowerBI.XrmToolBox
             listViewParentTables.Items.Clear();
 
             var targetGroups = _lookups
-                .SelectMany(l => l.Targets.Select(t => new { Lookup = l, Target = t }))
+                .SelectMany(l => (l.Targets ?? new List<string>()).Select(t => new { Lookup = l, Target = t }))
                 .GroupBy(x => x.Target)
                 .ToDictionary(g => g.Key, g => g.Select(x => x.Lookup).ToList());
 
             foreach (var lookup in _lookups)
             {
-                foreach (var target in lookup.Targets)
+                foreach (var target in lookup.Targets ?? new List<string>())
                 {
                     var targetTable = _allTables.FirstOrDefault(t => t.LogicalName == target);
                     var targetDisplayName = targetTable?.DisplayName ?? target;
@@ -1115,18 +1118,20 @@ namespace DataverseToPowerBI.XrmToolBox
                     var statusText = isActive ? "Active" : "Inactive";
                     if (multipleLookupsToTarget) statusText += " ⚠";
 
+                    var sourceDisplayName = lookup.DisplayName ?? lookup.LogicalName ?? "";
+
                     var item = new ListViewItem("");
                     item.Checked = isChecked;
-                    item.SubItems.Add(lookup.DisplayName ?? lookup.LogicalName);
+                    item.SubItems.Add(sourceDisplayName);
                     item.SubItems.Add(targetDisplayName);
                     item.SubItems.Add(statusText);
                     item.SubItems.Add(target);
                     item.Tag = new SnowflakeTag
                     {
-                        SourceTable = _dimensionTable.LogicalName,
-                        SourceAttribute = lookup.LogicalName,
+                        SourceTable = _dimensionTable.LogicalName ?? "",
+                        SourceAttribute = lookup.LogicalName ?? "",
                         TargetTable = target,
-                        DisplayName = lookup.DisplayName,
+                        DisplayName = sourceDisplayName,
                         IsActive = isActive,
                         AssumeReferentialIntegrity = lookup.IsRequired
                     };
@@ -1219,10 +1224,10 @@ namespace DataverseToPowerBI.XrmToolBox
 
         private class SnowflakeTag
         {
-            public string SourceTable { get; set; }
-            public string SourceAttribute { get; set; }
-            public string TargetTable { get; set; }
-            public string DisplayName { get; set; }
+            public string SourceTable { get; set; } = "";
+            public string SourceAttribute { get; set; } = "";
+            public string TargetTable { get; set; } = "";
+            public string DisplayName { get; set; } = "";
             public bool IsActive { get; set; }
             public bool AssumeReferentialIntegrity { get; set; }
         }

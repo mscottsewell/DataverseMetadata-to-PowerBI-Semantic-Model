@@ -43,14 +43,14 @@ namespace DataverseToPowerBI.XrmToolBox
     /// </summary>
     public class TableSelectorForm : Form
     {
-        private ListView listViewTables;
-        private TextBox txtSearch;
-        private Button btnOk;
-        private Button btnCancel;
-        private Button btnSelectAll;
-        private Button btnDeselectAll;
-        private ComboBox cboFactTable;
-        private Label lblFactTable;
+        private ListView listViewTables = null!;
+        private TextBox txtSearch = null!;
+        private Button btnOk = null!;
+        private Button btnCancel = null!;
+        private Button btnSelectAll = null!;
+        private Button btnDeselectAll = null!;
+        private ComboBox cboFactTable = null!;
+        private Label lblFactTable = null!;
         
         private List<TableInfo> _allTables;
         

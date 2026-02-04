@@ -68,6 +68,11 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
         public SemanticModelBuilder(string templatePath, Action<string>? statusCallback = null)
         {
+            if (string.IsNullOrWhiteSpace(templatePath))
+            {
+                throw new ArgumentException("Template path is required.", nameof(templatePath));
+            }
+
             _templatePath = templatePath;
             _statusCallback = statusCallback;
         }
@@ -362,7 +367,14 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             if (tableChanges.HasChanges)
                             {
                                 var changeDetails = new List<string>();
-                                if (tableChanges.QueryChanged) changeDetails.Add("query");
+                                if (tableChanges.QueryChanged)
+                                {
+                                    // Use detailed description if available, otherwise generic "query"
+                                    var queryDesc = !string.IsNullOrEmpty(tableChanges.QueryChangeDetail) 
+                                        ? tableChanges.QueryChangeDetail 
+                                        : "query";
+                                    changeDetails.Add(queryDesc);
+                                }
                                 if (tableChanges.NewColumns.Count > 0) changeDetails.Add($"{tableChanges.NewColumns.Count} new column(s)");
                                 if (tableChanges.ModifiedColumns.Count > 0) changeDetails.Add($"{tableChanges.ModifiedColumns.Count} modified column(s)");
                                 if (tableChanges.RemovedColumns.Count > 0) changeDetails.Add($"{tableChanges.RemovedColumns.Count} removed column(s)");
@@ -585,7 +597,48 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     if (!CompareQueries(existingQuery, newQuery))
                     {
                         analysis.QueryChanged = true;
-                        DebugLogger.Log($"  ✗ Query CHANGED");
+                        
+                        // Try to determine what specifically changed
+                        var changeDetails = new List<string>();
+                        
+                        // Extract column parts for comparison
+                        var existingSelectMatch = Regex.Match(existingQuery, @"SELECT(.+?)FROM", RegexOptions.Singleline);
+                        var newSelectMatch = Regex.Match(newQuery, @"SELECT(.+?)FROM", RegexOptions.Singleline);
+                        
+                        if (existingSelectMatch.Success && newSelectMatch.Success)
+                        {
+                            var existingCols = existingSelectMatch.Groups[1].Value;
+                            var newCols = newSelectMatch.Groups[1].Value;
+                            if (existingCols != newCols)
+                            {
+                                changeDetails.Add("columns changed");
+                            }
+                        }
+                        
+                        // Extract WHERE parts for comparison
+                        var existingWhereMatch = Regex.Match(existingQuery, @"WHERE(.+)$", RegexOptions.Singleline);
+                        var newWhereMatch = Regex.Match(newQuery, @"WHERE(.+)$", RegexOptions.Singleline);
+                        
+                        var existingHasWhere = existingWhereMatch.Success && !string.IsNullOrWhiteSpace(existingWhereMatch.Groups[1].Value);
+                        var newHasWhere = newWhereMatch.Success && !string.IsNullOrWhiteSpace(newWhereMatch.Groups[1].Value);
+                        
+                        if (existingHasWhere != newHasWhere)
+                        {
+                            changeDetails.Add(newHasWhere ? "filter added" : "filter removed");
+                        }
+                        else if (existingHasWhere && newHasWhere)
+                        {
+                            if (existingWhereMatch.Groups[1].Value != newWhereMatch.Groups[1].Value)
+                            {
+                                changeDetails.Add("filter modified");
+                            }
+                        }
+                        
+                        analysis.QueryChangeDetail = changeDetails.Count > 0 
+                            ? string.Join(", ", changeDetails) 
+                            : "query structure changed";
+                        
+                        DebugLogger.Log($"  ✗ Query CHANGED: {analysis.QueryChangeDetail}");
                         DebugLogger.Log($"  Existing (normalized): {existingQuery.Substring(0, Math.Min(150, existingQuery.Length))}");
                         DebugLogger.Log($"  Expected (normalized): {newQuery.Substring(0, Math.Min(150, newQuery.Length))}");
                     }
@@ -599,6 +652,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             {
                 DebugLogger.Log($"Warning: Could not analyze table changes for {tmdlPath}: {ex.Message}");
                 analysis.QueryChanged = true; // Assume changes if we can't parse
+                analysis.QueryChangeDetail = "unable to parse existing file";
             }
 
             return analysis;
@@ -841,7 +895,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         }
 
         /// <summary>
-        /// Generates expected M query for comparison - must exactly match actual BuildIncrementalTable logic
+        /// Generates expected M query for comparison - must exactly match actual GenerateTableTmdl logic
         /// </summary>
         private string GenerateMQuery(ExportTable table, HashSet<string> requiredLookupColumns, DateTableConfig? dateTableConfig = null)
         {
@@ -849,22 +903,28 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             var sqlFields = new List<string>();
             var processedColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            // Add primary key first
+            // CRITICAL: Must match GenerateTableTmdl logic exactly
             var primaryKey = table.PrimaryIdAttribute ?? table.LogicalName + "id";
-            sqlFields.Add($"Base.{primaryKey}");
-            processedColumns.Add(primaryKey);
 
-            // Add required lookup columns that aren't the primary key
+            // Only add primary key first if NOT already in Attributes (matching GenerateTableTmdl)
+            if (!table.Attributes.Any(a => a.LogicalName.Equals(primaryKey, StringComparison.OrdinalIgnoreCase)))
+            {
+                sqlFields.Add($"Base.{primaryKey}");
+                processedColumns.Add(primaryKey);
+            }
+
+            // Add required lookup columns only if NOT in Attributes (matching GenerateTableTmdl)
             foreach (var lookupCol in requiredLookupColumns)
             {
-                if (!processedColumns.Contains(lookupCol))
+                if (!table.Attributes.Any(a => a.LogicalName.Equals(lookupCol, StringComparison.OrdinalIgnoreCase)) && 
+                    !processedColumns.Contains(lookupCol))
                 {
                     sqlFields.Add($"Base.{lookupCol}");
                     processedColumns.Add(lookupCol);
                 }
             }
 
-            // Process attributes matching the exact logic in BuildIncrementalTable
+            // Process attributes matching the exact logic in GenerateTableTmdl
             if (table.Attributes != null)
             {
                 foreach (var attr in table.Attributes)
@@ -884,6 +944,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                    attrType.Equals("State", StringComparison.OrdinalIgnoreCase) ||
                                    attrType.Equals("Status", StringComparison.OrdinalIgnoreCase);
                     var isBoolean = attrType.Equals("Boolean", StringComparison.OrdinalIgnoreCase);
+                    var isPrimaryKey = attr.LogicalName == table.PrimaryIdAttribute;
 
                     if (isLookup)
                     {
@@ -898,8 +959,22 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     }
                     else
                     {
-                        // Regular column
-                        sqlFields.Add($"Base.{attr.LogicalName}");
+                        // Regular column - handle datetime wrapping (must match GenerateTableTmdl)
+                        var isDateTime = attrType.Equals("DateTime", StringComparison.OrdinalIgnoreCase);
+                        var shouldWrapDateTime = isDateTime && dateTableConfig != null &&
+                            dateTableConfig.WrappedFields.Any(f =>
+                                f.TableName.Equals(table.LogicalName, StringComparison.OrdinalIgnoreCase) &&
+                                f.FieldName.Equals(attr.LogicalName, StringComparison.OrdinalIgnoreCase));
+
+                        if (shouldWrapDateTime)
+                        {
+                            var offset = dateTableConfig!.UtcOffsetHours;
+                            sqlFields.Add($"CAST(DATEADD(hour, {offset}, Base.{attr.LogicalName}) AS DATE) AS {attr.LogicalName}");
+                        }
+                        else
+                        {
+                            sqlFields.Add($"Base.{attr.LogicalName}");
+                        }
                     }
                 }
             }
@@ -1205,6 +1280,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         private class TableChangeAnalysis
         {
             public bool QueryChanged { get; set; }
+            public string? QueryChangeDetail { get; set; }  // Specific detail about what changed in query
             public List<string> NewColumns { get; } = new List<string>();
             public Dictionary<string, string> ModifiedColumns { get; } = new Dictionary<string, string>();
             public List<string> RemovedColumns { get; } = new List<string>();
@@ -1412,7 +1488,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 // Append user measures if any
                 if (!string.IsNullOrEmpty(userMeasuresSection))
                 {
-                    tableTmdl = InsertUserMeasures(tableTmdl, userMeasuresSection);
+                    tableTmdl = InsertUserMeasures(tableTmdl, userMeasuresSection!);
                 }
 
                 WriteTmdlFile(tablePath, tableTmdl);
@@ -2344,10 +2420,11 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// </summary>
         private (string dataType, string? formatString, string? sourceProviderType, string summarizeBy) MapDataType(string? attributeType)
         {
-            if (string.IsNullOrEmpty(attributeType))
+            if (attributeType == null || attributeType.Length == 0)
                 return ("string", null, "nvarchar", "none");
 
-            return attributeType.ToLowerInvariant() switch
+            var normalizedType = attributeType!.ToLowerInvariant();
+            return normalizedType switch
             {
                 // Numeric types
                 "integer" => ("int64", "0", "int", "sum"),
@@ -2378,10 +2455,11 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// </summary>
         private string MapToPowerQueryType(string? attributeType)
         {
-            if (string.IsNullOrEmpty(attributeType))
+            if (attributeType == null || attributeType.Length == 0)
                 return "type text";
 
-            return attributeType.ToLowerInvariant() switch
+            var normalizedType = attributeType.ToLowerInvariant();
+            return normalizedType switch
             {
                 // Numeric types
                 "integer" or "bigint" => "Int64.Type",

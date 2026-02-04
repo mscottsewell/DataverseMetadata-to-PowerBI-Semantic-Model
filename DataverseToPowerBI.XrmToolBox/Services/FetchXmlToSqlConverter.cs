@@ -215,30 +215,32 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             _debugLog.Add($"  Condition: {attribute} {operatorValue} {value ?? "(no value)"}");
 
             var columnRef = $"{tableAlias}.{attribute}";
+            var safeValue = value ?? "";
+            var operatorKey = operatorValue!;
 
             try
             {
-                return operatorValue.ToLowerInvariant() switch
+                return operatorKey.ToLowerInvariant() switch
                 {
                     // Basic comparison operators
-                    "eq" => $"{columnRef} = {FormatValue(value)}",
-                    "ne" => $"{columnRef} <> {FormatValue(value)}",
-                    "gt" => $"{columnRef} > {FormatValue(value)}",
-                    "ge" => $"{columnRef} >= {FormatValue(value)}",
-                    "lt" => $"{columnRef} < {FormatValue(value)}",
-                    "le" => $"{columnRef} <= {FormatValue(value)}",
+                    "eq" => $"{columnRef} = {FormatValue(safeValue)}",
+                    "ne" => $"{columnRef} <> {FormatValue(safeValue)}",
+                    "gt" => $"{columnRef} > {FormatValue(safeValue)}",
+                    "ge" => $"{columnRef} >= {FormatValue(safeValue)}",
+                    "lt" => $"{columnRef} < {FormatValue(safeValue)}",
+                    "le" => $"{columnRef} <= {FormatValue(safeValue)}",
                     
                     // Null operators
                     "null" => $"{columnRef} IS NULL",
                     "not-null" => $"{columnRef} IS NOT NULL",
                     
                     // String operators
-                    "like" => $"{columnRef} LIKE {FormatValue(value)}",
-                    "not-like" => $"{columnRef} NOT LIKE {FormatValue(value)}",
-                    "begins-with" => $"{columnRef} LIKE {FormatValue(value + "%")}",
-                    "not-begin-with" => $"{columnRef} NOT LIKE {FormatValue(value + "%")}",
-                    "ends-with" => $"{columnRef} LIKE {FormatValue("%" + value)}",
-                    "not-end-with" => $"{columnRef} NOT LIKE {FormatValue("%" + value)}",
+                    "like" => $"{columnRef} LIKE {FormatValue(safeValue)}",
+                    "not-like" => $"{columnRef} NOT LIKE {FormatValue(safeValue)}",
+                    "begins-with" => $"{columnRef} LIKE {FormatValue(safeValue + "%")}",
+                    "not-begin-with" => $"{columnRef} NOT LIKE {FormatValue(safeValue + "%")}",
+                    "ends-with" => $"{columnRef} LIKE {FormatValue("%" + safeValue)}",
+                    "not-end-with" => $"{columnRef} NOT LIKE {FormatValue("%" + safeValue)}",
                     
                     // Date operators - absolute
                     "today" => ConvertDateOperator(columnRef, "today"),
@@ -255,23 +257,23 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     "next-year" => ConvertDateOperator(columnRef, "next-year"),
                     
                     // Date operators - relative with value parameter
-                    "last-x-hours" => ConvertRelativeDateOperator(columnRef, "hour", value, -1),
-                    "last-x-days" => ConvertRelativeDateOperator(columnRef, "day", value, -1),
-                    "last-x-weeks" => ConvertRelativeDateOperator(columnRef, "week", value, -1),
-                    "last-x-months" => ConvertRelativeDateOperator(columnRef, "month", value, -1),
-                    "last-x-years" => ConvertRelativeDateOperator(columnRef, "year", value, -1),
-                    "next-x-hours" => ConvertRelativeDateOperator(columnRef, "hour", value, 1),
-                    "next-x-days" => ConvertRelativeDateOperator(columnRef, "day", value, 1),
-                    "next-x-weeks" => ConvertRelativeDateOperator(columnRef, "week", value, 1),
-                    "next-x-months" => ConvertRelativeDateOperator(columnRef, "month", value, 1),
-                    "next-x-years" => ConvertRelativeDateOperator(columnRef, "year", value, 1),
-                    "older-x-months" => ConvertOlderThanOperator(columnRef, "month", value),
-                    "older-x-years" => ConvertOlderThanOperator(columnRef, "year", value),
+                    "last-x-hours" => ConvertRelativeDateOperator(columnRef, "hour", safeValue, -1),
+                    "last-x-days" => ConvertRelativeDateOperator(columnRef, "day", safeValue, -1),
+                    "last-x-weeks" => ConvertRelativeDateOperator(columnRef, "week", safeValue, -1),
+                    "last-x-months" => ConvertRelativeDateOperator(columnRef, "month", safeValue, -1),
+                    "last-x-years" => ConvertRelativeDateOperator(columnRef, "year", safeValue, -1),
+                    "next-x-hours" => ConvertRelativeDateOperator(columnRef, "hour", safeValue, 1),
+                    "next-x-days" => ConvertRelativeDateOperator(columnRef, "day", safeValue, 1),
+                    "next-x-weeks" => ConvertRelativeDateOperator(columnRef, "week", safeValue, 1),
+                    "next-x-months" => ConvertRelativeDateOperator(columnRef, "month", safeValue, 1),
+                    "next-x-years" => ConvertRelativeDateOperator(columnRef, "year", safeValue, 1),
+                    "older-x-months" => ConvertOlderThanOperator(columnRef, "month", safeValue),
+                    "older-x-years" => ConvertOlderThanOperator(columnRef, "year", safeValue),
                     
                     // Date comparison operators (with timezone adjustment)
-                    "on" => $"CAST(DATEADD(hour, {_utcOffsetHours}, {columnRef}) AS DATE) = CAST({FormatValue(value)} AS DATE)",
-                    "on-or-after" => $"DATEADD(hour, {_utcOffsetHours}, {columnRef}) >= {FormatValue(value)}",
-                    "on-or-before" => $"DATEADD(hour, {_utcOffsetHours}, {columnRef}) <= {FormatValue(value)}",
+                    "on" => $"CAST(DATEADD(hour, {_utcOffsetHours}, {columnRef}) AS DATE) = CAST({FormatValue(safeValue)} AS DATE)",
+                    "on-or-after" => $"DATEADD(hour, {_utcOffsetHours}, {columnRef}) >= {FormatValue(safeValue)}",
+                    "on-or-before" => $"DATEADD(hour, {_utcOffsetHours}, {columnRef}) <= {FormatValue(safeValue)}",
                     
                     // User context operators
                     "eq-userid" => $"{columnRef} = CURRENT_USER",
@@ -284,13 +286,13 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     "not-in" => ProcessNotInOperator(condition, columnRef),
                     
                     // Unsupported operators that we log
-                    _ => UnsupportedOperator(operatorValue, attribute, value)
+                    _ => UnsupportedOperator(operatorKey, attribute, safeValue)
                 };
             }
             catch (Exception ex)
             {
                 _debugLog.Add($"  ERROR processing condition: {ex.Message}");
-                LogUnsupported($"Failed to process operator '{operatorValue}' for attribute '{attribute}'");
+                LogUnsupported($"Failed to process operator '{operatorKey}' for attribute '{attribute}'");
                 return "";
             }
         }
@@ -324,12 +326,12 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             };
         }
 
-        private string ConvertRelativeDateOperator(string columnRef, string datepart, string value, int direction)
+        private string ConvertRelativeDateOperator(string columnRef, string datepart, string? value, int direction)
         {
             // direction: -1 for "last", 1 for "next"
-            if (!int.TryParse(value, out int units))
+            if (string.IsNullOrWhiteSpace(value) || !int.TryParse(value, out int units))
             {
-                LogUnsupported($"Invalid value '{value}' for relative date operator");
+                LogUnsupported($"Invalid value '{value ?? ""}' for relative date operator");
                 return "";
             }
 
@@ -360,11 +362,11 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             }
         }
 
-        private string ConvertOlderThanOperator(string columnRef, string datepart, string value)
+        private string ConvertOlderThanOperator(string columnRef, string datepart, string? value)
         {
-            if (!int.TryParse(value, out int units))
+            if (string.IsNullOrWhiteSpace(value) || !int.TryParse(value, out int units))
             {
-                LogUnsupported($"Invalid value '{value}' for older-than operator");
+                LogUnsupported($"Invalid value '{value ?? ""}' for older-than operator");
                 return "";
             }
 
@@ -394,7 +396,8 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 var singleValue = condition.Attribute("value")?.Value;
                 if (!string.IsNullOrWhiteSpace(singleValue))
                 {
-                    values = singleValue.Split(',').Select(v => v.Trim()).ToList();
+                    var safeSingleValue = singleValue!;
+                    values = safeSingleValue.Split(',').Select(v => v.Trim()).ToList();
                 }
             }
 
@@ -404,6 +407,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 return "";
             }
 
+            values = values.Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v!).ToList();
             var formattedValues = string.Join(", ", values.Select(FormatValue));
             return $"{columnRef} IN ({formattedValues})";
         }
@@ -417,37 +421,39 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             return inClause.Replace(" IN (", " NOT IN (");
         }
 
-        private string FormatValue(string value)
+        private string FormatValue(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
                 return "NULL";
 
+            var safeValue = value!;
+
             // Try to detect value type and format accordingly
             
             // Integer
-            if (int.TryParse(value, out _))
-                return value;
+            if (int.TryParse(safeValue, out _))
+                return safeValue;
             
             // Boolean (Dataverse uses 0/1)
-            if (value == "0" || value == "1")
-                return value;
+            if (safeValue == "0" || safeValue == "1")
+                return safeValue;
             
             // Guid
-            if (Guid.TryParse(value, out _))
-                return $"'{value}'";
+            if (Guid.TryParse(safeValue, out _))
+                return $"'{safeValue}'";
             
             // DateTime (basic ISO format detection)
-            if (DateTime.TryParse(value, out _))
-                return $"'{value}'";
+            if (DateTime.TryParse(safeValue, out _))
+                return $"'{safeValue}'";
             
             // Default: treat as string and escape single quotes
-            var escapedValue = value.Replace("'", "''");
+            var escapedValue = safeValue.Replace("'", "''");
             return $"'{escapedValue}'";
         }
 
-        private string UnsupportedOperator(string operatorValue, string attribute, string value)
+        private string UnsupportedOperator(string operatorValue, string? attribute, string? value)
         {
-            var message = $"Operator '{operatorValue}' for attribute '{attribute}'";
+            var message = $"Operator '{operatorValue}' for attribute '{attribute ?? ""}'";
             LogUnsupported(message);
             _debugLog.Add($"  UNSUPPORTED: {message}");
             return "";

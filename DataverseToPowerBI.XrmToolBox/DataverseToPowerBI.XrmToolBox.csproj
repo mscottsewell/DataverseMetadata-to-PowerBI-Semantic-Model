@@ -12,6 +12,9 @@
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <RuntimeIdentifiers>win</RuntimeIdentifiers>
     <LangVersion>9.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <!-- Suppress nullable flow analysis warnings - code predates nullable reference types and works correctly at runtime -->
+    <NoWarn>$(NoWarn);CS8600;CS8601;CS8602;CS8604;CS8619;CS8625</NoWarn>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
   </PropertyGroup>

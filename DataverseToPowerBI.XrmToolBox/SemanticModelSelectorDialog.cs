@@ -49,39 +49,39 @@ namespace DataverseToPowerBI.XrmToolBox
     /// </summary>
     public class SemanticModelSelectorDialog : Form
     {
-        private ListView listViewModels;
-        private GroupBox groupDetails;
-        private TextBox txtName;
-        private TextBox txtEnvironmentUrl;
-        private ComboBox cboConnectionType;
-        private TextBox txtFabricEndpoint;
-        private TextBox txtFabricDatabase;
-        private Label lblFabricEndpoint;
-        private Label lblFabricDatabase;
-        private TextBox txtWorkingFolder;
-        private TextBox txtTemplatePath;
-        private Button btnChangeFolder;
-        private Button btnChangeTemplate;
-        private Button btnNew;
-        private Button btnCopy;
-        private Button btnRename;
-        private Button btnDelete;
-        private Button btnSelect;
-        private Button btnCancel;
-        private Label lblName;
-        private Label lblEnvironmentUrl;
-        private Label lblConnectionType;
-        private Label lblWorkingFolder;
-        private Label lblTemplatePath;
+        private ListView listViewModels = null!;
+        private GroupBox groupDetails = null!;
+        private TextBox txtName = null!;
+        private TextBox txtEnvironmentUrl = null!;
+        private ComboBox cboConnectionType = null!;
+        private TextBox txtFabricEndpoint = null!;
+        private TextBox txtFabricDatabase = null!;
+        private Label lblFabricEndpoint = null!;
+        private Label lblFabricDatabase = null!;
+        private TextBox txtWorkingFolder = null!;
+        private TextBox txtTemplatePath = null!;
+        private Button btnChangeFolder = null!;
+        private Button btnChangeTemplate = null!;
+        private Button btnNew = null!;
+        private Button btnCopy = null!;
+        private Button btnRename = null!;
+        private Button btnDelete = null!;
+        private Button btnSelect = null!;
+        private Button btnCancel = null!;
+        private Label lblName = null!;
+        private Label lblEnvironmentUrl = null!;
+        private Label lblConnectionType = null!;
+        private Label lblWorkingFolder = null!;
+        private Label lblTemplatePath = null!;
 
         private readonly SemanticModelManager _modelManager;
         private readonly string _currentEnvironmentUrl;
-        private SemanticModelConfig _selectedModel;
+        private SemanticModelConfig? _selectedModel;
 
-        public SemanticModelConfig SelectedSemanticModel => _selectedModel;
+        public SemanticModelConfig? SelectedSemanticModel => _selectedModel;
         public bool ConfigurationsChanged { get; private set; } = false;
         public bool UrlWasChanged { get; private set; } = false;
-        public string NewlyCreatedConfiguration { get; private set; }
+        public string NewlyCreatedConfiguration { get; private set; } = "";
 
         public SemanticModelSelectorDialog(SemanticModelManager modelManager, string currentEnvironmentUrl)
         {
@@ -413,10 +413,12 @@ namespace DataverseToPowerBI.XrmToolBox
                 
                 // Fact Table column
                 var factTableDisplay = "(none)";
-                if (!string.IsNullOrEmpty(model.PluginSettings?.FactTable) && 
-                    model.PluginSettings?.TableDisplayInfo?.ContainsKey(model.PluginSettings.FactTable) == true)
+                var factTableKey = model.PluginSettings?.FactTable;
+                var tableDisplayInfo = model.PluginSettings?.TableDisplayInfo;
+                if (factTableKey is { Length: > 0 } key && tableDisplayInfo != null &&
+                    tableDisplayInfo.TryGetValue(key, out var factTableInfo))
                 {
-                    factTableDisplay = model.PluginSettings.TableDisplayInfo[model.PluginSettings.FactTable].DisplayName ?? model.PluginSettings.FactTable;
+                    factTableDisplay = factTableInfo.DisplayName ?? key;
                 }
                 item.SubItems.Add(factTableDisplay);
                 
@@ -447,10 +449,12 @@ namespace DataverseToPowerBI.XrmToolBox
                     
                     // Fact Table column
                     var factTableDisplay = "(none)";
-                    if (!string.IsNullOrEmpty(model.PluginSettings?.FactTable) && 
-                        model.PluginSettings?.TableDisplayInfo?.ContainsKey(model.PluginSettings.FactTable) == true)
+                    var factTableKey = model.PluginSettings?.FactTable;
+                    var tableDisplayInfo = model.PluginSettings?.TableDisplayInfo;
+                    if (factTableKey is { Length: > 0 } key && tableDisplayInfo != null &&
+                        tableDisplayInfo.TryGetValue(key, out var factTableInfo))
                     {
-                        factTableDisplay = model.PluginSettings.TableDisplayInfo[model.PluginSettings.FactTable].DisplayName ?? model.PluginSettings.FactTable;
+                        factTableDisplay = factTableInfo.DisplayName ?? key;
                     }
                     item.SubItems.Add(factTableDisplay);
                     
@@ -534,7 +538,7 @@ namespace DataverseToPowerBI.XrmToolBox
             txtTemplatePath.Text = model.TemplatePath ?? "";
 
             // Indicate if model is from different environment
-            bool isCurrentEnv = NormalizeUrl(model.DataverseUrl) == _currentEnvironmentUrl;
+            bool isCurrentEnv = NormalizeUrl(model.DataverseUrl ?? "") == _currentEnvironmentUrl;
             txtEnvironmentUrl.ForeColor = isCurrentEnv ? SystemColors.ControlText : Color.Orange;
         }
 
@@ -1047,20 +1051,20 @@ namespace DataverseToPowerBI.XrmToolBox
     /// </summary>
     public class NewSemanticModelDialogXrm : Form
     {
-        private TextBox txtName;
-        private ComboBox cboConnectionType;
-        private TextBox txtFabricEndpoint;
-        private TextBox txtFabricDatabase;
-        private Label lblFabricEndpoint;
-        private Label lblFabricDatabase;
-        private TextBox txtFolder;
-        private TextBox txtTemplate;
-        private Button btnChangeFolder;
-        private Button btnChangeTemplate;
-        private Button btnCreate;
-        private Button btnCancelDlg;
-        private Label lblPreview;
-        private Label lblPreviewPath;
+        private TextBox txtName = null!;
+        private ComboBox cboConnectionType = null!;
+        private TextBox txtFabricEndpoint = null!;
+        private TextBox txtFabricDatabase = null!;
+        private Label lblFabricEndpoint = null!;
+        private Label lblFabricDatabase = null!;
+        private TextBox txtFolder = null!;
+        private TextBox txtTemplate = null!;
+        private Button btnChangeFolder = null!;
+        private Button btnChangeTemplate = null!;
+        private Button btnCreate = null!;
+        private Button btnCancelDlg = null!;
+        private Label lblPreview = null!;
+        private Label lblPreviewPath = null!;
 
         public string SemanticModelName { get; private set; } = "";
         public string ConnectionType { get; private set; } = "DataverseTDS";

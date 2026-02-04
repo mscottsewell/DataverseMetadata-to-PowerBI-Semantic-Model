@@ -47,7 +47,7 @@ namespace DataverseToPowerBI.XrmToolBox.Models
         [System.Runtime.Serialization.DataMember]
         public string TargetTable { get; set; } = "";       // Dimension table (One side)
         [System.Runtime.Serialization.DataMember]
-        public string DisplayName { get; set; }
+        public string DisplayName { get; set; } = "";
         [System.Runtime.Serialization.DataMember]
         public bool IsActive { get; set; } = true;
         [System.Runtime.Serialization.DataMember]

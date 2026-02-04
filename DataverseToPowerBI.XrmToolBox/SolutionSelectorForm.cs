@@ -35,12 +35,12 @@ namespace DataverseToPowerBI.XrmToolBox
     /// </summary>
     public class SolutionSelectorForm : Form
     {
-        private ComboBox cboSolutions;
-        private Button btnOk;
-        private Button btnCancel;
-        private Label lblInstruction;
+        private ComboBox cboSolutions = null!;
+        private Button btnOk = null!;
+        private Button btnCancel = null!;
+        private Label lblInstruction = null!;
         
-        public DataverseSolution SelectedSolution { get; private set; }
+        public DataverseSolution? SelectedSolution { get; private set; }
         
         public SolutionSelectorForm(List<DataverseSolution> solutions, string currentSolutionId)
         {

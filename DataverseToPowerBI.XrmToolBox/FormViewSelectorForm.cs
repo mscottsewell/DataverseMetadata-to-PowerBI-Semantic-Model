@@ -38,25 +38,25 @@ namespace DataverseToPowerBI.XrmToolBox
     /// </summary>
     public class FormViewSelectorForm : Form
     {
-        private ComboBox cboForm;
-        private ComboBox cboView;
-        private Button btnOk;
-        private Button btnCancel;
-        private Label lblFormFields;
-        private Label lblViewColumns;
+        private ComboBox cboForm = null!;
+        private ComboBox cboView = null!;
+        private Button btnOk = null!;
+        private Button btnCancel = null!;
+        private Label lblFormFields = null!;
+        private Label lblViewColumns = null!;
         
         private List<FormMetadata> _forms;
         private List<ViewMetadata> _views;
         
-        public string SelectedFormId { get; private set; }
-        public string SelectedViewId { get; private set; }
+        public string? SelectedFormId { get; private set; }
+        public string? SelectedViewId { get; private set; }
         
         public FormViewSelectorForm(
             string tableName, 
             List<FormMetadata> forms, 
             List<ViewMetadata> views,
-            string currentFormId,
-            string currentViewId)
+            string? currentFormId,
+            string? currentViewId)
         {
             _forms = forms;
             _views = views;

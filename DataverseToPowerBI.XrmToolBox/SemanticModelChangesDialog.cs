@@ -38,11 +38,11 @@ namespace DataverseToPowerBI.XrmToolBox
 {
     public class SemanticModelChangesDialog : Form
     {
-        private ListView listViewChanges;
-        private Button btnApply;
-        private Button btnCancel;
-        private Label lblSummary;
-        private CheckBox chkBackup;
+        private ListView listViewChanges = null!;
+        private Button btnApply = null!;
+        private Button btnCancel = null!;
+        private Label lblSummary = null!;
+        private CheckBox chkBackup = null!;
 
         public bool UserApproved { get; private set; }
         public bool CreateBackup => chkBackup.Checked;

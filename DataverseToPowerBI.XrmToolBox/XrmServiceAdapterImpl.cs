@@ -293,10 +293,10 @@ namespace DataverseToPowerBI.XrmToolBox
                     
                     if (metadataId.HasValue && entityIds.Contains(metadataId.Value))
                     {
-                        string displayName = item.LogicalName;
+                        string displayName = item.LogicalName ?? "";
                         if (item.DisplayName?.UserLocalizedLabel != null)
                         {
-                            displayName = item.DisplayName.UserLocalizedLabel.Label ?? item.LogicalName;
+                            displayName = item.DisplayName.UserLocalizedLabel.Label ?? item.LogicalName ?? "";
                         }
                         
                         tables.Add(new TableInfo
@@ -397,13 +397,10 @@ namespace DataverseToPowerBI.XrmToolBox
                     }
                     
                     // Get targets for lookup attributes
-                    List<string> targets = null;
-                    if (attr is LookupAttributeMetadata lookupAttr)
+                    List<string> targets = new List<string>();
+                    if (attr is LookupAttributeMetadata lookupAttr && lookupAttr.Targets != null)
                     {
-                        if (lookupAttr.Targets != null && lookupAttr.Targets.Length > 0)
-                        {
-                            targets = lookupAttr.Targets.ToList();
-                        }
+                        targets = lookupAttr.Targets.ToList();
                     }
                     
                     attributes.Add(new CoreAttributeMetadata
@@ -414,7 +411,7 @@ namespace DataverseToPowerBI.XrmToolBox
                         AttributeType = MapAttributeType(typeValue ?? ""),
                         IsCustomAttribute = isCustomAttribute,
                         IsRequired = isRequired,
-                        Targets = targets
+                        Targets = targets.Count > 0 ? targets : null
                     });
                 }
             }
@@ -493,10 +490,10 @@ namespace DataverseToPowerBI.XrmToolBox
             }).ToList();
         }
 
-        public Task<string> GetFormXmlAsync(string formId)
+        public Task<string?> GetFormXmlAsync(string formId)
         {
             var entity = _service.Retrieve("systemform", new Guid(formId), new ColumnSet("formxml"));
-            return Task.FromResult(entity.GetAttributeValue<string>("formxml"));
+            return Task.FromResult<string?>(entity.GetAttributeValue<string>("formxml"));
         }
 
         public Task<List<ViewMetadata>> GetViewsAsync(string entityLogicalName, bool includeFetchXml = false)
@@ -540,23 +537,32 @@ namespace DataverseToPowerBI.XrmToolBox
             }).ToList();
         }
 
-        public Task<string> GetViewFetchXmlAsync(string viewId)
+        public Task<string?> GetViewFetchXmlAsync(string viewId)
         {
             var entity = _service.Retrieve("savedquery", new Guid(viewId), new ColumnSet("fetchxml"));
-            return Task.FromResult(entity.GetAttributeValue<string>("fetchxml"));
+            return Task.FromResult<string?>(entity.GetAttributeValue<string>("fetchxml"));
         }
 
-        private static List<string> ExtractFieldsFromFormXml(string formXml)
+        private static List<string> ExtractFieldsFromFormXml(string? formXml)
         {
             var fields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             try
             {
-                var doc = ParseXmlSecurely(formXml);
+                if (string.IsNullOrWhiteSpace(formXml))
+                {
+                    return fields.ToList();
+                }
+
+                var doc = ParseXmlSecurely(formXml!);
                 foreach (var control in doc.Descendants("control"))
                 {
                     var fieldName = control.Attribute("datafieldname")?.Value;
+                    if (fieldName == null)
+                        continue;
                     if (!string.IsNullOrEmpty(fieldName))
+                    {
                         fields.Add(fieldName.ToLower());
+                    }
                 }
             }
             catch (Exception ex)
@@ -568,17 +574,26 @@ namespace DataverseToPowerBI.XrmToolBox
             return fields.OrderBy(f => f).ToList();
         }
 
-        private static List<string> ExtractColumnsFromFetchXml(string fetchXml)
+        private static List<string> ExtractColumnsFromFetchXml(string? fetchXml)
         {
             var columns = new List<string>();
             try
             {
-                var doc = ParseXmlSecurely(fetchXml);
+                if (string.IsNullOrWhiteSpace(fetchXml))
+                {
+                    return columns;
+                }
+
+                var doc = ParseXmlSecurely(fetchXml!);
                 foreach (var attr in doc.Descendants("attribute"))
                 {
                     var name = attr.Attribute("name")?.Value;
+                    if (name == null)
+                        continue;
                     if (!string.IsNullOrEmpty(name))
+                    {
                         columns.Add(name.ToLower());
+                    }
                 }
             }
             catch (Exception ex)
@@ -623,15 +638,15 @@ namespace DataverseToPowerBI.XrmToolBox
                             continue;
 
                         // Get lookup display name
-                        string lookupDisplayName = rel.ReferencingAttribute;
+                        string lookupDisplayName = rel.ReferencingAttribute ?? "";
                         // Note: Would need additional metadata call to get lookup display name
 
                         relationships.Add(new OneToManyRelationshipInfo
                         {
-                            ReferencingEntity = rel.ReferencingEntity,
-                            ReferencingAttribute = rel.ReferencingAttribute,
-                            ReferencedEntity = rel.ReferencedEntity,
-                            SchemaName = rel.SchemaName,
+                            ReferencingEntity = rel.ReferencingEntity ?? "",
+                            ReferencingAttribute = rel.ReferencingAttribute ?? "",
+                            ReferencedEntity = rel.ReferencedEntity ?? "",
+                            SchemaName = rel.SchemaName ?? "",
                             LookupDisplayName = lookupDisplayName
                         });
                     }
@@ -693,26 +708,26 @@ namespace DataverseToPowerBI.XrmToolBox
         /// <summary>
         /// The entity that contains the lookup field (the "many" side).
         /// </summary>
-        public string ReferencingEntity { get; set; }
+        public string ReferencingEntity { get; set; } = "";
 
         /// <summary>
         /// The lookup attribute name on the referencing entity.
         /// </summary>
-        public string ReferencingAttribute { get; set; }
+        public string ReferencingAttribute { get; set; } = "";
 
         /// <summary>
         /// The entity being referenced (the "one" side).
         /// </summary>
-        public string ReferencedEntity { get; set; }
+        public string ReferencedEntity { get; set; } = "";
 
         /// <summary>
         /// The schema name of the relationship.
         /// </summary>
-        public string SchemaName { get; set; }
+        public string SchemaName { get; set; } = "";
 
         /// <summary>
         /// Display name of the lookup field.
         /// </summary>
-        public string LookupDisplayName { get; set; }
+        public string LookupDisplayName { get; set; } = "";
     }
 }

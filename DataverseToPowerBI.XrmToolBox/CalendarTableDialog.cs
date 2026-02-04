@@ -410,21 +410,31 @@ namespace DataverseToPowerBI.XrmToolBox
 
                 if (_attributeDisplayInfo.TryGetValue(tableName, out var attrs))
                 {
-                    var dateTimeAttrs = attrs.Values
-                        .Where(a => selectedAttrNames.Contains(a.LogicalName) &&
-                                   !string.IsNullOrWhiteSpace(a.AttributeType) && 
-                                   IsDateTimeType(a.AttributeType))
-                        .OrderBy(a => a.DisplayName ?? a.LogicalName);
-
-                    foreach (var attr in dateTimeAttrs)
+                    var dateTimeAttrs = new List<AttributeDisplayInfo>();
+                    foreach (var attr in attrs.Values)
                     {
+                        var logicalName = attr.LogicalName;
+                        var attributeType = attr.AttributeType;
+                        if (string.IsNullOrWhiteSpace(logicalName) || string.IsNullOrWhiteSpace(attributeType))
+                            continue;
+                        var safeLogicalName = logicalName!;
+                        var safeAttributeType = attributeType!;
+                        if (!selectedAttrNames.Contains(safeLogicalName) || !IsDateTimeType(safeAttributeType))
+                            continue;
+
+                        dateTimeAttrs.Add(attr);
+                    }
+
+                    foreach (var attr in dateTimeAttrs.OrderBy(a => a.DisplayName ?? a.LogicalName))
+                    {
+                        var logicalName = attr.LogicalName ?? "";
                         var tableDisplay = _selectedTables.TryGetValue(tableName, out var tbl)
                             ? (tbl.DisplayName ?? tableName)
                             : tableName;
-                        var fieldDisplay = attr.DisplayName ?? attr.LogicalName;
+                        var fieldDisplay = attr.DisplayName ?? logicalName;
                         var itemText = $"{tableDisplay}.{fieldDisplay}";
 
-                        _allDateTimeFields.Add((tableName, attr.LogicalName, itemText));
+                        _allDateTimeFields.Add((tableName, logicalName, itemText));
                         lstDateTimeFields.Items.Add(itemText);
                     }
                 }
@@ -433,10 +443,16 @@ namespace DataverseToPowerBI.XrmToolBox
 
         private void RestoreExistingConfig()
         {
+            var existingConfig = _existingConfig;
+            if (existingConfig == null)
+            {
+                return;
+            }
+
             // Restore table selection
             for (int i = 0; i < cboTable.Items.Count; i++)
             {
-                if (((ComboItem)cboTable.Items[i]).Value == _existingConfig!.PrimaryDateTable)
+                if (((ComboItem)cboTable.Items[i]).Value == existingConfig.PrimaryDateTable)
                 {
                     cboTable.SelectedIndex = i;
                     break;
@@ -446,7 +462,7 @@ namespace DataverseToPowerBI.XrmToolBox
             // Restore timezone
             for (int i = 0; i < cboTimeZone.Items.Count; i++)
             {
-                if (((TimeZoneItem)cboTimeZone.Items[i]).TimeZone.Id == _existingConfig.TimeZoneId)
+                if (((TimeZoneItem)cboTimeZone.Items[i]).TimeZone.Id == existingConfig.TimeZoneId)
                 {
                     cboTimeZone.SelectedIndex = i;
                     break;
@@ -454,11 +470,11 @@ namespace DataverseToPowerBI.XrmToolBox
             }
 
             // Restore year range
-            numStartYear.Value = Math.Max(numStartYear.Minimum, Math.Min(numStartYear.Maximum, _existingConfig.StartYear));
-            numEndYear.Value = Math.Max(numEndYear.Minimum, Math.Min(numEndYear.Maximum, _existingConfig.EndYear));
+            numStartYear.Value = Math.Max(numStartYear.Minimum, Math.Min(numStartYear.Maximum, existingConfig.StartYear));
+            numEndYear.Value = Math.Max(numEndYear.Minimum, Math.Min(numEndYear.Maximum, existingConfig.EndYear));
 
             // Restore checked fields
-            foreach (var field in _existingConfig.WrappedFields)
+            foreach (var field in existingConfig.WrappedFields)
             {
                 var idx = _allDateTimeFields.FindIndex(f =>
                     f.TableName == field.TableName && f.FieldName == field.FieldName);
@@ -473,7 +489,7 @@ namespace DataverseToPowerBI.XrmToolBox
             {
                 for (int i = 0; i < cboDateField.Items.Count; i++)
                 {
-                    if (((ComboItem)cboDateField.Items[i]).Value == _existingConfig.PrimaryDateField)
+                    if (((ComboItem)cboDateField.Items[i]).Value == existingConfig.PrimaryDateField)
                     {
                         cboDateField.SelectedIndex = i;
                         break;
@@ -494,19 +510,28 @@ namespace DataverseToPowerBI.XrmToolBox
                 if (_attributeDisplayInfo.TryGetValue(tableName, out var attrs) &&
                     _selectedAttributes.TryGetValue(tableName, out var selectedAttrNames))
                 {
-                    var dateTimeAttrs = attrs.Values
-                        .Where(a => selectedAttrNames.Contains(a.LogicalName) &&  // CRITICAL: Must be in selected attributes
-                                   !string.IsNullOrWhiteSpace(a.AttributeType) && 
-                                   IsDateTimeType(a.AttributeType))
-                        .OrderBy(a => a.DisplayName ?? a.LogicalName)
-                        .ToList();
-                    
-                    foreach (var attr in dateTimeAttrs)
+                    var dateTimeAttrs = new List<AttributeDisplayInfo>();
+                    foreach (var attr in attrs.Values)
                     {
+                        var logicalName = attr.LogicalName;
+                        var attributeType = attr.AttributeType;
+                        if (string.IsNullOrWhiteSpace(logicalName) || string.IsNullOrWhiteSpace(attributeType))
+                            continue;
+                        var safeLogicalName = logicalName!;
+                        var safeAttributeType = attributeType!;
+                        if (!selectedAttrNames.Contains(safeLogicalName) || !IsDateTimeType(safeAttributeType))
+                            continue;
+
+                        dateTimeAttrs.Add(attr);
+                    }
+
+                    foreach (var attr in dateTimeAttrs.OrderBy(a => a.DisplayName ?? a.LogicalName))
+                    {
+                        var logicalName = attr.LogicalName ?? "";
                         var displayText = string.IsNullOrEmpty(attr.DisplayName)
-                            ? attr.LogicalName
-                            : $"{attr.DisplayName} ({attr.LogicalName})";
-                        cboDateField.Items.Add(new ComboItem(attr.LogicalName, displayText));
+                            ? logicalName
+                            : $"{attr.DisplayName} ({logicalName})";
+                        cboDateField.Items.Add(new ComboItem(logicalName, displayText));
                     }
                 }
 

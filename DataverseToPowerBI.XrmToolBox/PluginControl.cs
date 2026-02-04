@@ -65,11 +65,11 @@ namespace DataverseToPowerBI.XrmToolBox
     /// </remarks>
     public partial class PluginControl : PluginControlBase
     {
-        private XrmServiceAdapterImpl _xrmAdapter;
+        private XrmServiceAdapterImpl? _xrmAdapter;
         private string _templatePath;
         private SemanticModelManager _modelManager;
-        private SemanticModelConfig _currentModel;
-        private string _currentEnvironmentUrl;
+        private SemanticModelConfig? _currentModel;
+        private string? _currentEnvironmentUrl;
         
         // State management - same as MainForm
         private Dictionary<string, TableInfo> _selectedTables = new Dictionary<string, TableInfo>();
@@ -82,7 +82,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private Dictionary<string, bool> _loadingStates = new Dictionary<string, bool>();
         
         // Star-schema state
-        private string _factTable = null;
+        private string? _factTable = null;
         private List<ExportRelationship> _relationships = new List<ExportRelationship>();
         
         // Sorting state
@@ -92,6 +92,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private bool _attributesSortAscending = true;
         private int _relationshipsSortColumn = -1;
         private bool _relationshipsSortAscending = true;
+        private readonly ToolTip _versionToolTip = new ToolTip();
 
         /// <summary>
         /// Extracts the environment name from a Dataverse URL
@@ -114,8 +115,8 @@ namespace DataverseToPowerBI.XrmToolBox
         }
         
         // Solution 
-        private string _currentSolutionName;
-        private string _currentSolutionId;
+        private string? _currentSolutionName;
+        private string? _currentSolutionId;
         private List<TableInfo> _solutionTables = new List<TableInfo>();
         
         private bool _isLoading = false;
@@ -188,9 +189,32 @@ namespace DataverseToPowerBI.XrmToolBox
         {
             SetStatus("Connect to an environment using XrmToolBox connection manager");
             
-            // Set version from assembly
-            var version = GetType().Assembly.GetName().Version;
-            lblVersion.Text = $"v{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
+            // Set version from assembly file version and normalize to 4 segments
+            var fileVersion = System.Diagnostics.FileVersionInfo
+                .GetVersionInfo(GetType().Assembly.Location)
+                .FileVersion;
+            string displayVersion;
+            if (Version.TryParse(fileVersion, out var parsedFileVersion))
+            {
+                var revision = parsedFileVersion.Revision < 0 ? 0 : parsedFileVersion.Revision;
+                displayVersion = $"{parsedFileVersion.Major}.{parsedFileVersion.Minor}.{parsedFileVersion.Build}.{revision}";
+            }
+            else
+            {
+                var fallbackVersion = GetType().Assembly.GetName().Version ?? new Version(0, 0, 0, 0);
+                var revision = fallbackVersion.Revision < 0 ? 0 : fallbackVersion.Revision;
+                displayVersion = $"{fallbackVersion.Major}.{fallbackVersion.Minor}.{fallbackVersion.Build}.{revision}";
+            }
+            lblVersion.Text = $"v{displayVersion}";
+            var assemblyLocation = GetType().Assembly.Location;
+            var versionInfo = System.Diagnostics.FileVersionInfo.GetVersionInfo(assemblyLocation);
+            _versionToolTip.SetToolTip(
+                lblVersion,
+                $"Path: {assemblyLocation}{Environment.NewLine}" +
+                $"FileVersion: {versionInfo.FileVersion}{Environment.NewLine}" +
+                $"ProductVersion: {versionInfo.ProductVersion}");
+            UpdateVersionLabelLayout();
+            panelStatus.Resize += (s, ev) => UpdateVersionLabelLayout();
             
             // Initialize toolbar icons
             btnRefreshMetadata.Image = RibbonIcons.RefreshIcon;
@@ -238,6 +262,18 @@ namespace DataverseToPowerBI.XrmToolBox
                 }));
             }
         }
+
+        private void UpdateVersionLabelLayout()
+        {
+            if (panelStatus == null || lblVersion == null)
+            {
+                return;
+            }
+
+            var rightPadding = 6;
+            var newLeft = panelStatus.ClientSize.Width - lblVersion.Width - rightPadding;
+            lblVersion.Left = Math.Max(0, newLeft);
+        }
         
         /// <summary>
         /// Initializes the plugin when XrmToolBox already has an active connection.
@@ -263,7 +299,7 @@ namespace DataverseToPowerBI.XrmToolBox
             }
             
             // Load the most recent model for this environment, or prompt to select
-            var recentModel = _modelManager.GetMostRecentModelForEnvironment(_currentEnvironmentUrl);
+            var recentModel = _modelManager.GetMostRecentModelForEnvironment(_currentEnvironmentUrl ?? "");
             if (recentModel != null)
             {
                 LoadSemanticModel(recentModel);
@@ -299,7 +335,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 }
                 
                 // Load the most recent model for this environment, or prompt to select
-                var recentModel = _modelManager.GetMostRecentModelForEnvironment(_currentEnvironmentUrl);
+                var recentModel = _modelManager.GetMostRecentModelForEnvironment(_currentEnvironmentUrl ?? "");
                 if (recentModel != null)
                 {
                     LoadSemanticModel(recentModel);
@@ -366,7 +402,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
             var defaultTemplate = _modelManager.GetInstalledTemplatePath() ?? _templatePath;
 
-            using (var dialog = new NewSemanticModelDialogXrm(defaultFolder, _currentEnvironmentUrl, defaultTemplate))
+            using (var dialog = new NewSemanticModelDialogXrm(defaultFolder, _currentEnvironmentUrl ?? "", defaultTemplate))
             {
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
@@ -375,7 +411,7 @@ namespace DataverseToPowerBI.XrmToolBox
                         var newModel = new SemanticModelConfig
                         {
                             Name = dialog.SemanticModelName,
-                            DataverseUrl = _currentEnvironmentUrl,
+                            DataverseUrl = _currentEnvironmentUrl ?? "",
                             WorkingFolder = dialog.WorkingFolder,
                             TemplatePath = dialog.TemplatePath,
                             LastUsed = DateTime.Now,
@@ -532,9 +568,9 @@ namespace DataverseToPowerBI.XrmToolBox
                 {
                     _relationships.Add(new ExportRelationship
                     {
-                        SourceTable = r.SourceTable,
-                        SourceAttribute = r.SourceAttribute,
-                        TargetTable = r.TargetTable,
+                        SourceTable = r.SourceTable ?? "",
+                        SourceAttribute = r.SourceAttribute ?? "",
+                        TargetTable = r.TargetTable ?? "",
                         IsActive = r.IsActive,
                         IsSnowflake = r.IsSnowflake,
                         AssumeReferentialIntegrity = r.AssumeReferentialIntegrity
@@ -599,9 +635,9 @@ namespace DataverseToPowerBI.XrmToolBox
             {
                 var settings = _currentModel.PluginSettings ?? new PluginSettings();
                 
-                settings.LastSolutionName = _currentSolutionName;
-                settings.LastSolutionId = _currentSolutionId;
-                settings.FactTable = _factTable;
+                settings.LastSolutionName = _currentSolutionName ?? "";
+                settings.LastSolutionId = _currentSolutionId ?? "";
+                settings.FactTable = _factTable ?? "";
                 settings.SelectedTableNames = _selectedTables.Keys.ToList();
                 settings.ShowAllAttributes = radioShowAll.Checked;
                 
@@ -648,7 +684,7 @@ namespace DataverseToPowerBI.XrmToolBox
         
         private void ShowSemanticModelSelector()
         {
-            using (var dialog = new SemanticModelSelectorDialog(_modelManager, _currentEnvironmentUrl))
+            using (var dialog = new SemanticModelSelectorDialog(_modelManager, _currentEnvironmentUrl ?? ""))
             {
                 if (dialog.ShowDialog(this) == DialogResult.OK && dialog.SelectedSemanticModel != null)
                 {
@@ -726,13 +762,14 @@ namespace DataverseToPowerBI.XrmToolBox
                 if (existingSolution != null)
                 {
                     // Proceed directly with existing solution
-                    LoadTablesForSolution(_currentSolutionId, _currentSolutionName, solutions);
+                    _currentSolutionName = existingSolution.FriendlyName;
+                    LoadTablesForSolution(existingSolution.SolutionId, existingSolution.FriendlyName, solutions);
                     return;
                 }
             }
             
             // Show solution selector first time or if previous solution is no longer available
-            using (var solutionDialog = new SolutionSelectorForm(solutions, _currentSolutionId))
+            using (var solutionDialog = new SolutionSelectorForm(solutions, _currentSolutionId ?? ""))
             {
                 if (solutionDialog.ShowDialog(this) != DialogResult.OK || solutionDialog.SelectedSolution == null)
                     return;
@@ -744,15 +781,22 @@ namespace DataverseToPowerBI.XrmToolBox
             }
         }
         
-        private void LoadTablesForSolution(string solutionId, string solutionName, List<DataverseSolution> allSolutions)
+        private void LoadTablesForSolution(string? solutionId, string? solutionName, List<DataverseSolution> allSolutions)
         {
+            if (_xrmAdapter == null || string.IsNullOrEmpty(solutionId) || string.IsNullOrEmpty(solutionName))
+                return;
+
+            var adapter = _xrmAdapter;
+            var resolvedSolutionId = solutionId!;
+            var resolvedSolutionName = solutionName!;
+
             // Now load tables for this solution
             WorkAsync(new WorkAsyncInfo
             {
-                Message = $"Loading tables from {solutionName}...",
+                Message = $"Loading tables from {resolvedSolutionName}...",
                 Work = (worker, args) =>
                 {
-                    args.Result = _xrmAdapter.GetSolutionTablesSync(Service, solutionId);
+                    args.Result = adapter.GetSolutionTablesSync(Service, resolvedSolutionId);
                 },
                 PostWorkCallBack = (args) =>
                 {
@@ -768,12 +812,15 @@ namespace DataverseToPowerBI.XrmToolBox
             });
         }
         
-        private void ShowFactDimensionSelector(List<DataverseSolution> allSolutions = null)
+        private void ShowFactDimensionSelector(List<DataverseSolution>? allSolutions = null)
         {
+            if (_xrmAdapter == null)
+                return;
+
             using (var dialog = new FactDimensionSelectorForm(
                 _xrmAdapter,
                 Service,
-                _currentSolutionName,
+                _currentSolutionName ?? "All Tables",
                 _solutionTables,
                 _factTable,
                 _relationships,
@@ -783,13 +830,26 @@ namespace DataverseToPowerBI.XrmToolBox
                 // Set up callback for when solution changes in the dialog
                 dialog.OnSolutionChangeRequested = (solutionId, solutionName, callback) =>
                 {
+                    if (string.IsNullOrEmpty(solutionId) || string.IsNullOrEmpty(solutionName))
+                    {
+                        callback(new List<TableInfo>());
+                        return;
+                    }
+
+                    var adapter = _xrmAdapter;
+                    if (adapter == null)
+                    {
+                        callback(new List<TableInfo>());
+                        return;
+                    }
+
                     // Load tables for the new solution
                     WorkAsync(new WorkAsyncInfo
                     {
                         Message = $"Loading tables from {solutionName}...",
                         Work = (worker, args) =>
                         {
-                            args.Result = _xrmAdapter.GetSolutionTablesSync(Service, solutionId);
+                            args.Result = adapter.GetSolutionTablesSync(Service, solutionId);
                         },
                         PostWorkCallBack = (args) =>
                         {
@@ -883,27 +943,29 @@ namespace DataverseToPowerBI.XrmToolBox
                                 var minimalAttrs = new List<AttributeMetadata>();
                                 
                                 // Add primary ID attribute
-                                if (!string.IsNullOrEmpty(table.PrimaryIdAttribute))
+                                var primaryId = table.PrimaryIdAttribute;
+                                if (!string.IsNullOrEmpty(primaryId))
                                 {
                                     minimalAttrs.Add(new AttributeMetadata
                                     {
-                                        LogicalName = table.PrimaryIdAttribute,
-                                        DisplayName = table.PrimaryIdAttribute,
-                                        SchemaName = table.PrimaryIdAttribute,
+                                        LogicalName = primaryId,
+                                        DisplayName = primaryId,
+                                        SchemaName = primaryId,
                                         AttributeType = "Uniqueidentifier",
                                         IsRequired = true
                                     });
                                 }
                                 
                                 // Add primary name attribute if different
-                                if (!string.IsNullOrEmpty(table.PrimaryNameAttribute) &&
-                                    table.PrimaryNameAttribute != table.PrimaryIdAttribute)
+                                var primaryName = table.PrimaryNameAttribute;
+                                if (!string.IsNullOrEmpty(primaryName) &&
+                                    primaryName != table.PrimaryIdAttribute)
                                 {
                                     minimalAttrs.Add(new AttributeMetadata
                                     {
-                                        LogicalName = table.PrimaryNameAttribute,
-                                        DisplayName = table.PrimaryNameAttribute,
-                                        SchemaName = table.PrimaryNameAttribute,
+                                        LogicalName = primaryName,
+                                        DisplayName = primaryName,
+                                        SchemaName = primaryName,
                                         AttributeType = "String"
                                     });
                                 }
@@ -982,10 +1044,12 @@ namespace DataverseToPowerBI.XrmToolBox
                                 if (!_selectedAttributes.ContainsKey(tableName))
                                     _selectedAttributes[tableName] = new HashSet<string>();
                                 
-                                if (!string.IsNullOrEmpty(table.PrimaryIdAttribute))
-                                    _selectedAttributes[tableName].Add(table.PrimaryIdAttribute);
-                                if (!string.IsNullOrEmpty(table.PrimaryNameAttribute))
-                                    _selectedAttributes[tableName].Add(table.PrimaryNameAttribute);
+                                var primaryIdAttr = table.PrimaryIdAttribute;
+                                if (!string.IsNullOrEmpty(primaryIdAttr))
+                                    _selectedAttributes[tableName].Add(primaryIdAttr);
+                                var primaryNameAttr = table.PrimaryNameAttribute;
+                                if (!string.IsNullOrEmpty(primaryNameAttr))
+                                    _selectedAttributes[tableName].Add(primaryNameAttr);
                             }
                         }
                         
@@ -1011,18 +1075,23 @@ namespace DataverseToPowerBI.XrmToolBox
                                     var attributes = _tableAttributes.ContainsKey(tableName) ? _tableAttributes[tableName] : new List<AttributeMetadata>();
                                     
                                     // Always include primary ID and name attributes
-                                    if (!string.IsNullOrEmpty(table.PrimaryIdAttribute))
-                                        selectedAttrs.Add(table.PrimaryIdAttribute);
-                                    if (!string.IsNullOrEmpty(table.PrimaryNameAttribute))
-                                        selectedAttrs.Add(table.PrimaryNameAttribute);
+                                    var primaryId = table.PrimaryIdAttribute;
+                                    if (!string.IsNullOrEmpty(primaryId))
+                                        selectedAttrs.Add(primaryId);
+                                    var primaryName = table.PrimaryNameAttribute;
+                                    if (!string.IsNullOrEmpty(primaryName))
+                                        selectedAttrs.Add(primaryName);
                                     
                                     // Add all fields from the selected form
                                     if (selectedForm.Fields != null)
                                     {
                                         foreach (var field in selectedForm.Fields)
                                         {
-                                            if (attributes.Any(a => a.LogicalName.Equals(field, StringComparison.OrdinalIgnoreCase)))
+                                            if (!string.IsNullOrEmpty(field) &&
+                                                attributes.Any(a => a.LogicalName.Equals(field, StringComparison.OrdinalIgnoreCase)))
+                                            {
                                                 selectedAttrs.Add(field);
+                                            }
                                         }
                                     }
                                 }
@@ -1166,10 +1235,12 @@ namespace DataverseToPowerBI.XrmToolBox
             if (_selectedTables.ContainsKey(tableName))
             {
                 var table = _selectedTables[tableName];
-                if (!string.IsNullOrEmpty(table.PrimaryIdAttribute))
-                    requiredAttrs.Add(table.PrimaryIdAttribute);
-                if (!string.IsNullOrEmpty(table.PrimaryNameAttribute))
-                    requiredAttrs.Add(table.PrimaryNameAttribute);
+                var primaryId = table.PrimaryIdAttribute;
+                if (!string.IsNullOrEmpty(primaryId))
+                    requiredAttrs.Add(primaryId);
+                var primaryName = table.PrimaryNameAttribute;
+                if (!string.IsNullOrEmpty(primaryName))
+                    requiredAttrs.Add(primaryName);
             }
             
             // Update selected attributes - remove any that no longer exist, ensure required are included
@@ -1514,22 +1585,24 @@ namespace DataverseToPowerBI.XrmToolBox
             {
                 // Get required attributes (primary ID and name)
                 var requiredAttrs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            string primaryIdAttr = null;
-            string primaryNameAttr = null;
-            if (_selectedTables.ContainsKey(logicalName))
-            {
-                var table = _selectedTables[logicalName];
-                if (!string.IsNullOrEmpty(table.PrimaryIdAttribute))
+                string? primaryIdAttr = null;
+                string? primaryNameAttr = null;
+                if (_selectedTables.ContainsKey(logicalName))
                 {
-                    requiredAttrs.Add(table.PrimaryIdAttribute);
-                    primaryIdAttr = table.PrimaryIdAttribute;
+                    var table = _selectedTables[logicalName];
+                    var primaryId = table.PrimaryIdAttribute;
+                    if (!string.IsNullOrEmpty(primaryId))
+                    {
+                        requiredAttrs.Add(primaryId);
+                        primaryIdAttr = primaryId;
+                    }
+                    var primaryName = table.PrimaryNameAttribute;
+                    if (!string.IsNullOrEmpty(primaryName))
+                    {
+                        requiredAttrs.Add(primaryName);
+                        primaryNameAttr = primaryName;
+                    }
                 }
-                if (!string.IsNullOrEmpty(table.PrimaryNameAttribute))
-                {
-                    requiredAttrs.Add(table.PrimaryNameAttribute);
-                    primaryNameAttr = table.PrimaryNameAttribute;
-                }
-            }
             
             // Get form fields if form is selected
             HashSet<string> formFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -1964,19 +2037,23 @@ namespace DataverseToPowerBI.XrmToolBox
                 return;
             }
             
+            var currentFormId = _selectedFormIds.TryGetValue(logicalName, out var formId) ? formId : null;
+            var currentViewId = _selectedViewIds.TryGetValue(logicalName, out var viewId) ? viewId : null;
             using (var dialog = new FormViewSelectorForm(
                 logicalName,
                 _tableForms[logicalName],
                 _tableViews[logicalName],
-                _selectedFormIds.ContainsKey(logicalName) ? _selectedFormIds[logicalName] : null,
-                _selectedViewIds.ContainsKey(logicalName) ? _selectedViewIds[logicalName] : null))
+                currentFormId,
+                currentViewId))
             {
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
-                    if (!string.IsNullOrEmpty(dialog.SelectedFormId))
-                        _selectedFormIds[logicalName] = dialog.SelectedFormId;
-                    if (!string.IsNullOrEmpty(dialog.SelectedViewId))
-                        _selectedViewIds[logicalName] = dialog.SelectedViewId;
+                    var selectedFormId = dialog.SelectedFormId;
+                    if (!string.IsNullOrEmpty(selectedFormId))
+                        _selectedFormIds[logicalName] = selectedFormId;
+                    var selectedViewId = dialog.SelectedViewId;
+                    if (!string.IsNullOrEmpty(selectedViewId))
+                        _selectedViewIds[logicalName] = selectedViewId;
                     
                     UpdateSelectedTableRow(logicalName);
                     UpdateAttributesDisplay(logicalName);
@@ -2110,7 +2187,7 @@ namespace DataverseToPowerBI.XrmToolBox
             }
             
             // Use current model's working folder if available
-            string outputPath = null;
+            string? outputPath = null;
             if (_currentModel != null && !string.IsNullOrEmpty(_currentModel.WorkingFolder))
             {
                 outputPath = _currentModel.WorkingFolder;
@@ -2127,7 +2204,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 
                 // Show the actual path where PBIP will be built
                 var modelName = _currentModel?.Name ?? _currentSolutionName ?? "MySemanticModel";
-                var environmentName = ExtractEnvironmentName(_currentEnvironmentUrl);
+                var environmentName = ExtractEnvironmentName(_currentEnvironmentUrl ?? "");
                 var pbipPath = Path.Combine(outputPath, environmentName, modelName);
                 
                 var result = MessageBox.Show(
@@ -2168,8 +2245,17 @@ namespace DataverseToPowerBI.XrmToolBox
             BuildSemanticModel(outputPath);
         }
         
-        private void BuildSemanticModel(string outputPath)
+        private void BuildSemanticModel(string? outputPath)
         {
+            if (string.IsNullOrWhiteSpace(outputPath))
+            {
+                MessageBox.Show("Please select a working folder before building the model.",
+                    "Missing Working Folder", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var outputFolder = outputPath!;
+
             // Prepare all data structures first
             var modelName = _currentModel?.Name ?? _currentSolutionName ?? "MySemanticModel";
             
@@ -2179,8 +2265,14 @@ namespace DataverseToPowerBI.XrmToolBox
             {
                 templatePath = _templatePath;
             }
+            if (string.IsNullOrEmpty(templatePath) || !Directory.Exists(templatePath))
+            {
+                MessageBox.Show("Template path could not be resolved.", "Missing Template",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
             
-            var fullUrl = _currentEnvironmentUrl;
+            var fullUrl = _currentEnvironmentUrl ?? "";
             
             // Build export tables with full metadata
             var exportTables = _selectedTables.Values.Select(t =>
@@ -2188,10 +2280,10 @@ namespace DataverseToPowerBI.XrmToolBox
                 var table = new ExportTable
                 {
                     LogicalName = t.LogicalName,
-                    DisplayName = t.DisplayName,
-                    SchemaName = t.SchemaName,
-                    PrimaryIdAttribute = t.PrimaryIdAttribute,
-                    PrimaryNameAttribute = t.PrimaryNameAttribute,
+                    DisplayName = t.DisplayName ?? t.LogicalName,
+                    SchemaName = t.SchemaName ?? t.LogicalName,
+                    PrimaryIdAttribute = t.PrimaryIdAttribute ?? "",
+                    PrimaryNameAttribute = t.PrimaryNameAttribute ?? "",
                     ObjectTypeCode = t.ObjectTypeCode,
                     Role = (t.LogicalName == _factTable) ? "Fact" : "Dimension",
                     Attributes = new List<AttributeMetadata>()
@@ -2265,7 +2357,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 {
                     worker.ReportProgress(0, "Initializing semantic model builder...");
                     
-                    var builder = new SemanticModelBuilder(templatePath, msg =>
+                    var builder = new SemanticModelBuilder(templatePath!, msg =>
                     {
                         worker.ReportProgress(-1, msg);
                     });
@@ -2277,7 +2369,7 @@ namespace DataverseToPowerBI.XrmToolBox
                     
                     var changes = builder.AnalyzeChanges(
                         modelName,
-                        outputPath,
+                        outputFolder,
                         fullUrl,
                         exportTables,
                         exportRelationships,
@@ -2494,11 +2586,11 @@ namespace DataverseToPowerBI.XrmToolBox
     public class PluginSettings
     {
         [System.Runtime.Serialization.DataMember]
-        public string LastSolutionId { get; set; }
+        public string? LastSolutionId { get; set; }
         [System.Runtime.Serialization.DataMember]
-        public string LastSolutionName { get; set; }
+        public string? LastSolutionName { get; set; }
         [System.Runtime.Serialization.DataMember]
-        public string FactTable { get; set; }
+        public string? FactTable { get; set; }
         [System.Runtime.Serialization.DataMember]
         public List<string> SelectedTableNames { get; set; } = new List<string>();
         [System.Runtime.Serialization.DataMember]
@@ -2514,31 +2606,31 @@ namespace DataverseToPowerBI.XrmToolBox
         [System.Runtime.Serialization.DataMember]
         public bool ShowAllAttributes { get; set; } = false;
         [System.Runtime.Serialization.DataMember]
-        public DateTableConfig DateTableConfig { get; set; } = null;
+        public DateTableConfig? DateTableConfig { get; set; } = null;
     }
     
     [System.Runtime.Serialization.DataContract]
     public class TableDisplayInfo
     {
         [System.Runtime.Serialization.DataMember]
-        public string DisplayName { get; set; }
+        public string? DisplayName { get; set; }
         [System.Runtime.Serialization.DataMember]
-        public string SchemaName { get; set; }
+        public string? SchemaName { get; set; }
         [System.Runtime.Serialization.DataMember]
-        public string PrimaryIdAttribute { get; set; }
+        public string? PrimaryIdAttribute { get; set; }
         [System.Runtime.Serialization.DataMember]
-        public string PrimaryNameAttribute { get; set; }
+        public string? PrimaryNameAttribute { get; set; }
     }
     
     [System.Runtime.Serialization.DataContract]
     public class SerializedRelationship
     {
         [System.Runtime.Serialization.DataMember]
-        public string SourceTable { get; set; }
+        public string? SourceTable { get; set; }
         [System.Runtime.Serialization.DataMember]
-        public string SourceAttribute { get; set; }
+        public string? SourceAttribute { get; set; }
         [System.Runtime.Serialization.DataMember]
-        public string TargetTable { get; set; }
+        public string? TargetTable { get; set; }
         [System.Runtime.Serialization.DataMember]
         public bool IsActive { get; set; }
         [System.Runtime.Serialization.DataMember]
@@ -2551,11 +2643,11 @@ namespace DataverseToPowerBI.XrmToolBox
     public class ExportData
     {
         [System.Runtime.Serialization.DataMember]
-        public string EnvironmentUrl { get; set; }
+        public string? EnvironmentUrl { get; set; }
         [System.Runtime.Serialization.DataMember]
-        public string ProjectName { get; set; }
+        public string? ProjectName { get; set; }
         [System.Runtime.Serialization.DataMember]
-        public string FactTable { get; set; }
+        public string? FactTable { get; set; }
         [System.Runtime.Serialization.DataMember]
         public List<ExportTable> Tables { get; set; } = new List<ExportTable>();
         [System.Runtime.Serialization.DataMember]
@@ -2572,15 +2664,15 @@ namespace DataverseToPowerBI.XrmToolBox
     public class ExportTable
     {
         [System.Runtime.Serialization.DataMember]
-        public string LogicalName { get; set; }
+        public string? LogicalName { get; set; }
         [System.Runtime.Serialization.DataMember]
-        public string DisplayName { get; set; }
+        public string? DisplayName { get; set; }
         [System.Runtime.Serialization.DataMember]
-        public string SchemaName { get; set; }
+        public string? SchemaName { get; set; }
         [System.Runtime.Serialization.DataMember]
-        public string PrimaryIdAttribute { get; set; }
+        public string? PrimaryIdAttribute { get; set; }
         [System.Runtime.Serialization.DataMember]
-        public string PrimaryNameAttribute { get; set; }
+        public string? PrimaryNameAttribute { get; set; }
         [System.Runtime.Serialization.DataMember]
         public int ObjectTypeCode { get; set; }
         [System.Runtime.Serialization.DataMember]
@@ -2590,35 +2682,35 @@ namespace DataverseToPowerBI.XrmToolBox
         [System.Runtime.Serialization.DataMember]
         public List<Core.Models.AttributeMetadata> Attributes { get; set; } = new List<Core.Models.AttributeMetadata>();
         [System.Runtime.Serialization.DataMember]
-        public ExportView View { get; set; }
+        public ExportView? View { get; set; }
     }
     
     [System.Runtime.Serialization.DataContract]
     public class ExportView
     {
         [System.Runtime.Serialization.DataMember]
-        public string ViewId { get; set; }
+        public string? ViewId { get; set; }
         [System.Runtime.Serialization.DataMember]
-        public string ViewName { get; set; }
+        public string? ViewName { get; set; }
         [System.Runtime.Serialization.DataMember]
-        public string FetchXml { get; set; }
+        public string? FetchXml { get; set; }
     }
     
     [System.Runtime.Serialization.DataContract]
     public class AttributeDisplayInfo
     {
         [System.Runtime.Serialization.DataMember]
-        public string LogicalName { get; set; }
+        public string? LogicalName { get; set; }
         [System.Runtime.Serialization.DataMember]
-        public string DisplayName { get; set; }
+        public string? DisplayName { get; set; }
         [System.Runtime.Serialization.DataMember]
-        public string SchemaName { get; set; }
+        public string? SchemaName { get; set; }
         [System.Runtime.Serialization.DataMember]
-        public string AttributeType { get; set; }
+        public string? AttributeType { get; set; }
         [System.Runtime.Serialization.DataMember]
         public bool IsRequired { get; set; } = false;
         [System.Runtime.Serialization.DataMember]
-        public List<string> Targets { get; set; }
+        public List<string>? Targets { get; set; }
     }
     
     #endregion
