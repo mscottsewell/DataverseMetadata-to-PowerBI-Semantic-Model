@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2026.2.47] - 2026-02-04
+
+### Fixed
+- Patched a bug that arose when a relationship was tied to a table outside the solution,
+and when the Date table referenced a date attribute that wasn't 'selected' in the list of 
+Attributes.
+
+
 ## [1.3.22] - 2026-01-31
 
 ### Added
