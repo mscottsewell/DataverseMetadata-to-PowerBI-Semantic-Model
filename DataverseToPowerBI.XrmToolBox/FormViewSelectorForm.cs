@@ -169,7 +169,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 cboForm.SelectedIndex = 0;
             
             // Views
-            cboView.Items.Add(new ViewItem(null, "(None - No filter)"));
+            cboView.Items.Add(new ViewItem(null, "(All records - No filter)"));
             foreach (var view in _views.OrderBy(v => v.Name))
             {
                 var suffix = view.IsDefault ? " (Default)" : "";

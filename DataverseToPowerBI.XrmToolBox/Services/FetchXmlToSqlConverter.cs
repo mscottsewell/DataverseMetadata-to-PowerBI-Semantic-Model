@@ -7,9 +7,8 @@
 // Power BI DirectQuery partition expressions. This enables view-based filtering
 // to be applied directly in the TMDL table definitions.
 //
-// THIS IS A COPY OF THE CONFIGURATOR VERSION:
-// XrmToolBox uses .NET Framework 4.6.2 which has some limitations. This copy exists
-// in the XrmToolBox project to maintain compatibility while sharing the same logic.
+// INTEGRATION:
+// Used by SemanticModelBuilder to embed view filters in TMDL partition queries.
 //
 // SUPPORTED OPERATORS:
 // Basic Comparison: eq, ne, gt, ge, lt, le

@@ -199,6 +199,9 @@ namespace DataverseToPowerBI.XrmToolBox
 
             // Update the existing model
             existing.DataverseUrl = model.DataverseUrl;
+            existing.ConnectionType = model.ConnectionType;
+            existing.FabricLinkSQLEndpoint = model.FabricLinkSQLEndpoint;
+            existing.FabricLinkSQLDatabase = model.FabricLinkSQLDatabase;
             existing.WorkingFolder = model.WorkingFolder;
             existing.TemplatePath = model.TemplatePath;
             existing.LastUsed = DateTime.Now;
@@ -243,6 +246,9 @@ namespace DataverseToPowerBI.XrmToolBox
             {
                 Name = newName,
                 DataverseUrl = source.DataverseUrl,
+                ConnectionType = source.ConnectionType,
+                FabricLinkSQLEndpoint = source.FabricLinkSQLEndpoint,
+                FabricLinkSQLDatabase = source.FabricLinkSQLDatabase,
                 WorkingFolder = source.WorkingFolder,
                 TemplatePath = source.TemplatePath,
                 CreatedDate = DateTime.Now,
@@ -473,7 +479,7 @@ namespace DataverseToPowerBI.XrmToolBox
         public string FabricLinkSQLEndpoint { get; set; } = "";
 
         /// <summary>
-        /// FabricLink SQL database name (only used when ConnectionType is FabricLink)
+        /// FabricLink Lakehouse name (only used when ConnectionType is FabricLink)
         /// </summary>
         [DataMember]
         public string FabricLinkSQLDatabase { get; set; } = "";

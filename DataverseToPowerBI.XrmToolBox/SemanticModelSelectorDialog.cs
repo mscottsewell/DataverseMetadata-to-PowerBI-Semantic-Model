@@ -142,6 +142,7 @@ namespace DataverseToPowerBI.XrmToolBox
             listViewModels.Columns.Add("Name", 150);
             listViewModels.Columns.Add("Fact Table", 100);
             listViewModels.Columns.Add("Tables", 60);
+            listViewModels.Columns.Add("Connection", 80);
             listViewModels.Columns.Add("Last Used", 140);
             listViewModels.SelectedIndexChanged += ListViewModels_SelectedIndexChanged;
             listViewModels.DoubleClick += ListViewModels_DoubleClick;
@@ -288,13 +289,11 @@ namespace DataverseToPowerBI.XrmToolBox
             {
                 Location = new Point(15, 285),
                 Size = new Size(365, 23),
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Enabled = false  // Locked to TDS endpoint - FabricLink coming soon
+                DropDownStyle = ComboBoxStyle.DropDownList
             };
             cboConnectionType.Items.AddRange(new object[] { "Dataverse TDS Endpoint", "FabricLink Lakehouse SQL" });
             cboConnectionType.SelectedIndex = 0;
             cboConnectionType.SelectedIndexChanged += CboConnectionType_SelectedIndexChanged;
-            cboConnectionType.Click += CboConnectionType_Click;
 
             // Fabric fields - below Connection Type
             lblFabricEndpoint = new Label
@@ -315,7 +314,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
             lblFabricDatabase = new Label
             {
-                Text = "FabricLink SQL Database:",
+                Text = "FabricLink Lakehouse:",
                 Location = new Point(15, 385),
                 AutoSize = true,
                 Visible = false
@@ -426,6 +425,10 @@ namespace DataverseToPowerBI.XrmToolBox
                 var tableCount = model.PluginSettings?.SelectedTableNames?.Count ?? 0;
                 item.SubItems.Add(tableCount.ToString());
                 
+                // Connection column
+                var connectionType = string.IsNullOrEmpty(model.ConnectionType) || model.ConnectionType == "DataverseTDS" ? "TDS" : "FabricLink";
+                item.SubItems.Add(connectionType);
+                
                 // Last Used column
                 item.SubItems.Add(model.LastUsed.ToString("g"));
                 listViewModels.Items.Add(item);
@@ -461,6 +464,10 @@ namespace DataverseToPowerBI.XrmToolBox
                     // Tables count column
                     var tableCount = model.PluginSettings?.SelectedTableNames?.Count ?? 0;
                     item.SubItems.Add(tableCount.ToString());
+                    
+                    // Connection column
+                    var connectionType = string.IsNullOrEmpty(model.ConnectionType) || model.ConnectionType == "DataverseTDS" ? "TDS" : "FabricLink";
+                    item.SubItems.Add(connectionType);
                     
                     // Last Used column
                     item.SubItems.Add(model.LastUsed.ToString("g"));
@@ -552,19 +559,6 @@ namespace DataverseToPowerBI.XrmToolBox
             UpdateFabricLinkFieldsVisibility();
             txtWorkingFolder.Text = "";
             txtTemplatePath.Text = "";
-        }
-
-        private void CboConnectionType_Click(object sender, EventArgs e)
-        {
-            MessageBox.Show(
-                "This application currently only supports the Dataverse TDS Endpoint.\n\n" +
-                "FabricLink Lakehouse SQL support is in active development and will be released soon!\n\n" +
-                "Interested in being the first to try it out?\n" +
-                "Visit our GitHub repository and let us know:\n" +
-                "https://github.com/microsoft/DataverseMetadata-to-PowerBI-Semantic-Model/issues",
-                "FabricLink Coming Soon",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
         }
 
         private void CboConnectionType_SelectedIndexChanged(object sender, EventArgs e)
@@ -744,9 +738,6 @@ namespace DataverseToPowerBI.XrmToolBox
                             item.Selected = true;
                             item.EnsureVisible();
                         }
-
-                        MessageBox.Show($"Semantic model '{dialog.SemanticModelName}' created successfully.",
-                            "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     catch (Exception ex)
                     {
@@ -1194,13 +1185,11 @@ namespace DataverseToPowerBI.XrmToolBox
             {
                 Location = new Point(20, 320),
                 Size = new Size(460, 23),
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Enabled = false  // Locked to TDS endpoint - FabricLink coming soon
+                DropDownStyle = ComboBoxStyle.DropDownList
             };
             cboConnectionType.Items.AddRange(new object[] { "Dataverse TDS Endpoint", "FabricLink Lakehouse SQL" });
             cboConnectionType.SelectedIndex = 0;
             cboConnectionType.SelectedIndexChanged += CboConnectionType_SelectedIndexChanged_New;
-            cboConnectionType.Click += CboConnectionType_Click_New;
 
             // Fabric fields - moved down
             lblFabricEndpoint = new Label
@@ -1220,7 +1209,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
             lblFabricDatabase = new Label
             {
-                Text = "FabricLink SQL Database:",
+                Text = "FabricLink Lakehouse:",
                 Location = new Point(20, 425),
                 AutoSize = true,
                 Visible = false
@@ -1273,19 +1262,6 @@ namespace DataverseToPowerBI.XrmToolBox
 
             this.AcceptButton = btnCreate;
             this.CancelButton = btnCancelDlg;
-        }
-
-        private void CboConnectionType_Click_New(object sender, EventArgs e)
-        {
-            MessageBox.Show(
-                "This application currently only supports the Dataverse TDS Endpoint.\n\n" +
-                "FabricLink Lakehouse SQL support is in active development and will be released soon!\n\n" +
-                "Interested in being the first to try it out?\n" +
-                "Visit our GitHub repository and let us know:\n" +
-                "https://github.com/microsoft/DataverseMetadata-to-PowerBI-Semantic-Model/issues",
-                "FabricLink Coming Soon",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
         }
 
         private void CboConnectionType_SelectedIndexChanged_New(object sender, EventArgs e)
@@ -1393,18 +1369,8 @@ namespace DataverseToPowerBI.XrmToolBox
                 return;
             }
 
-            // Create the folder structure
-            try
-            {
-                var fullPath = Path.Combine(WorkingFolder, SemanticModelName);
-                Directory.CreateDirectory(fullPath);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error creating folder:\n{ex.Message}",
-                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                this.DialogResult = DialogResult.None;
-            }
+            // Note: Don't create folder here - SemanticModelBuilder will create the proper
+            // environment/model structure when Build is clicked
         }
     }
 }

@@ -8,7 +8,7 @@
 // to use the same shared Core library logic while leveraging XrmToolBox's built-in
 // connection management.
 //
-// KEY DIFFERENCES FROM CONFIGURATOR:
+// ARCHITECTURE:
 // - Authentication: Handled externally by XrmToolBox (no MSAL required)
 // - API: Uses IOrganizationService (SDK) instead of HttpClient (Web API)
 // - Synchronous Methods: Provides sync versions for XrmToolBox WorkAsync pattern
@@ -416,9 +416,19 @@ namespace DataverseToPowerBI.XrmToolBox
                     
                     // For Picklist, Boolean, State, and Status attributes, find the associated virtual attribute
                     string? virtualAttributeName = null;
-                    if (attr is PicklistAttributeMetadata || attr is BooleanAttributeMetadata || 
+                    bool? isGlobal = null;
+                    string? optionSetName = null;
+
+                    if (attr is PicklistAttributeMetadata || attr is BooleanAttributeMetadata ||
                         attr is StateAttributeMetadata || attr is StatusAttributeMetadata)
                     {
+                        // Capture IsGlobal and OptionSetName for FabricLink queries
+                        if (attr is PicklistAttributeMetadata picklistAttr && picklistAttr.OptionSet != null)
+                        {
+                            isGlobal = picklistAttr.OptionSet.IsGlobal;
+                            optionSetName = picklistAttr.OptionSet.Name;
+                        }
+
                         // Try standard pattern first: {logicalname}name
                         var standardVirtualName = logicalName + "name";
                         if (allAttributes.ContainsKey(standardVirtualName))
@@ -481,7 +491,9 @@ namespace DataverseToPowerBI.XrmToolBox
                         IsCustomAttribute = isCustomAttribute,
                         IsRequired = isRequired,
                         Targets = targets.Count > 0 ? targets : null,
-                        VirtualAttributeName = virtualAttributeName
+                        VirtualAttributeName = virtualAttributeName,
+                        IsGlobal = isGlobal,
+                        OptionSetName = optionSetName
                     });
                 }
             }
@@ -767,6 +779,34 @@ namespace DataverseToPowerBI.XrmToolBox
             }
 
             return displayNames;
+        }
+
+        /// <summary>
+        /// Retrieves the organization's base language code (LCID).
+        /// Used for FabricLink queries to filter metadata tables by language.
+        /// </summary>
+        /// <param name="service">The organization service connection.</param>
+        /// <returns>The organization's base LCID, defaults to 1033 (US English) if not found.</returns>
+        public int GetBaseLanguageCodeSync(IOrganizationService service)
+        {
+            try
+            {
+                var query = new QueryExpression("organization")
+                {
+                    ColumnSet = new ColumnSet("languagecode"),
+                    TopCount = 1
+                };
+                var results = service.RetrieveMultiple(query);
+                if (results.Entities.Count > 0)
+                {
+                    return results.Entities[0].GetAttributeValue<int>("languagecode");
+                }
+            }
+            catch (Exception ex)
+            {
+                Services.DebugLogger.Log($"Error getting base language code: {ex.Message}");
+            }
+            return 1033; // Default to US English
         }
     }
 

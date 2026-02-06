@@ -19,19 +19,22 @@ DataverseMetadata-to-PowerBI-Semantic-Model/
 │
 ├── DataverseToPowerBI.XrmToolBox/     # XrmToolBox plugin (.NET Framework 4.8)
 │   ├── Assets/
+│   │   ├── DateTable.tmdl             # Date dimension table template
 │   │   └── PBIP_DefaultTemplate/      # Power BI project template files
 │   ├── Models/
-│   │   └── SemanticModelDataModels.cs # Plugin-specific models
+│   │   └── SemanticModelDataModels.cs # Plugin-specific models (ExportRelationship)
 │   ├── Services/
 │   │   ├── DebugLogger.cs             # File-based diagnostic logging
 │   │   ├── FetchXmlToSqlConverter.cs  # FetchXML → SQL WHERE translation
-│   │   └── SemanticModelBuilder.cs    # TMDL generation engine (~2,500 lines)
+│   │   └── SemanticModelBuilder.cs    # TMDL generation engine (~3,000 lines)
 │   ├── CalendarTableDialog.cs         # Date table configuration UI
 │   ├── FactDimensionSelectorForm.cs   # Star-schema configuration UI
 │   ├── FormViewSelectorForm.cs        # Form/View selection UI
-│   ├── PluginControl.cs               # Main plugin UI control (~2,300 lines)
+│   ├── PluginControl.cs               # Main plugin UI control
 │   ├── SemanticModelManager.cs        # Configuration persistence
 │   ├── SemanticModelSelectorDialog.cs # Model management UI
+│   ├── SolutionSelectorForm.cs        # Solution picker UI
+│   ├── TableSelectorForm.cs           # Table selection UI
 │   ├── TmdlPluginTool.cs              # XrmToolBox plugin entry point
 │   └── XrmServiceAdapterImpl.cs       # SDK-based Dataverse adapter
 │
@@ -173,6 +176,10 @@ public interface IDataverseConnection
               ┌─────────────────────────┐
               │  SemanticModelBuilder   │
               │   (TMDL Generation)     │
+              │                         │
+              │  Connection Modes:      │
+              │  • DataverseTDS         │
+              │  • FabricLink           │
               └─────────────────────────┘
                            │
                            ▼
@@ -188,14 +195,16 @@ public interface IDataverseConnection
 
 ### SemanticModelBuilder.cs
 
-The core TMDL generation engine (~2,500 lines). Key responsibilities:
+The core TMDL generation engine (~3,000 lines). Key responsibilities:
 
 - **Template Management:** Copies and customizes the PBIP template
+- **Dual Connection Support:** Generates TMDL for both DataverseTDS and FabricLink connection modes
 - **Table Generation:** Creates `{TableName}.tmdl` files with columns,
  partitions, and annotations
 - **Relationship Generation:** Builds `relationships.tmdl` from lookup metadata
 - **Change Detection:** Compares existing model to detect incremental updates
 - **User Code Preservation:** Keeps custom measures when rebuilding
+- **Auto-Generated Measures:** Creates count and URL link measures on fact tables
 
 ```csharp
 // Key methods
@@ -238,7 +247,7 @@ Stores:
 
 ### PluginControl.cs
 
-Main XrmToolBox UI control (~2,300 lines). Uses the XrmToolBox SDK pattern:
+Main XrmToolBox UI control. Uses the XrmToolBox SDK pattern:
 
 ```csharp
 public partial class PluginControl : PluginControlBase
@@ -277,7 +286,7 @@ DebugLogger.Log("Processing table: account");
 DebugLogger.LogSection("FetchXML", fetchXmlContent);
 ```
 
-Log location: `%APPDATA%\DataverseToPowerBI.Configurator\debug_log.txt`
+Log location: `%APPDATA%\DataverseToPowerBI\debug_log.txt`
 
 ---
 
@@ -322,9 +331,10 @@ Authentication is handled by XrmToolBox's connection manager. The plugin never
 
 ### Version Numbering
 
-Format: `Major.Minor.Patch` (e.g., `1.3.38`)
+Format: `Major.Year.Minor.Patch` (e.g., `1.2026.3.0`)
 
 - **Major:** Breaking changes or significant features
+- **Year:** Calendar year of the release
 - **Minor:** New features, backward compatible
 - **Patch:** Bug fixes
 
@@ -345,8 +355,8 @@ Format: `Major.Minor.Patch` (e.g., `1.3.38`)
 4. Commit and tag:
    ```bash
    git add -A
-   git commit -m "Release v1.3.39"
-   git tag v1.3.39
+   git commit -m "Release v1.2026.3.0"
+   git tag v1.2026.3.0
    git push origin main --tags
    ```
 

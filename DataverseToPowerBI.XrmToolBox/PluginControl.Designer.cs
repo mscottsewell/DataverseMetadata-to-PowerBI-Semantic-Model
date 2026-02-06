@@ -160,7 +160,7 @@ namespace DataverseToPowerBI.XrmToolBox
             this.btnSemanticModel.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.ImageAndText;
             this.btnSemanticModel.Name = "btnSemanticModel";
             this.btnSemanticModel.AutoSize = true;
-            this.btnSemanticModel.Text = "(Click to select...)";
+            this.btnSemanticModel.Text = "Semantic Model: (Click to select...)";
             this.btnSemanticModel.ToolTipText = "Click to select or manage semantic models";
             this.btnSemanticModel.Font = new System.Drawing.Font(this.btnSemanticModel.Font, System.Drawing.FontStyle.Bold);
             this.btnSemanticModel.ForeColor = System.Drawing.Color.FromArgb(50, 100, 200);
@@ -459,7 +459,7 @@ namespace DataverseToPowerBI.XrmToolBox
             // btnSelectFromForm
             this.btnSelectFromForm.Location = new System.Drawing.Point(202, 3);
             this.btnSelectFromForm.Name = "btnSelectFromForm";
-            this.btnSelectFromForm.Size = new System.Drawing.Size(130, 28);
+            this.btnSelectFromForm.Size = new System.Drawing.Size(155, 28);
             this.btnSelectFromForm.TabIndex = 2;
             this.btnSelectFromForm.Text = "Match Selected Form";
             this.btnSelectFromForm.UseVisualStyleBackColor = true;

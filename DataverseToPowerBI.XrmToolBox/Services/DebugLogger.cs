@@ -7,7 +7,7 @@
 // troubleshooting the XrmToolBox plugin during development and support scenarios.
 //
 // LOG FILE LOCATION:
-//   %APPDATA%\DataverseToPowerBI.Configurator\debug_log.txt
+//   %APPDATA%\DataverseToPowerBI\debug_log.txt
 //
 // FEATURES:
 // - Thread-safe logging using lock synchronization
@@ -41,7 +41,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         {
             var appFolder = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "DataverseToPowerBI.Configurator"
+                "DataverseToPowerBI"
             );
             Directory.CreateDirectory(appFolder);
             LogPath = Path.Combine(appFolder, "debug_log.txt");

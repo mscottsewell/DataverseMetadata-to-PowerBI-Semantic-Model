@@ -120,6 +120,9 @@ namespace DataverseToPowerBI.XrmToolBox
             InitializeComponent();
             LoadSolutionDropdown();
             LoadFactTableDropdown();
+            
+            // Set focus to solution dropdown when form loads
+            this.Shown += (s, e) => cmbSolution.Focus();
         }
 
         private void InitializeComponent()

@@ -14,8 +14,7 @@
 //   - Implements GetControl() to return the plugin's UI control
 //   - Uses MEF [Export] to be discovered by XrmToolBox
 //
-// The actual plugin UI is in PluginControl.cs, which mirrors the functionality
-// of MainForm from the standalone Configurator application.
+// The actual plugin UI is in PluginControl.cs.
 // =============================================================================
 
 using System;

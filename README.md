@@ -31,11 +31,13 @@ This tool solves these problems by:
 | Feature | What It Does For You |
 |---------|---------------------|
 | **Star-Schema Wizard** | Helps you designate fact and dimension tables for optimal performance |
+| **Dual Connection Support** | Choose between **Dataverse TDS** (DirectQuery) or **FabricLink** (Lakehouse SQL) — see [Connection Modes](#-connection-modes-tds-vs-fabriclink) |
 | **Smart Column Selection** | Uses your Dataverse forms and views to include only relevant fields |
 | **Friendly Field Names** | Automatically renames columns to their display names (no more "cai_accountid"!) |
 | **Relationship Detection** | Finds and creates relationships from your lookup fields |
 | **Date Table Generation** | Creates a proper calendar dimension with timezone support |
 | **View-Based Filtering** | Applies your Dataverse view filters directly to the data model |
+| **Auto-Generated Measures** | Creates a record count and a clickable URL link measure on your fact table |
 | **Incremental Updates** | Safely update your model while preserving custom measures and calculations |
 
 ---
@@ -176,27 +178,57 @@ All relationships are correctly configured as Many-to-One from fact to dimension
 ### 🏷️ Hidden Technical Columns
 Primary key columns (like `accountid`) are included for relationships but hidden from the report view. This keeps your field list clean while maintaining proper data model structure.
 
+### 📊 Auto-Generated Measures
+For your fact table, the tool automatically creates two starter measures:
+
+- **{TableName} Count** — `COUNTROWS` of the fact table for quick record counts
+- **Link to {TableName}** — A clickable URL that opens each record directly in Dataverse, using the `WEBURL` DAX function
+
+These measures are regenerated on each build. Your own custom measures are always preserved.
+
 ---
 
 ## 📁 Understanding Your Generated Project
 
-The tool creates a **Power BI Project (PBIP)** folder structure:
+The tool creates a **Power BI Project (PBIP)** folder structure. The exact layout depends on your connection mode:
+
+### Dataverse TDS Mode (Default)
 
 ```
 YourModelName/
-├── YourModelName.pbip           ← Open this file in Power BI Desktop
+├── YourModelName.pbip              ← Open this file in Power BI Desktop
 ├── YourModelName.SemanticModel/
 │   └── definition/
-│       ├── model.tmdl          ← Model configuration
-│       ├── expressions.tmdl    ← DataverseURL and other expressions
-│       ├── relationships.tmdl  ← Table relationships
-│       └── tables/             ← Individual table definitions
+│       ├── model.tmdl              ← Model configuration and table references
+│       ├── relationships.tmdl      ← Table relationships
+│       └── tables/                 ← Individual table definitions
+│           ├── DataverseURL.tmdl   ← Hidden parameter table (connection URL)
+│           ├── Date.tmdl           ← Calendar dimension (if configured)
 │           ├── Account.tmdl
-│           ├── Contact.tmdl
-│           └── Date.tmdl
+│           └── Contact.tmdl ...
 └── YourModelName.Report/
     └── (report definition files)
 ```
+
+### FabricLink Mode
+
+```
+YourModelName/
+├── YourModelName.pbip              ← Open this file in Power BI Desktop
+├── YourModelName.SemanticModel/
+│   └── definition/
+│       ├── model.tmdl              ← Model configuration and expression references
+│       ├── expressions.tmdl        ← DataverseURL, FabricSQLEndpoint, FabricLakehouse
+│       ├── relationships.tmdl      ← Table relationships
+│       └── tables/                 ← Individual table definitions
+│           ├── Date.tmdl           ← Calendar dimension (if configured)
+│           ├── Account.tmdl
+│           └── Contact.tmdl ...
+└── YourModelName.Report/
+    └── (report definition files)
+```
+
+> **Key difference:** In TDS mode, the Dataverse URL is stored as a hidden parameter *table* (`DataverseURL.tmdl`) — this is required for Power BI Desktop to properly resolve the `CommonDataService.Database` connector. In FabricLink mode, connection details are stored as *expressions* in `expressions.tmdl`.
 
 The PBIP format is a folder-based project that's perfect for:
 - Version control with Git
@@ -207,6 +239,36 @@ The PBIP format is a folder-based project that's perfect for:
 - [Power BI Project Files Overview](https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-overview)
 - [Working with PBIP in Power BI Desktop](https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-build)
 - [Power BI Desktop Developer Mode](https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-overview#developer-mode)
+
+---
+
+## 🔌 Connection Modes: TDS vs FabricLink
+
+This tool supports two different connection modes for accessing Dataverse data. Your choice affects how queries are generated and how the semantic model connects to your data.
+
+### Dataverse TDS (Default)
+
+Uses the **Dataverse TDS Endpoint** — a SQL-compatible interface built directly into Dataverse.
+
+| Aspect | Detail |
+|--------|--------|
+| **Connector** | `CommonDataService.Database` |
+| **Query Style** | Native SQL via `Value.NativeQuery(...)` with `[EnableFolding=true]` |
+| **Best For** | Direct Dataverse access without Fabric infrastructure |
+| **Requirements** | TDS endpoint enabled in your Dataverse environment |
+
+### FabricLink
+
+Uses **Microsoft Fabric Link for Dataverse** — data is synced to a Fabric Lakehouse and queried via the Fabric SQL endpoint.
+
+| Aspect | Detail |
+|--------|--------|
+| **Connector** | `Sql.Database(FabricSQLEndpoint, FabricLakehouse)` |
+| **Query Style** | Standard SQL queries with metadata JOINs for display names |
+| **Best For** | Large datasets, advanced analytics, when Fabric is already in use |
+| **Requirements** | Fabric workspace with Dataverse Link configured |
+
+> **FabricLink queries** automatically JOIN to `OptionsetMetadata` / `GlobalOptionsetMetadata` and `StatusMetadata` tables for human-readable choice labels and status values. TDS mode uses virtual "name" attributes for the same purpose.
 
 ---
 
@@ -333,10 +395,9 @@ If you've switched any tables to Import or Dual mode:
 Once you've built and opened your model in Power BI Desktop, here are recommended enhancements:
 
 ### 1. Create Key Measures
-Add calculated measures for your most important metrics:
+The tool auto-generates a record count and URL link measure on your fact table. Build on those with your own business metrics:
 ```dax
 Total Revenue = SUM(Orders[Amount])
-Order Count = COUNTROWS(Orders)
 Average Order Value = DIVIDE([Total Revenue], [Order Count])
 Win Rate = DIVIDE(
     COUNTROWS(FILTER(Opportunities, Opportunities[Status] = "Won")),
@@ -387,7 +448,7 @@ If using Import mode, implement RLS to control data access:
 **A:** The tool will detect changes when you run it again. It shows you a preview of what's new, modified, or removed before applying updates—you're always in control.
 
 ### Q: Can I use this with Dynamics 365 apps?
-**A:** Absolutely! This works with any Dataverse environment, including Dynamics 365 Sales, Customer Service, Field Service, Marketing, and custom Power Apps.
+**A:** Absolutely! This works with any Dataverse environment, including Dynamics 365 Sales, Customer Service, Field Service, Marketing, and custom Power Apps. It supports both the Dataverse TDS endpoint and FabricLink connections.
 
 ### Q: Why are some of my columns missing?
 **A:** Columns are pre-selected by default from your selected form. If a field isn't on the form, it won't pre-selected to be in the model by default. You can add columns that aren't on the form by switching to view "All" attributes and checking the selection box beside any additional ones you need.

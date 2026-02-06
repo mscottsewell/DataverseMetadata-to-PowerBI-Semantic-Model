@@ -1,4 +1,0 @@
-expression DataverseURL = "MyDataverseEnvironment.crm.dynamics.com" meta [IsParameterQuery=true, Type="Any", IsParameterQueryRequired=true]
-	lineageTag: 4423afcf-619b-445e-881e-0b3309b4935e
-
-	annotation PBI_ResultType = Text

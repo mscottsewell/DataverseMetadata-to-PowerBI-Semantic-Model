@@ -7,9 +7,9 @@
 // metadata. It creates TMDL (Tabular Model Definition Language) files that define
 // tables, columns, relationships, and expressions for DirectQuery access to Dataverse.
 //
-// THIS IS A COPY OF THE CONFIGURATOR VERSION:
-// XrmToolBox uses .NET Framework 4.6.2 which has some limitations. This copy exists
-// in the XrmToolBox project to maintain compatibility while sharing the same logic.
+// SUPPORTED CONNECTION MODES:
+// - DataverseTDS: Uses CommonDataService.Database connector with native SQL queries
+// - FabricLink: Uses Sql.Database connector against Fabric Lakehouse SQL endpoint
 //
 // OUTPUT STRUCTURE:
 // {WorkingFolder}/
@@ -19,9 +19,10 @@
 //       ├─ {ModelName}.SemanticModel/    - Semantic model folder
 //       │  ├─ definition/
 //       │  │  ├─ model.tmdl            - Model metadata and table/expression refs
-//       │  │  ├─ expressions.tmdl      - DataverseURL and other expressions
+//       │  │  ├─ expressions.tmdl      - FabricLink: DataverseURL, FabricSQLEndpoint, FabricLakehouse
 //       │  │  ├─ relationships.tmdl    - All relationship definitions
 //       │  │  └─ tables/               - Individual table TMDL files
+//       │  │     ├─ DataverseURL.tmdl  - TDS: hidden parameter table (Enable Load)
 //       │  │     ├─ Date.tmdl (if configured)
 //       │  │     └─ {TableName}.tmdl ...
 //       │  └─ .platform                 - Fabric platform metadata
@@ -65,8 +66,20 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         private readonly string _templatePath;
         private readonly Action<string>? _statusCallback;
         private static readonly Encoding Utf8WithoutBom = new UTF8Encoding(false);
+        private readonly string _connectionType;
+        private readonly string? _fabricLinkEndpoint;
+        private readonly string? _fabricLinkDatabase;
+        private readonly int _languageCode;
 
-        public SemanticModelBuilder(string templatePath, Action<string>? statusCallback = null)
+
+        /// <summary>
+        /// Whether this builder is configured for FabricLink (Lakehouse SQL) mode
+        /// </summary>
+        private bool IsFabricLink => _connectionType == "FabricLink";
+
+        public SemanticModelBuilder(string templatePath, Action<string>? statusCallback = null,
+            string connectionType = "DataverseTDS", string? fabricLinkEndpoint = null, string? fabricLinkDatabase = null,
+            int languageCode = 1033)
         {
             if (string.IsNullOrWhiteSpace(templatePath))
             {
@@ -75,6 +88,10 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
             _templatePath = templatePath;
             _statusCallback = statusCallback;
+            _connectionType = connectionType ?? "DataverseTDS";
+            _fabricLinkEndpoint = fabricLinkEndpoint;
+            _fabricLinkDatabase = fabricLinkDatabase;
+            _languageCode = languageCode;
         }
 
         private void SetStatus(string message)
@@ -111,6 +128,43 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             // Ensure CRLF line endings (Power BI Desktop standard)
             content = content.Replace("\r\n", "\n").Replace("\n", "\r\n");
             File.WriteAllText(path, content, Utf8WithoutBom);
+        }
+
+        /// <summary>
+        /// Writes the DataverseURL parameter table TMDL file.
+        /// This is a hidden table with mode: import partition that acts as a Power Query parameter.
+        /// The table must have Enable Load checked (which is the default for tables) — without it,
+        /// PBI Desktop throws KeyNotFoundException during CommonDataService.Database refresh.
+        /// </summary>
+        private void WriteDataverseUrlTable(string path, string normalizedUrl)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("table DataverseURL");
+            sb.AppendLine("\tisHidden");
+            sb.AppendLine("\tlineageTag: " + Guid.NewGuid().ToString());
+            sb.AppendLine();
+            sb.AppendLine("\tcolumn DataverseURL");
+            sb.AppendLine("\t\tdataType: string");
+            sb.AppendLine("\t\tisHidden");
+            sb.AppendLine("\t\tlineageTag: " + Guid.NewGuid().ToString());
+            sb.AppendLine("\t\tsummarizeBy: none");
+            sb.AppendLine("\t\tsourceColumn: DataverseURL");
+            sb.AppendLine();
+            sb.AppendLine("\t\tannotation SummarizationSetBy = Automatic");
+            sb.AppendLine();
+            sb.AppendLine("\tpartition DataverseURL = m");
+            sb.AppendLine("\t\tmode: import");
+            sb.AppendLine($"\t\tsource = \"{normalizedUrl}\" meta [IsParameterQuery=true, Type=\"Text\", IsParameterQueryRequired=true]");
+            sb.AppendLine();
+            sb.AppendLine("\tchangedProperty = IsHidden");
+            sb.AppendLine();
+            sb.AppendLine("\tannotation PBI_NavigationStepName = Navigation");
+            sb.AppendLine();
+            sb.AppendLine("\tannotation PBI_ResultType = Text");
+            sb.AppendLine();
+
+            WriteTmdlFile(path, sb.ToString());
+            DebugLogger.Log($"Generated DataverseURL parameter table: {normalizedUrl}");
         }
 
         /// <summary>
@@ -173,6 +227,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         // Preserve Date table
                         if (existingDateTable != null && fileName.Equals(existingDateTable, StringComparison.OrdinalIgnoreCase))
                             return false;
+                        // Preserve DataverseURL parameter table (TDS)
+                        if (fileName.Equals("DataverseURL.tmdl", StringComparison.OrdinalIgnoreCase))
+                            return false;
                         return true;
                     })
                     .ToList();
@@ -193,7 +250,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     ? relationshipColumnsPerTable[table.LogicalName]
                     : new HashSet<string>();
                 var tableTmdl = GenerateTableTmdl(table, attributeDisplayInfo, requiredLookupColumns, dateTableConfig, outputFolder);
-                var tableFileName = SanitizeFileName(table.DisplayName ?? table.LogicalName) + ".tmdl";
+                var tableFileName = SanitizeFileName(table.DisplayName ?? table.SchemaName ?? table.LogicalName) + ".tmdl";
                 WriteTmdlFile(Path.Combine(tablesFolder, tableFileName), tableTmdl);
             }
 
@@ -319,13 +376,13 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         .Select(f => Path.GetFileNameWithoutExtension(f))
                         .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-                    var metadataTables = tables.Select(t => SanitizeFileName(t.DisplayName ?? t.LogicalName))
+                    var metadataTables = tables.Select(t => SanitizeFileName(t.DisplayName ?? t.SchemaName ?? t.LogicalName))
                         .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
                     // Analyze each table for actual changes
                     foreach (var table in tables)
                     {
-                        var fileName = SanitizeFileName(table.DisplayName ?? table.LogicalName);
+                        var fileName = SanitizeFileName(table.DisplayName ?? table.SchemaName ?? table.LogicalName);
                         var tmdlPath = Path.Combine(tablesFolder, fileName + ".tmdl");
                         
                         if (!existingTables.Contains(fileName))
@@ -469,8 +526,47 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     });
                 }
 
-                // Check DataverseURL changes
-                var currentUrl = ExtractDataverseUrl(pbipFolder, projectName);
+                // Check data source expression changes
+                if (IsFabricLink)
+                {
+                    // FabricLink: check FabricSQLEndpoint and FabricLakehouse expressions
+                    var currentEndpoint = ExtractExpression(pbipFolder, projectName, "FabricSQLEndpoint");
+                    var currentDatabase = ExtractExpression(pbipFolder, projectName, "FabricLakehouse");
+                    var expectedEndpoint = _fabricLinkEndpoint ?? "";
+                    var expectedDatabase = _fabricLinkDatabase ?? "";
+                    
+                    var endpointChanged = !string.Equals(currentEndpoint, expectedEndpoint, StringComparison.OrdinalIgnoreCase);
+                    var databaseChanged = !string.Equals(currentDatabase, expectedDatabase, StringComparison.OrdinalIgnoreCase);
+                    
+                    if (endpointChanged || databaseChanged)
+                    {
+                        var details = new List<string>();
+                        if (endpointChanged) details.Add($"Endpoint: {currentEndpoint} → {expectedEndpoint}");
+                        if (databaseChanged) details.Add($"Database: {currentDatabase} → {expectedDatabase}");
+                        
+                        changes.Add(new SemanticModelChange
+                        {
+                            ChangeType = ChangeType.Update,
+                            ObjectType = "FabricLink",
+                            ObjectName = "Expressions",
+                            Description = $"Update: {string.Join(", ", details)}"
+                        });
+                    }
+                    else
+                    {
+                        changes.Add(new SemanticModelChange
+                        {
+                            ChangeType = ChangeType.Preserve,
+                            ObjectType = "FabricLink",
+                            ObjectName = "Expressions",
+                            Description = "No changes detected"
+                        });
+                    }
+                }
+                else
+                {
+                    // TDS: check DataverseURL expression
+                    var currentUrl = ExtractExpression(pbipFolder, projectName, "DataverseURL");
                 
                 // Normalize the dataverseUrl for comparison (remove https:// prefix if present)
                 var normalizedDataverseUrl = dataverseUrl;
@@ -496,6 +592,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         ObjectName = "Expression",
                         Description = "No changes detected"
                     });
+                }
                 }
             }
 
@@ -582,7 +679,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 // Compare M query
                 var existingQuery = ExtractMQuery(existingContent);
                 var requiredLookupCols = requiredLookupColumns ?? new HashSet<string>();
-                var newQuery = GenerateMQuery(table, requiredLookupCols, dateTableConfig);
+                var newQuery = GenerateMQuery(table, requiredLookupCols, dateTableConfig, attributeDisplayInfo);
                 
                 // DEBUG: Log query comparison
                 DebugLogger.Log($"Query comparison for {table.DisplayName ?? table.LogicalName}:");
@@ -768,7 +865,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             FormatString = formatString
                         };
 
-                        // Visible name column
+                        // Lookup name columns exist in both TDS and FabricLink
                         var nameColumn = attr.LogicalName + "name";
                         columns[attrDisplayName] = new ColumnDefinition
                         {
@@ -781,17 +878,32 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     }
                     else if (isChoice || isBoolean)
                     {
-                        // Choice/Boolean: use the virtual attribute name from metadata
-                        // Most follow pattern {attributename}name, but there are exceptions (e.g., donotsendmm -> donotsendmarketingmaterial)
-                        var nameColumn = attrDisplayInfo?.VirtualAttributeName ?? (attr.LogicalName + "name");
-                        columns[attrDisplayName] = new ColumnDefinition
+                        if (IsFabricLink)
                         {
-                            DisplayName = attrDisplayName,
-                            LogicalName = nameColumn,
-                            DataType = "string",
-                            SourceColumn = nameColumn,
-                            FormatString = null
-                        };
+                            // FabricLink: JOINs to metadata tables produce a string label column
+                            var nameColumn = attr.LogicalName + "name";
+                            columns[attrDisplayName] = new ColumnDefinition
+                            {
+                                DisplayName = attrDisplayName,
+                                LogicalName = nameColumn,
+                                DataType = "string",
+                                SourceColumn = nameColumn,
+                                FormatString = null
+                            };
+                        }
+                        else
+                        {
+                            // TDS: use the virtual attribute name from metadata
+                            var nameColumn = attrDisplayInfo?.VirtualAttributeName ?? (attr.LogicalName + "name");
+                            columns[attrDisplayName] = new ColumnDefinition
+                            {
+                                DisplayName = attrDisplayName,
+                                LogicalName = nameColumn,
+                                DataType = "string",
+                                SourceColumn = nameColumn,
+                                FormatString = null
+                            };
+                        }
                     }
                     else
                     {
@@ -883,11 +995,19 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             //
             //   " ,null ,[EnableFolding=true])
             
-            // Match from Value.NativeQuery to the closing quote before " ,null"
+            // Match from Value.NativeQuery to the closing quote before " ,null" (TDS pattern)
             var queryMatch = Regex.Match(tmdlContent, @"Value\.NativeQuery\([^,]+,\s*""(.*?)""", RegexOptions.Singleline);
             if (queryMatch.Success)
             {
                 var sql = queryMatch.Groups[1].Value.Trim();
+                return NormalizeQuery(sql);
+            }
+            
+            // Also try FabricLink pattern: [Query="..."]
+            var fabricQueryMatch = Regex.Match(tmdlContent, @"\[Query\s*=\s*""(.*?)""", RegexOptions.Singleline);
+            if (fabricQueryMatch.Success)
+            {
+                var sql = fabricQueryMatch.Groups[1].Value.Trim();
                 return NormalizeQuery(sql);
             }
             return string.Empty;
@@ -896,11 +1016,20 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// <summary>
         /// Generates expected M query for comparison - must exactly match actual GenerateTableTmdl logic
         /// </summary>
-        private string GenerateMQuery(ExportTable table, HashSet<string> requiredLookupColumns, DateTableConfig? dateTableConfig = null)
+        private string GenerateMQuery(ExportTable table, HashSet<string> requiredLookupColumns, DateTableConfig? dateTableConfig = null,
+            Dictionary<string, Dictionary<string, AttributeDisplayInfo>>? attributeDisplayInfo = null)
         {
-            var schemaName = table.SchemaName ?? table.LogicalName;
+            // FabricLink: table names are lowercase, no schema prefix
+            // TDS: uses schemaName (e.g. Opportunity, Account)
+            var fromTable = IsFabricLink ? table.LogicalName : (table.SchemaName ?? table.LogicalName);
             var sqlFields = new List<string>();
+            var joinClauses = new List<string>(); // FabricLink: metadata table JOINs
             var processedColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // Get attribute display info for this table
+            var attrInfo = (attributeDisplayInfo != null && attributeDisplayInfo.ContainsKey(table.LogicalName))
+                ? attributeDisplayInfo[table.LogicalName]
+                : new Dictionary<string, AttributeDisplayInfo>();
 
             // CRITICAL: Must match GenerateTableTmdl logic exactly
             var primaryKey = table.PrimaryIdAttribute ?? table.LogicalName + "id";
@@ -947,14 +1076,43 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
                     if (isLookup)
                     {
-                        // Add both ID and name columns
+                        // Add ID column — lookup name columns exist in both TDS and FabricLink
                         sqlFields.Add($"Base.{attr.LogicalName}");
                         sqlFields.Add($"Base.{attr.LogicalName}name");
                     }
                     else if (isChoice || isBoolean)
                     {
-                        // Add name column only
-                        sqlFields.Add($"Base.{attr.LogicalName}name");
+                        if (IsFabricLink)
+                        {
+                            // FabricLink: JOIN to metadata table, select LocalizedLabel
+                            var attrDisplayInfo2 = attrInfo.ContainsKey(attr.LogicalName) ? attrInfo[attr.LogicalName] : null;
+                            var isState = attrType.Equals("State", StringComparison.OrdinalIgnoreCase);
+                            var isStatus2 = attrType.Equals("Status", StringComparison.OrdinalIgnoreCase);
+                            var joinAlias = $"{table.LogicalName}_{attr.LogicalName}";
+                            var nameColumn = attr.LogicalName + "name";
+
+                            if (isState)
+                            {
+                                joinClauses.Add($"JOIN [StateMetadata] {joinAlias} ON {joinAlias}.[EntityName]='{table.LogicalName}' AND {joinAlias}.[LocalizedLabelLanguageCode]={_languageCode} AND {joinAlias}.[State]=Base.{attr.LogicalName}");
+                            }
+                            else if (isStatus2)
+                            {
+                                joinClauses.Add($"JOIN [StatusMetadata] {joinAlias} ON {joinAlias}.[EntityName]='{table.LogicalName}' AND {joinAlias}.[LocalizedLabelLanguageCode]={_languageCode} AND {joinAlias}.[State]=Base.statecode AND {joinAlias}.[Status]=Base.statuscode");
+                            }
+                            else
+                            {
+                                var isGlobal = attr.IsGlobal ?? attrDisplayInfo2?.IsGlobal ?? false;
+                                var optionSetName = attr.OptionSetName ?? attrDisplayInfo2?.OptionSetName ?? attr.LogicalName;
+                                var metadataTable = isGlobal ? "GlobalOptionsetMetadata" : "OptionsetMetadata";
+                                joinClauses.Add($"LEFT JOIN [{metadataTable}] {joinAlias} ON {joinAlias}.[OptionSetName]='{optionSetName}' AND {joinAlias}.[EntityName]='{table.LogicalName}' AND {joinAlias}.[LocalizedLabelLanguageCode]={_languageCode} AND {joinAlias}.[Option]=Base.{attr.LogicalName}");
+                            }
+                            sqlFields.Add($"{joinAlias}.[LocalizedLabel] {nameColumn}");
+                        }
+                        else
+                        {
+                            // TDS: add virtual name column only
+                            sqlFields.Add($"Base.{attr.LogicalName}name");
+                        }
                     }
                     else
                     {
@@ -1003,7 +1161,10 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 whereClause = " WHERE Base.statecode=0";
             }
             
-            return NormalizeQuery($"SELECT {selectList} FROM {schemaName} AS Base{whereClause}");
+            // Build JOIN clauses string for FabricLink
+            var joinSection = joinClauses.Count > 0 ? " " + string.Join(" ", joinClauses) : "";
+
+            return NormalizeQuery($"SELECT {selectList} FROM {fromTable} AS Base{joinSection}{whereClause}");
         }
 
         /// <summary>
@@ -1046,7 +1207,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             if (!File.Exists(relationshipsPath))
             {
                 // File doesn't exist - all relationships would be new
-                var tableDisplayNames = tables.ToDictionary(t => t.LogicalName, t => t.DisplayName ?? t.LogicalName, StringComparer.OrdinalIgnoreCase);
+                var tableDisplayNames = tables.ToDictionary(t => t.LogicalName, t => t.DisplayName ?? t.SchemaName ?? t.LogicalName, StringComparer.OrdinalIgnoreCase);
                 var tablePrimaryKeys = tables.ToDictionary(t => t.LogicalName, t => t.PrimaryIdAttribute ?? $"{t.LogicalName}id", StringComparer.OrdinalIgnoreCase);
                 
                 analysis.NewRelationships.AddRange(newRelationships.Select(r =>
@@ -1093,7 +1254,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             {
                 DebugLogger.Log($"Warning: Could not analyze relationship changes: {ex.Message}");
                 // Fallback - treat all as new
-                var tableDisplayNames = tables.ToDictionary(t => t.LogicalName, t => t.DisplayName ?? t.LogicalName, StringComparer.OrdinalIgnoreCase);
+                var tableDisplayNames = tables.ToDictionary(t => t.LogicalName, t => t.DisplayName ?? t.SchemaName ?? t.LogicalName, StringComparer.OrdinalIgnoreCase);
                 var tablePrimaryKeys = tables.ToDictionary(t => t.LogicalName, t => t.PrimaryIdAttribute ?? $"{t.LogicalName}id", StringComparer.OrdinalIgnoreCase);
                 
                 analysis.NewRelationships.AddRange(newRelationships.Select(r =>
@@ -1183,7 +1344,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             DateTableConfig? dateTableConfig = null)
         {
             var rels = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var tableDisplayNames = tables.ToDictionary(t => t.LogicalName, t => t.DisplayName ?? t.LogicalName, StringComparer.OrdinalIgnoreCase);
+            var tableDisplayNames = tables.ToDictionary(t => t.LogicalName, t => t.DisplayName ?? t.SchemaName ?? t.LogicalName, StringComparer.OrdinalIgnoreCase);
             var tablePrimaryKeys = tables.ToDictionary(t => t.LogicalName, t => t.PrimaryIdAttribute ?? $"{t.LogicalName}id", StringComparer.OrdinalIgnoreCase);
 
             foreach (var rel in relationships)
@@ -1236,11 +1397,39 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         }
 
         /// <summary>
-        /// Extracts current DataverseURL from expressions.tmdl
+        /// Extracts current DataverseURL from the model.
+        /// Checks: 1) expressions.tmdl (FabricLink), 2) DataverseURL.tmdl table (TDS), 3) inline URL in table M queries (legacy)
         /// </summary>
         private string ExtractDataverseUrl(string pbipFolder, string projectName)
         {
-            // DataverseURL is stored as an expression in expressions.tmdl
+            // First try expressions.tmdl (FabricLink and legacy TDS)
+            var url = ExtractExpression(pbipFolder, projectName, "DataverseURL");
+            if (!string.IsNullOrEmpty(url))
+                return url;
+
+            // Try DataverseURL parameter table (TDS: table with IsParameterQuery=true)
+            var dataverseUrlTablePath = Path.Combine(pbipFolder, $"{projectName}.SemanticModel", "definition", "tables", "DataverseURL.tmdl");
+            if (File.Exists(dataverseUrlTablePath))
+            {
+                try
+                {
+                    var content = File.ReadAllText(dataverseUrlTablePath);
+                    // Match: source = "url" meta [IsParameterQuery=true, ...]
+                    var match = Regex.Match(content, @"source\s*=\s*""([^""]+)""\s*meta\s*\[IsParameterQuery\s*=\s*true");
+                    if (match.Success)
+                        return match.Groups[1].Value;
+                }
+                catch { }
+            }
+
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// Extracts a named expression value from expressions.tmdl
+        /// </summary>
+        private string ExtractExpression(string pbipFolder, string projectName, string expressionName)
+        {
             var expressionsPath = Path.Combine(pbipFolder, $"{projectName}.SemanticModel", "definition", "expressions.tmdl");
             if (!File.Exists(expressionsPath))
                 return string.Empty;
@@ -1248,14 +1437,13 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             try
             {
                 var content = File.ReadAllText(expressionsPath);
-                // Extract the URL from the expression: expression DataverseURL = "portfolioshapingdev.crm.dynamics.com" meta [...]
-                var urlMatch = Regex.Match(content, @"expression\s+DataverseURL\s*=\s*""([^""]+)""");
-                if (urlMatch.Success)
-                    return urlMatch.Groups[1].Value;
+                var match = Regex.Match(content, $@"expression\s+{Regex.Escape(expressionName)}\s*=\s*""([^""]+)""");
+                if (match.Success)
+                    return match.Groups[1].Value;
             }
             catch (Exception ex)
             {
-                DebugLogger.Log($"Warning: Could not extract DataverseURL: {ex.Message}");
+                DebugLogger.Log($"Warning: Could not extract expression '{expressionName}': {ex.Message}");
             }
 
             return string.Empty;
@@ -1397,7 +1585,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         }
 
         /// <summary>
-        /// Extracts user-created measures from existing TMDL (measures not from Dataverse)
+        /// Extracts user-created measures from existing TMDL (excludes auto-generated measures)
         /// </summary>
         private List<string> ExtractUserMeasures(string tmdlPath, ExportTable table)
         {
@@ -1405,6 +1593,14 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
             if (!File.Exists(tmdlPath))
                 return userMeasures;
+
+            // Auto-generated measure names to exclude
+            var displayName = table.DisplayName ?? table.SchemaName ?? table.LogicalName;
+            var autoMeasures = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                $"Link to {displayName}",
+                $"{displayName} Count"
+            };
 
             try
             {
@@ -1415,8 +1611,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 foreach (Match match in matches)
                 {
                     var measureName = match.Groups[1].Value.Trim('\'', '"', '[', ']');
-                    // All measures are user-created (we don't generate measures from Dataverse)
-                    userMeasures.Add(measureName);
+                    // Skip auto-generated measures (they'll be re-generated)
+                    if (!autoMeasures.Contains(measureName))
+                        userMeasures.Add(measureName);
                 }
             }
             catch (Exception ex)
@@ -1467,7 +1664,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             foreach (var table in tables)
             {
                 SetStatus($"Updating table: {table.DisplayName}...");
-                var tableFileName = SanitizeFileName(table.DisplayName ?? table.LogicalName) + ".tmdl";
+                var tableFileName = SanitizeFileName(table.DisplayName ?? table.SchemaName ?? table.LogicalName) + ".tmdl";
                 var tablePath = Path.Combine(tablesFolder, tableFileName);
 
                 var requiredLookupColumns = relationshipColumnsPerTable.ContainsKey(table.LogicalName)
@@ -1478,7 +1675,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 string? userMeasuresSection = null;
                 if (File.Exists(tablePath))
                 {
-                    userMeasuresSection = ExtractUserMeasuresSection(tablePath);
+                    userMeasuresSection = ExtractUserMeasuresSection(tablePath, table);
                 }
 
                 // Generate new table TMDL
@@ -1539,16 +1736,26 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         }
 
         /// <summary>
-        /// Extracts the measures section from existing TMDL
+        /// Extracts the user measures section from existing TMDL (excludes auto-generated measures).
+        /// The table parameter provides context for identifying auto-generated measure names.
         /// </summary>
-        private string? ExtractUserMeasuresSection(string tmdlPath)
+        private string? ExtractUserMeasuresSection(string tmdlPath, ExportTable? table = null)
         {
             try
             {
                 var content = File.ReadAllText(tmdlPath);
                 
+                // Build set of auto-generated measure names to exclude
+                var autoMeasures = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if (table != null)
+                {
+                    var displayName = table.DisplayName ?? table.SchemaName ?? table.LogicalName;
+                    autoMeasures.Add($"Link to {displayName}");
+                    autoMeasures.Add($"{displayName} Count");
+                }
+
                 // Find all measure blocks
-                var measurePattern = @"(^\s*(?:///[^\r\n]*\r?\n)*\s*measure\s+[^\r\n]+\r?\n(?:.*?\r?\n)*?(?=^\s*(?:measure|column|partition|annotation)\s|\z))";
+                var measurePattern = @"(^\s*(?:///[^\r\n]*\r?\n)*\s*measure\s+([^\r\n]+)\r?\n(?:.*?\r?\n)*?(?=^\s*(?:measure|column|partition|annotation)\s|\z))";
                 var matches = Regex.Matches(content, measurePattern, RegexOptions.Multiline);
 
                 if (matches.Count == 0)
@@ -1557,10 +1764,18 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 var sb = new StringBuilder();
                 foreach (Match match in matches)
                 {
+                    // Extract measure name from the "measure 'Name' = ..." line
+                    var nameMatch = Regex.Match(match.Groups[2].Value, @"^'([^']+)'|^([^\s=]+)");
+                    var measureName = nameMatch.Groups[1].Success ? nameMatch.Groups[1].Value : nameMatch.Groups[2].Value;
+                    
+                    // Skip auto-generated measures (they'll be re-generated)
+                    if (autoMeasures.Contains(measureName))
+                        continue;
+
                     sb.Append(match.Value);
                 }
 
-                return sb.ToString();
+                return sb.Length > 0 ? sb.ToString() : null;
             }
             catch (Exception ex)
             {
@@ -1616,8 +1831,18 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             sb.AppendLine();
 
             // Build PBI_QueryOrder annotation
-            var tableNames = tables.Select(t => t.DisplayName ?? t.LogicalName).ToList();
-            tableNames.Insert(0, "DataverseURL"); // DataverseURL is always first
+            var tableNames = tables.Select(t => t.DisplayName ?? t.SchemaName ?? t.LogicalName).ToList();
+            if (IsFabricLink)
+            {
+                tableNames.Insert(0, "DataverseURL");
+                tableNames.Insert(0, "FabricLakehouse");
+                tableNames.Insert(0, "FabricSQLEndpoint");
+            }
+            else
+            {
+                // TDS: DataverseURL is a parameter table (must appear first in query order)
+                tableNames.Insert(0, "DataverseURL");
+            }
             if (includeDateTable)
             {
                 tableNames.Add("Date"); // Date table at the end
@@ -1631,7 +1856,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             // Write ref table entries
             foreach (var table in tables)
             {
-                var displayName = table.DisplayName ?? table.LogicalName;
+                var displayName = table.DisplayName ?? table.SchemaName ?? table.LogicalName;
                 // Use quotes for names with spaces
                 if (displayName.Contains(' '))
                 {
@@ -1648,7 +1873,26 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             {
                 sb.AppendLine("ref table Date");
             }
+
+            // Add DataverseURL parameter table reference for TDS
+            // (FabricLink uses ref expression entries instead)
+            if (!IsFabricLink)
+            {
+                sb.AppendLine("ref table DataverseURL");
+            }
             sb.AppendLine();
+
+            // Write ref expression entries (FabricLink only)
+            // FabricLink: PBI Desktop expects all 3 expression refs in model.tmdl
+            // TDS: DataverseURL is a parameter table (ref table), not an expression
+            if (IsFabricLink)
+            {
+                sb.AppendLine("ref expression FabricSQLEndpoint");
+                sb.AppendLine("ref expression FabricLakehouse");
+                sb.AppendLine("ref expression DataverseURL");
+            }
+            sb.AppendLine();
+
             sb.AppendLine("ref cultureInfo en-US");
             sb.AppendLine();
 
@@ -1767,74 +2011,54 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             if (normalizedUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                 normalizedUrl = normalizedUrl.Substring(8);
 
-            // Clean up old DataverseURL table if it exists (migration from table to expression)
+            // Manage DataverseURL and expressions
             var definitionFolder = Path.Combine(pbipFolder, $"{projectName}.SemanticModel", "definition");
-            var oldTablePath = Path.Combine(definitionFolder, "tables", "DataverseURL.tmdl");
-            if (File.Exists(oldTablePath))
-            {
-                DebugLogger.Log("Removing old DataverseURL table (migrating to expression)");
-                File.Delete(oldTablePath);
-                
-                // Also update model.tmdl to remove ref table DataverseURL
-                var modelPath = Path.Combine(definitionFolder, "model.tmdl");
-                if (File.Exists(modelPath))
-                {
-                    var modelContent = File.ReadAllText(modelPath, Utf8WithoutBom);
-                    // Remove ref table DataverseURL line
-                    modelContent = Regex.Replace(modelContent, @"^\s*ref\s+table\s+DataverseURL\s*$", "", RegexOptions.Multiline);
-                    // Add ref expression DataverseURL if not present
-                    if (!Regex.IsMatch(modelContent, @"ref\s+expression\s+DataverseURL"))
-                    {
-                        // Find the position after annotations and before other refs
-                        var insertMatch = Regex.Match(modelContent, @"(annotation\s+PBI_ProTooling\s*=\s*\[[^\]]+\]\s*\r?\n)");
-                        if (insertMatch.Success)
-                        {
-                            modelContent = modelContent.Substring(0, insertMatch.Index + insertMatch.Length) +
-                                          "\nref expression DataverseURL\n" +
-                                          modelContent.Substring(insertMatch.Index + insertMatch.Length);
-                        }
-                    }
-                    WriteTmdlFile(modelPath, modelContent);
-                }
-            }
-
-            // Ensure DataverseURL expression exists in expressions.tmdl
             var expressionsPath = Path.Combine(definitionFolder, "expressions.tmdl");
-            
-            if (File.Exists(expressionsPath))
+            var dataverseUrlTablePath = Path.Combine(definitionFolder, "tables", "DataverseURL.tmdl");
+
+            if (IsFabricLink)
             {
-                // Update existing DataverseURL expression in expressions.tmdl
-                var content = File.ReadAllText(expressionsPath, Utf8WithoutBom);
-                
-                // Check if DataverseURL expression already exists
-                if (Regex.IsMatch(content, @"expression\s+DataverseURL\s*="))
+                // FabricLink: DataverseURL is an expression in expressions.tmdl (alongside FabricSQLEndpoint, FabricLakehouse)
+                // Remove any stale DataverseURL table from a previous TDS build
+                if (File.Exists(dataverseUrlTablePath))
                 {
-                    // Replace the existing DataverseURL expression value
-                    content = Regex.Replace(
-                        content,
-                        @"expression\s+DataverseURL\s*=\s*""[^""]*""",
-                        $"expression DataverseURL = \"{normalizedUrl}\""
-                    );
-                    WriteTmdlFile(expressionsPath, content);
+                    DebugLogger.Log("Removing DataverseURL table (FabricLink uses expressions instead)");
+                    File.Delete(dataverseUrlTablePath);
                 }
-                else
-                {
-                    // Append DataverseURL expression to existing file
-                    var dataverseUrlExpression = GenerateDataverseUrlExpression(normalizedUrl);
-                    // Ensure file ends with newline before appending
-                    if (!content.EndsWith("\n"))
-                        content += Environment.NewLine;
-                    content += dataverseUrlExpression;
-                    WriteTmdlFile(expressionsPath, content);
-                }
+
+                var fabricExpressions = GenerateFabricLinkExpressions(
+                    _fabricLinkEndpoint ?? "", _fabricLinkDatabase ?? "", normalizedUrl);
+                WriteTmdlFile(expressionsPath, fabricExpressions);
             }
             else
             {
-                // Create expressions.tmdl with DataverseURL expression
-                DebugLogger.Log("expressions.tmdl not found in template - creating it");
-                Directory.CreateDirectory(definitionFolder);
-                var dataverseUrlExpression = GenerateDataverseUrlExpression(normalizedUrl);
-                WriteTmdlFile(expressionsPath, dataverseUrlExpression);
+                // TDS: DataverseURL is a hidden parameter table with mode: import and Enable Load.
+                // This is the PBI Desktop pattern for Power Query parameters — the table name
+                // acts as the parameter name in M queries (DataverseURL in CommonDataService.Database(DataverseURL,...)).
+                // The table MUST have Enable Load checked (default for tables) — without it,
+                // PBI Desktop throws KeyNotFoundException during refresh.
+                WriteDataverseUrlTable(dataverseUrlTablePath, normalizedUrl);
+
+                // Remove any stale expressions.tmdl from previous FabricLink or legacy builds
+                if (File.Exists(expressionsPath))
+                {
+                    DebugLogger.Log("Removing stale expressions.tmdl from TDS model");
+                    File.Delete(expressionsPath);
+                }
+
+                // For TDS: strip any stale ref expression DataverseURL from model.tmdl
+                // (may exist from earlier tool versions with expression-based DataverseURL)
+                var modelCleanupPath = Path.Combine(definitionFolder, "model.tmdl");
+                if (File.Exists(modelCleanupPath))
+                {
+                    var content = File.ReadAllText(modelCleanupPath, Utf8WithoutBom);
+                    if (Regex.IsMatch(content, @"ref\s+expression\s+DataverseURL"))
+                    {
+                        DebugLogger.Log("Removing stale ref expression DataverseURL from TDS model.tmdl");
+                        content = Regex.Replace(content, @"^\s*ref\s+expression\s+DataverseURL\s*\r?\n?", "", RegexOptions.Multiline);
+                        WriteTmdlFile(modelCleanupPath, content);
+                    }
+                }
             }
 
             // Update .platform file with display name
@@ -1956,6 +2180,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             // Collect columns and SQL fields
             var columns = new List<ColumnInfo>();
             var sqlFields = new List<string>();
+            var joinClauses = new List<string>(); // FabricLink: metadata table JOINs for choice fields
             var processedColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             // Get attribute info for this table
@@ -2034,6 +2259,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 if (isLookup)
                 {
                     // For lookups: add the ID column (hidden) and the name column (visible)
+                    // Lookup name columns (e.g. transactioncurrencyidname) exist in BOTH TDS and FabricLink
                     // Hidden ID column
                     columns.Add(new ColumnInfo
                     {
@@ -2063,6 +2289,81 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 }
                 else if (isChoice || isBoolean)
                 {
+                    if (IsFabricLink)
+                    {
+                        // FabricLink: choice/boolean virtual name columns don't exist in Lakehouse SQL
+                        // Instead, JOIN to metadata tables to get the localized label
+                        var isState = attrType.Equals("State", StringComparison.OrdinalIgnoreCase);
+                        var isStatus = attrType.Equals("Status", StringComparison.OrdinalIgnoreCase);
+                        var nameColumn = attr.LogicalName + "name";
+                        var joinAlias = $"{table.LogicalName}_{attr.LogicalName}";
+
+                        if (isState)
+                        {
+                            // StateMetadata: join on EntityName, LanguageCode, State
+                            // statecode is never null, so use INNER JOIN for performance
+                            joinClauses.Add(
+                                $"JOIN [StateMetadata] {joinAlias}\n" +
+                                $"\t\t\t\t            ON  {joinAlias}.[EntityName] = '{table.LogicalName}'\n" +
+                                $"\t\t\t\t            AND {joinAlias}.[LocalizedLabelLanguageCode] = {_languageCode}\n" +
+                                $"\t\t\t\t            AND {joinAlias}.[State] = Base.{attr.LogicalName}");
+                        }
+                        else if (isStatus)
+                        {
+                            // StatusMetadata: join on EntityName, LanguageCode, State, and Status
+                            // The [State] column in StatusMetadata corresponds to statecode
+                            // The [Status] column in StatusMetadata corresponds to statuscode
+                            // Both conditions are needed to get the specific status label (avoid row fan-out)
+                            // statuscode is never null, so use INNER JOIN for performance
+                            joinClauses.Add(
+                                $"JOIN [StatusMetadata] {joinAlias}\n" +
+                                $"\t\t\t\t            ON  {joinAlias}.[EntityName] = '{table.LogicalName}'\n" +
+                                $"\t\t\t\t            AND {joinAlias}.[LocalizedLabelLanguageCode] = {_languageCode}\n" +
+                                $"\t\t\t\t            AND {joinAlias}.[State] = Base.statecode\n" +
+                                $"\t\t\t\t            AND {joinAlias}.[Status] = Base.statuscode");
+                        }
+                        else if (isBoolean)
+                        {
+                            // Boolean fields: use GlobalOptionsetMetadata with LEFT JOIN (value can be null)
+                            var optionSetName = attr.OptionSetName ?? attrDisplayInfo?.OptionSetName ?? attr.LogicalName;
+                            joinClauses.Add(
+                                $"LEFT JOIN [GlobalOptionsetMetadata] {joinAlias}\n" +
+                                $"\t\t\t\t            ON  {joinAlias}.[OptionSetName] = '{optionSetName}'\n" +
+                                $"\t\t\t\t            AND {joinAlias}.[EntityName] = '{table.LogicalName}'\n" +
+                                $"\t\t\t\t            AND {joinAlias}.[LocalizedLabelLanguageCode] = {_languageCode}\n" +
+                                $"\t\t\t\t            AND {joinAlias}.[Option] = Base.{attr.LogicalName}");
+                        }
+                        else
+                        {
+                            // Picklist: determine GlobalOptionsetMetadata vs OptionsetMetadata
+                            var isGlobal = attr.IsGlobal ?? attrDisplayInfo?.IsGlobal ?? false;
+                            var optionSetName = attr.OptionSetName ?? attrDisplayInfo?.OptionSetName ?? attr.LogicalName;
+                            var metadataTable = isGlobal ? "GlobalOptionsetMetadata" : "OptionsetMetadata";
+                            joinClauses.Add(
+                                $"LEFT JOIN [{metadataTable}] {joinAlias}\n" +
+                                $"\t\t\t\t            ON  {joinAlias}.[OptionSetName] = '{optionSetName}'\n" +
+                                $"\t\t\t\t            AND {joinAlias}.[EntityName] = '{table.LogicalName}'\n" +
+                                $"\t\t\t\t            AND {joinAlias}.[LocalizedLabelLanguageCode] = {_languageCode}\n" +
+                                $"\t\t\t\t            AND {joinAlias}.[Option] = Base.{attr.LogicalName}");
+                        }
+
+                        // SELECT the localized label aliased as {attributename}name
+                        sqlFields.Add($"{joinAlias}.[LocalizedLabel] {nameColumn}");
+
+                        // Column definition uses string type (the label text)
+                        columns.Add(new ColumnInfo
+                        {
+                            LogicalName = nameColumn,
+                            DisplayName = attrDisplayName,
+                            SourceColumn = nameColumn,
+                            IsHidden = false,
+                            IsRowLabel = isPrimaryName,
+                            Description = description,
+                            AttributeType = "string"  // Localized label is always a string
+                        });
+                    }
+                    else
+                    {
                     // For Choice/Boolean: use the virtual attribute name from metadata
                     // Most follow pattern {attributename}name, but there are exceptions (e.g., donotsendmm -> donotsendmarketingmaterial)
                     var nameColumn = attrDisplayInfo?.VirtualAttributeName ?? (attr.LogicalName + "name");
@@ -2077,6 +2378,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         AttributeType = "string"  // Choice/Boolean name columns are always strings
                     });
                     sqlFields.Add($"Base.{nameColumn}");
+                    }
                 }
                 else
                 {
@@ -2171,7 +2473,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             }
 
             // Write partition (Power Query)
-            var schemaName = table.SchemaName ?? table.LogicalName;
+            // FabricLink: table names are lowercase, no schema prefix
+            // TDS: uses schemaName (e.g. Opportunity, Account)
+            var fromTable = IsFabricLink ? table.LogicalName : (table.SchemaName ?? table.LogicalName);
 
             // Build SQL SELECT list with proper formatting
             var sqlSelectList = new StringBuilder();
@@ -2187,12 +2491,50 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 }
             }
 
-            sb.AppendLine($"\tpartition {QuoteTmdlName(displayName)} = m");
+            // Partition name matches table display name (PBI Desktop requires this for DirectQuery evaluation)
+            var partitionName = displayName;
+
+            // Auto-generate measures for fact tables
+            if (table.Role == "Fact")
+            {
+                var entityLogicalName = table.LogicalName;
+                var factPrimaryKey = table.PrimaryIdAttribute ?? (table.LogicalName + "id");
+
+                // Link measure: builds a URL to open the record in Dynamics 365
+                sb.AppendLine($"\tmeasure 'Link to {displayName}' = ```");
+                sb.AppendLine($"\t\t\t");
+                sb.AppendLine($"\t\t\t\"https://\" & DataverseURL & \"/main.aspx?pagetype=entityrecord&etn={entityLogicalName}&id=\" ");
+                sb.AppendLine($"\t\t\t\t& SELECTEDVALUE({QuoteTmdlName(displayName)}[{factPrimaryKey}], BLANK())");
+                sb.AppendLine($"\t\t\t```");
+                sb.AppendLine($"\t\tlineageTag: {Guid.NewGuid()}");
+                sb.AppendLine($"\t\tdataCategory: WebUrl");
+                sb.AppendLine();
+
+                // Count measure: counts rows in the fact table
+                sb.AppendLine($"\tmeasure '{displayName} Count' = COUNTROWS({QuoteTmdlName(displayName)})");
+                sb.AppendLine($"\t\tformatString: 0");
+                sb.AppendLine($"\t\tlineageTag: {Guid.NewGuid()}");
+                sb.AppendLine();
+            }
+
+            sb.AppendLine($"\tpartition {QuoteTmdlName(partitionName)} = m");
             sb.AppendLine($"\t\tmode: directQuery");
             sb.AppendLine($"\t\tsource =");
             sb.AppendLine($"\t\t\t\tlet");
-            sb.AppendLine($"\t\t\t\t    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),");
-            sb.AppendLine($"\t\t\t\t    Source = Value.NativeQuery(Dataverse,\"");
+            if (IsFabricLink)
+            {
+                // FabricLink: uses Sql.Database with inline Query parameter
+                sb.AppendLine($"\t\t\t\t    Source = Sql.Database(FabricSQLEndpoint, FabricLakehouse,");
+                sb.AppendLine($"\t\t\t\t    [Query=\"");
+            }
+            else
+            {
+                // TDS: reference the DataverseURL parameter table.
+                // DataverseURL must be a table with mode: import and IsParameterQuery=true
+                // ("Enable Load" checked) — otherwise PBI Desktop throws KeyNotFoundException.
+                sb.AppendLine($"\t\t\t\t    Dataverse = CommonDataService.Database(DataverseURL,[CreateNavigationProperties=false]),");
+                sb.AppendLine($"\t\t\t\t    Source = Value.NativeQuery(Dataverse,\"");
+            }
             sb.AppendLine($"\t\t\t\t");
             
             // Add filter comment if present
@@ -2209,7 +2551,13 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             }
             
             sb.AppendLine($"\t\t\t\t    {sqlSelectList}");
-            sb.AppendLine($"\t\t\t\t    FROM {schemaName} as Base");
+            sb.AppendLine($"\t\t\t\t    FROM {fromTable} as Base");
+
+            // FabricLink: add JOIN clauses for choice/optionset metadata
+            foreach (var joinClause in joinClauses)
+            {
+                sb.AppendLine($"\t\t\t\t    {joinClause}");
+            }
             
             // Build WHERE clause - use view filter if present, otherwise default statecode filter
             if (!string.IsNullOrWhiteSpace(viewFilterClause))
@@ -2223,7 +2571,15 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 sb.AppendLine($"\t\t\t\t    WHERE Base.statecode = 0");
             }
             sb.AppendLine($"\t\t\t\t");
-            sb.AppendLine($"\t\t\t\t    \" ,null ,[EnableFolding=true])");
+            if (IsFabricLink)
+            {
+                sb.AppendLine($"\t\t\t\t        \"");
+                sb.AppendLine($"\t\t\t\t    , CreateNavigationProperties=false])");
+            }
+            else
+            {
+                sb.AppendLine($"\t\t\t\t    \" ,null ,[EnableFolding=true])");
+            }
             sb.AppendLine($"\t\t\t\tin");
             sb.AppendLine($"\t\t\t\t    Source");
             sb.AppendLine();
@@ -2236,15 +2592,28 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         }
 
         /// <summary>
-        /// Generates the DataverseURL parameter expression TMDL
+        /// Generates FabricLink expressions TMDL (FabricSQLEndpoint, FabricLakehouse, and DataverseURL parameters)
         /// </summary>
-        private string GenerateDataverseUrlExpression(string dataverseUrl)
+        private string GenerateFabricLinkExpressions(string endpoint, string database, string dataverseUrl)
         {
             var sb = new StringBuilder();
-            var lineageTag = Guid.NewGuid().ToString();
+
+            sb.AppendLine($"expression FabricSQLEndpoint = \"{endpoint}\" meta [IsParameterQuery=true, Type=\"Any\", IsParameterQueryRequired=true]");
+            sb.AppendLine($"\tlineageTag: {Guid.NewGuid()}");
+            sb.AppendLine();
+            sb.AppendLine("\tannotation PBI_ResultType = Text");
+            sb.AppendLine();
+
+            sb.AppendLine($"expression FabricLakehouse = \"{database}\" meta [IsParameterQuery=true, Type=\"Any\", IsParameterQueryRequired=true]");
+            sb.AppendLine($"\tlineageTag: {Guid.NewGuid()}");
+            sb.AppendLine();
+            sb.AppendLine("\tannotation PBI_NavigationStepName = Navigation");
+            sb.AppendLine();
+            sb.AppendLine("\tannotation PBI_ResultType = Text");
+            sb.AppendLine();
 
             sb.AppendLine($"expression DataverseURL = \"{dataverseUrl}\" meta [IsParameterQuery=true, Type=\"Any\", IsParameterQueryRequired=true]");
-            sb.AppendLine($"\tlineageTag: {lineageTag}");
+            sb.AppendLine($"\tlineageTag: {Guid.NewGuid()}");
             sb.AppendLine();
             sb.AppendLine("\tannotation PBI_ResultType = Text");
 
@@ -2439,7 +2808,10 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         }
 
         /// <summary>
-        /// Maps Dataverse attribute types to Power BI data types
+        /// Maps Dataverse attribute types to Power BI data types.
+        /// FabricLink note: The Fabric SQL endpoint returns money/decimal as float,
+        /// so PBI Desktop will change them to double. We generate double directly for
+        /// FabricLink to avoid false change detection on subsequent rebuilds.
         /// </summary>
         private (string dataType, string? formatString, string? sourceProviderType, string summarizeBy) MapDataType(string? attributeType)
         {
@@ -2447,14 +2819,45 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 return ("string", null, "nvarchar", "none");
 
             var normalizedType = attributeType!.ToLowerInvariant();
+
+            if (IsFabricLink)
+            {
+                return normalizedType switch
+                {
+                    // Numeric types - Fabric SQL endpoint returns money/decimal as float (double)
+                    "integer" => ("int64", "0", "int", "sum"),
+                    "bigint" => ("int64", "0", "bigint", "sum"),
+                    "decimal" => ("double", "#,0.00", null, "sum"),
+                    "double" => ("double", "#,0.00", null, "sum"),
+                    "money" => ("double", "\\$#,0.00;(\\$#,0.00);\\$#,0.00", null, "sum"),
+                    
+                    // Date/Time types
+                    "datetime" => ("dateTime", "Short Date", "datetime2", "none"),
+                    "dateonly" => ("dateTime", "Short Date", "datetime2", "none"),
+                    
+                    // Boolean types
+                    "boolean" => ("boolean", null, "bit", "none"),
+                    
+                    // GUID types
+                    "lookup" or "owner" or "customer" or "uniqueidentifier" => ("string", null, "uniqueidentifier", "none"),
+                    
+                    // Text types
+                    "string" or "memo" or "picklist" or "state" or "status" => ("string", null, "nvarchar", "none"),
+                    
+                    _ => ("string", null, "nvarchar", "none")
+                };
+            }
+
             return normalizedType switch
             {
                 // Numeric types
+                // PBI Desktop converts money/decimal to double on TDS too — match that
+                // to avoid false change detection ("Changed: dataType: double → decimal")
                 "integer" => ("int64", "0", "int", "sum"),
                 "bigint" => ("int64", "0", "bigint", "sum"),
-                "decimal" => ("decimal", "#,0.00", "decimal", "sum"),
-                "double" => ("double", "#,0.00", "float", "sum"),
-                "money" => ("decimal", "\\$#,0.00;(\\$#,0.00);\\$#,0.00", "money", "sum"),
+                "decimal" => ("double", "#,0.00", null, "sum"),
+                "double" => ("double", "#,0.00", null, "sum"),
+                "money" => ("double", "\\$#,0.00;(\\$#,0.00);\\$#,0.00", null, "sum"),
                 
                 // Date/Time types
                 "datetime" => ("dateTime", "Short Date", "datetime2", "none"),

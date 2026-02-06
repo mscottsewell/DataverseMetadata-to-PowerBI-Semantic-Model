@@ -11,8 +11,8 @@
 //   - Export metadata (used when generating Power BI semantic models)
 //   - Metadata caching (reduces API calls to Dataverse)
 //
-// These models are shared between the Configurator app and XrmToolBox plugin
-// to ensure consistent data structures across both deployment options.
+// These models are shared across the solution to ensure consistent data
+// structures for configuration, metadata, and export operations.
 // =============================================================================
 
 using System;
@@ -825,6 +825,19 @@ namespace DataverseToPowerBI.Core.Models
         /// </remarks>
         /// <example>"statuscodename", "donotsendmarketingmaterial"</example>
         public string? VirtualAttributeName { get; set; }
+
+        /// <summary>
+        /// For Picklist attributes, indicates whether the optionset is global.
+        /// Global optionsets use GlobalOptionsetMetadata table in FabricLink queries,
+        /// while entity-specific optionsets use OptionsetMetadata table.
+        /// </summary>
+        public bool? IsGlobal { get; set; }
+
+        /// <summary>
+        /// For Picklist attributes, the logical name of the optionset.
+        /// Used for JOINs to metadata tables in FabricLink queries.
+        /// </summary>
+        public string? OptionSetName { get; set; }
     }
 
     /// <summary>

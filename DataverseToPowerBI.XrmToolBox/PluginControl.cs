@@ -1,16 +1,16 @@
 // =============================================================================
 // PluginControl.cs - XrmToolBox Plugin User Interface
 // =============================================================================
-// Purpose: Main UI control for the XrmToolBox plugin version.
+// Purpose: Main UI control for the XrmToolBox plugin.
 //
-// This control mirrors the functionality of MainForm from the standalone
-// Configurator application, but integrates with XrmToolBox for:
+// This control provides the full workflow for building Power BI semantic
+// models from Dataverse metadata, integrated with XrmToolBox for:
 //   - Connection management (uses XrmToolBox connection manager)
 //   - Authentication (inherits CRM authentication from XrmToolBox)
 //   - Plugin lifecycle (Load, Unload, ConnectionUpdated events)
 //
-// Key Differences from MainForm:
-//   - Uses IOrganizationService via XrmServiceAdapterImpl instead of Web API
+// Architecture Notes:
+//   - Uses IOrganizationService via XrmServiceAdapterImpl
 //   - Integrates with XrmToolBox settings storage
 //   - No custom OAuth - uses XrmToolBox connection
 //
@@ -50,8 +50,8 @@ namespace DataverseToPowerBI.XrmToolBox
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This control provides the same functionality as MainForm from the standalone
-    /// Configurator, but integrates with XrmToolBox for connection management.
+    /// This control provides the full workflow for building Power BI semantic
+    /// models from Dataverse metadata, with XrmToolBox connection management.
     /// </para>
     /// <para>
     /// Key workflow:
@@ -397,7 +397,7 @@ namespace DataverseToPowerBI.XrmToolBox
             // Show the new semantic model dialog
             var defaultFolder = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                "DataverseToPowerBI", "Reports");
+                "DataverseToPowerBI");
             Directory.CreateDirectory(defaultFolder);
 
             var defaultTemplate = _modelManager.GetInstalledTemplatePath() ?? _templatePath;
@@ -726,26 +726,44 @@ namespace DataverseToPowerBI.XrmToolBox
             {
                 if (dialog.ShowDialog(this) == DialogResult.OK && dialog.SelectedSemanticModel != null)
                 {
-                    // If URL was changed, we need to reload metadata
-                    if (dialog.UrlWasChanged)
+                    // Check if this is a newly created model that needs to be initialized
+                    var isNewlyCreated = !string.IsNullOrEmpty(dialog.NewlyCreatedConfiguration) &&
+                        dialog.SelectedSemanticModel.Name == dialog.NewlyCreatedConfiguration;
+                    
+                    if (isNewlyCreated)
                     {
-                        // Clear metadata since we're now using a different environment's model
-                        _tableAttributes.Clear();
-                        _tableForms.Clear();
-                        _tableViews.Clear();
+                        // A new model was created and selected - clear all existing metadata first
+                        ClearAllMetadata();
+                        
+                        LoadSemanticModel(dialog.SelectedSemanticModel);
+                        
+                        // Immediately start the table selection workflow for newly created models
+                        BeginInvoke(new Action(() => StartTableSelectionWorkflow()));
                     }
-                    
-                    LoadSemanticModel(dialog.SelectedSemanticModel);
-                    
-                    // Reload metadata if we have tables
-                    if (_selectedTables.Count > 0 && dialog.UrlWasChanged)
+                    else
                     {
-                        LoadMetadataForAllTables();
+                        // Loading an existing model
+                        // If URL was changed, we need to reload metadata
+                        if (dialog.UrlWasChanged)
+                        {
+                            // Clear metadata since we're now using a different environment's model
+                            _tableAttributes.Clear();
+                            _tableForms.Clear();
+                            _tableViews.Clear();
+                        }
+                        
+                        LoadSemanticModel(dialog.SelectedSemanticModel);
+                        
+                        // Reload metadata if we have tables
+                        if (_selectedTables.Count > 0 && dialog.UrlWasChanged)
+                        {
+                            LoadMetadataForAllTables();
+                        }
                     }
                 }
                 else if (dialog.ConfigurationsChanged && !string.IsNullOrEmpty(dialog.NewlyCreatedConfiguration))
                 {
-                    // A new model was created - clear all existing metadata first
+                    // A new model was created but not selected (user closed dialog) - still load it
                     ClearAllMetadata();
                     
                     // Load the new model
@@ -767,12 +785,12 @@ namespace DataverseToPowerBI.XrmToolBox
         {
             if (_currentModel != null)
             {
-                btnSemanticModel.Text = _currentModel.Name;
+                btnSemanticModel.Text = $"Semantic Model: {_currentModel.Name}";
                 btnSemanticModel.ToolTipText = _currentModel.Name;
             }
             else
             {
-                btnSemanticModel.Text = "(Click to select...)";
+                btnSemanticModel.Text = "Semantic Model: (Click to select...)";
                 btnSemanticModel.ToolTipText = "Click to select or manage semantic models";
             }
         }
@@ -795,8 +813,8 @@ namespace DataverseToPowerBI.XrmToolBox
         
         private void ShowSolutionAndTableSelector(List<DataverseSolution> solutions)
         {
-            // If we already have a solution selected, skip the dialog and go directly to table loading
-            // The solution can still be changed via the Solution dropdown in the FactDimensionSelectorForm
+            // Skip the solution selector dialog - the solution dropdown is on the table selector form
+            // If we have a current solution, load its tables; otherwise pass empty list
             if (!string.IsNullOrEmpty(_currentSolutionId))
             {
                 var existingSolution = solutions.FirstOrDefault(s => s.SolutionId == _currentSolutionId);
@@ -809,17 +827,10 @@ namespace DataverseToPowerBI.XrmToolBox
                 }
             }
             
-            // Show solution selector first time or if previous solution is no longer available
-            using (var solutionDialog = new SolutionSelectorForm(solutions, _currentSolutionId ?? ""))
-            {
-                if (solutionDialog.ShowDialog(this) != DialogResult.OK || solutionDialog.SelectedSolution == null)
-                    return;
-                
-                _currentSolutionId = solutionDialog.SelectedSolution.SolutionId;
-                _currentSolutionName = solutionDialog.SelectedSolution.FriendlyName;
-                
-                LoadTablesForSolution(_currentSolutionId, _currentSolutionName, solutions);
-            }
+            // No previous solution or it's no longer available - show dialog with empty tables
+            // The user will select a solution from the dropdown in the FactDimensionSelectorForm
+            _solutionTables = new List<TableInfo>();
+            ShowFactDimensionSelector(solutions);
         }
         
         private void LoadTablesForSolution(string? solutionId, string? solutionName, List<DataverseSolution> allSolutions)
@@ -1110,7 +1121,17 @@ namespace DataverseToPowerBI.XrmToolBox
                                 _selectedFormIds[tableName] = selectedForm.FormId;
                                 
                                 // Auto-select form fields as attributes (matching MainForm behavior)
-                                if (!_selectedAttributes.ContainsKey(tableName) || _selectedAttributes[tableName].Count == 0)
+                                // Check if user has selected any attributes beyond the required primary ID/name
+                                var requiredAttrs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                                if (!string.IsNullOrEmpty(table.PrimaryIdAttribute))
+                                    requiredAttrs.Add(table.PrimaryIdAttribute);
+                                if (!string.IsNullOrEmpty(table.PrimaryNameAttribute))
+                                    requiredAttrs.Add(table.PrimaryNameAttribute);
+                                
+                                var hasUserSelectedAttributes = _selectedAttributes.ContainsKey(tableName) &&
+                                    _selectedAttributes[tableName].Any(a => !requiredAttrs.Contains(a));
+                                
+                                if (!hasUserSelectedAttributes)
                                 {
                                     if (!_selectedAttributes.ContainsKey(tableName))
                                         _selectedAttributes[tableName] = new HashSet<string>();
@@ -1806,7 +1827,17 @@ namespace DataverseToPowerBI.XrmToolBox
         {
             if (listViewSelectedTables.SelectedItems.Count == 0) return;
             var logicalName = listViewSelectedTables.SelectedItems[0].Name;
-            UpdateAttributesDisplay(logicalName);
+            
+            // Optimize display update to reduce lag
+            listViewAttributes.SuspendLayout();
+            try
+            {
+                UpdateAttributesDisplay(logicalName);
+            }
+            finally
+            {
+                listViewAttributes.ResumeLayout();
+            }
             SaveSettings();
         }
         
@@ -1840,21 +1871,44 @@ namespace DataverseToPowerBI.XrmToolBox
         
         private void BtnDeselectAll_Click(object sender, EventArgs e)
         {
+            if (listViewSelectedTables.SelectedItems.Count == 0) return;
+            var logicalName = listViewSelectedTables.SelectedItems[0].Name;
+            
+            // Get required attributes (ID and display name)
+            var requiredAttrs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (_selectedTables.ContainsKey(logicalName))
+            {
+                var table = _selectedTables[logicalName];
+                if (!string.IsNullOrEmpty(table.PrimaryIdAttribute))
+                    requiredAttrs.Add(table.PrimaryIdAttribute);
+                if (!string.IsNullOrEmpty(table.PrimaryNameAttribute))
+                    requiredAttrs.Add(table.PrimaryNameAttribute);
+            }
+            
             _isLoading = true;
             foreach (ListViewItem item in listViewAttributes.Items)
             {
-                item.Checked = false;
+                var attrName = item.Tag as string;
+                // Uncheck only non-required attributes
+                if (attrName != null && !requiredAttrs.Contains(attrName))
+                {
+                    item.Checked = false;
+                }
             }
             _isLoading = false;
             
-            // Update state
-            if (listViewSelectedTables.SelectedItems.Count > 0)
+            // Update state - clear all but keep required attributes
+            if (!_selectedAttributes.ContainsKey(logicalName))
+                _selectedAttributes[logicalName] = new HashSet<string>();
+            
+            _selectedAttributes[logicalName].Clear();
+            foreach (var req in requiredAttrs)
             {
-                var logicalName = listViewSelectedTables.SelectedItems[0].Name;
-                _selectedAttributes[logicalName]?.Clear();
-                UpdateSelectedTableRow(logicalName);
-                SaveSettings();
+                _selectedAttributes[logicalName].Add(req);
             }
+            
+            UpdateSelectedTableRow(logicalName);
+            SaveSettings();
         }
         
         private void BtnSelectFromForm_Click(object sender, EventArgs e)
@@ -1998,9 +2052,10 @@ namespace DataverseToPowerBI.XrmToolBox
             var availableWidth = listViewSelectedTables.Width - editWidth - roleWidth - attrsWidth - scrollBarWidth;
             if (availableWidth <= 0) return;
             
-            // Distribute remaining: Table (40%), Form (25%), Filter (35%)
-            var tableWidth = (int)(availableWidth * 0.40);
-            var formWidth = (int)(availableWidth * 0.25);
+            // Distribute remaining evenly: Table (33.33%), Form (33.33%), Filter (33.33%)
+            var columnWidth = availableWidth / 3;
+            var tableWidth = columnWidth;
+            var formWidth = columnWidth;
             var filterWidth = availableWidth - tableWidth - formWidth;
             
             listViewSelectedTables.BeginUpdate();
@@ -2096,12 +2151,55 @@ namespace DataverseToPowerBI.XrmToolBox
             {
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
+                    // Check if form changed
+                    var previousFormId = currentFormId;
                     var selectedFormId = dialog.SelectedFormId;
+                    bool formChanged = selectedFormId != previousFormId;
+                    
                     if (!string.IsNullOrEmpty(selectedFormId))
                         _selectedFormIds[logicalName] = selectedFormId;
                     var selectedViewId = dialog.SelectedViewId;
                     if (!string.IsNullOrEmpty(selectedViewId))
                         _selectedViewIds[logicalName] = selectedViewId;
+                    
+                    // If form changed, clear and re-select form fields
+                    if (formChanged && !string.IsNullOrEmpty(selectedFormId))
+                    {
+                        var form = _tableForms[logicalName].FirstOrDefault(f => f.FormId == selectedFormId);
+                        if (form != null)
+                        {
+                            // Clear current selections
+                            if (!_selectedAttributes.ContainsKey(logicalName))
+                                _selectedAttributes[logicalName] = new HashSet<string>();
+                            
+                            var selectedAttrs = _selectedAttributes[logicalName];
+                            selectedAttrs.Clear();
+                            
+                            var table = _selectedTables[logicalName];
+                            var attributes = _tableAttributes.ContainsKey(logicalName) ? _tableAttributes[logicalName] : new List<AttributeMetadata>();
+                            
+                            // Always include primary ID and name attributes
+                            var primaryId = table.PrimaryIdAttribute;
+                            if (!string.IsNullOrEmpty(primaryId))
+                                selectedAttrs.Add(primaryId);
+                            var primaryName = table.PrimaryNameAttribute;
+                            if (!string.IsNullOrEmpty(primaryName))
+                                selectedAttrs.Add(primaryName);
+                            
+                            // Add all fields from the newly selected form
+                            if (form.Fields != null)
+                            {
+                                foreach (var field in form.Fields)
+                                {
+                                    if (!string.IsNullOrEmpty(field) &&
+                                        attributes.Any(a => a.LogicalName.Equals(field, StringComparison.OrdinalIgnoreCase)))
+                                    {
+                                        selectedAttrs.Add(field);
+                                    }
+                                }
+                            }
+                        }
+                    }
                     
                     UpdateSelectedTableRow(logicalName);
                     UpdateAttributesDisplay(logicalName);
@@ -2410,13 +2508,17 @@ namespace DataverseToPowerBI.XrmToolBox
                     var builder = new SemanticModelBuilder(templatePath!, msg =>
                     {
                         worker.ReportProgress(-1, msg);
-                    });
+                    },
+                    _currentModel?.ConnectionType ?? "DataverseTDS",
+                    _currentModel?.FabricLinkSQLEndpoint,
+                    _currentModel?.FabricLinkSQLDatabase,
+                    _currentModel?.PluginSettings?.LanguageCode ?? 1033);
                     
                     worker.ReportProgress(10, "Analyzing changes...");
-                    
+
                     // Get date table config from current model
                     var dateTableConfig = _currentModel?.PluginSettings?.DateTableConfig;
-                    
+
                     var changes = builder.AnalyzeChanges(
                         modelName,
                         outputFolder,
@@ -2449,7 +2551,7 @@ namespace DataverseToPowerBI.XrmToolBox
                     }
                     
                     worker.ReportProgress(30, "Applying changes...");
-                    
+
                     // Apply the changes
                     var success = builder.ApplyChanges(
                         modelName,
@@ -2657,6 +2759,12 @@ namespace DataverseToPowerBI.XrmToolBox
         public bool ShowAllAttributes { get; set; } = false;
         [System.Runtime.Serialization.DataMember]
         public DateTableConfig? DateTableConfig { get; set; } = null;
+        /// <summary>
+        /// The organization's base language code (LCID) for FabricLink metadata queries.
+        /// Defaults to 1033 (US English).
+        /// </summary>
+        [System.Runtime.Serialization.DataMember]
+        public int LanguageCode { get; set; } = 1033;
     }
     
     [System.Runtime.Serialization.DataContract]
@@ -2763,6 +2871,10 @@ namespace DataverseToPowerBI.XrmToolBox
         public List<string>? Targets { get; set; }
         [System.Runtime.Serialization.DataMember]
         public string? VirtualAttributeName { get; set; }
+        [System.Runtime.Serialization.DataMember]
+        public bool? IsGlobal { get; set; }
+        [System.Runtime.Serialization.DataMember]
+        public string? OptionSetName { get; set; }
     }
     
     #endregion
