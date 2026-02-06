@@ -28,7 +28,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$repoRoot = $PSScriptRoot
+$repoRoot = Split-Path $PSScriptRoot -Parent
 
 # VERSION CONFIGURATION - Read from AssemblyInfo.cs and auto-increment revision (unless DeployOnly)
 $assemblyInfoPath = Join-Path $repoRoot "DataverseToPowerBI.XrmToolBox\Properties\AssemblyInfo.cs"
@@ -78,7 +78,7 @@ $xrmToolBoxPluginsPath = "$env:APPDATA\MscrmTools\XrmToolBox\Plugins"
 $packageRoot = Join-Path $repoRoot "Package"
 $coreProject = Join-Path $repoRoot "DataverseToPowerBI.Core\DataverseToPowerBI.Core.csproj"
 $pluginProject = Join-Path $repoRoot "DataverseToPowerBI.XrmToolBox\DataverseToPowerBI.XrmToolBox.csproj"
-$nuspecFile = Join-Path $repoRoot "DataverseToPowerBI.XrmToolBox.nuspec"
+$nuspecFile = Join-Path $repoRoot "Package\DataverseToPowerBI.XrmToolBox.nuspec"
 
 # Step 1: Clean Build (unless DeployOnly)
 if (-not $DeployOnly) {
@@ -119,8 +119,12 @@ Write-Host ""
 
 # Step 3: Create Package Structure
 Write-Host "[4/6] Creating NuGet package structure..." -ForegroundColor Yellow
-if (Test-Path $packageRoot) {
-    Remove-Item $packageRoot -Recurse -Force
+# Clean only build output subdirectories (preserve script and nuspec in Package/)
+foreach ($subDir in @("lib", "content")) {
+    $subPath = Join-Path $packageRoot $subDir
+    if (Test-Path $subPath) {
+        Remove-Item $subPath -Recurse -Force
+    }
 }
 
 # Create directories
@@ -164,7 +168,7 @@ if (-not $DeployOnly) {
         $nugetExe = $nugetExe.Source
     }
     
-    & $nugetExe pack $nuspecFile -OutputDirectory $packageRoot -Version $fullVersion
+    & $nugetExe pack $nuspecFile -OutputDirectory $packageRoot -BasePath $repoRoot -Version $fullVersion
     if ($LASTEXITCODE -ne 0) { throw "NuGet pack failed" }
     
     $nupkgFile = Get-ChildItem "$packageRoot\*.nupkg" | Select-Object -First 1
