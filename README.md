@@ -31,7 +31,7 @@ This tool solves these problems by:
 | Feature | What It Does For You |
 |---------|---------------------|
 | **Star-Schema Wizard** | Helps you designate fact and dimension tables for optimal performance |
-| **Dual Connection Support** | Choose between **Dataverse TDS** (DirectQuery) or **FabricLink** (Lakehouse SQL) — see [Connection Modes](#-connection-modes-tds-vs-fabriclink) |
+| **Dual Connection Support** | Choose between **Dataverse TDS** (Direct to Dataverse for medium and small datasets) or **FabricLink** (Using the FabricLink Lakehouse for larger volumes of data) — see [Connection Modes](#-connection-modes-tds-vs-fabriclink) |
 | **Smart Column Selection** | Uses your Dataverse forms and views to include only relevant fields |
 | **Friendly Field Names** | Automatically renames columns to their display names (no more "cai_accountid"!) |
 | **Relationship Detection** | Finds and creates relationships from your lookup fields |
@@ -300,7 +300,7 @@ Your generated model uses **DirectQuery** by default. Here's what that means and
 
 | ✅ Advantages | ⚠️ Considerations |
 |--------------|-------------------|
-| Blazing fast interactivity | Data can be stale between refreshes |
+| Blazing fast interactivity | Data must be refreshed regularly |
 | Full DAX functionality | Requires scheduled refresh (up to 8x/day) |
 | Works offline | Larger file sizes |
 | No per-query API limits | Security must be applied at report level (RLS) |
