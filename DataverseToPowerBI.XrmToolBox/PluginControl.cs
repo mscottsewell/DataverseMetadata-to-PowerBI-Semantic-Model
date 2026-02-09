@@ -1285,6 +1285,27 @@ namespace DataverseToPowerBI.XrmToolBox
         }
         
         /// <summary>
+        /// Gets the set of lookup attribute logical names on a given table that are
+        /// required by currently-configured relationships (i.e. the table is a source
+        /// in a relationship and the lookup column connects it to a dimension).
+        /// These columns must remain selected as long as the dimension tables are
+        /// part of the model.
+        /// </summary>
+        private HashSet<string> GetRelationshipRequiredColumns(string tableLogicalName)
+        {
+            var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var rel in _relationships)
+            {
+                if (rel.SourceTable.Equals(tableLogicalName, StringComparison.OrdinalIgnoreCase) &&
+                    _selectedTables.ContainsKey(rel.TargetTable))
+                {
+                    result.Add(rel.SourceAttribute);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
         /// Revalidate metadata for a single table, preserving user selections.
         /// Matches the logic from MainForm.RevalidateTableMetadata().
         /// </summary>
@@ -1307,8 +1328,8 @@ namespace DataverseToPowerBI.XrmToolBox
                 if (!string.IsNullOrEmpty(primaryName))
                     requiredAttrs.Add(primaryName);
             }
-            
-            // Update selected attributes - remove any that no longer exist, ensure required are included
+            // Lock lookup columns required by relationships to dimension tables
+            requiredAttrs.UnionWith(GetRelationshipRequiredColumns(tableName));
             if (_selectedAttributes.ContainsKey(tableName))
             {
                 // Remove attributes that no longer exist in the table metadata
@@ -1668,6 +1689,8 @@ namespace DataverseToPowerBI.XrmToolBox
                         primaryNameAttr = primaryName;
                     }
                 }
+                // Lock lookup columns required by relationships to dimension tables
+                requiredAttrs.UnionWith(GetRelationshipRequiredColumns(logicalName));
             
             // Get form fields if form is selected
             HashSet<string> formFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -1790,8 +1813,10 @@ namespace DataverseToPowerBI.XrmToolBox
             if (_selectedTables.ContainsKey(logicalName))
             {
                 var table = _selectedTables[logicalName];
+                var relationshipCols = GetRelationshipRequiredColumns(logicalName);
                 if (attrName.Equals(table.PrimaryIdAttribute, StringComparison.OrdinalIgnoreCase) ||
-                    attrName.Equals(table.PrimaryNameAttribute, StringComparison.OrdinalIgnoreCase))
+                    attrName.Equals(table.PrimaryNameAttribute, StringComparison.OrdinalIgnoreCase) ||
+                    relationshipCols.Contains(attrName))
                 {
                     // Re-check if user tried to uncheck
                     if (!e.Item.Checked)
@@ -1874,7 +1899,7 @@ namespace DataverseToPowerBI.XrmToolBox
             if (listViewSelectedTables.SelectedItems.Count == 0) return;
             var logicalName = listViewSelectedTables.SelectedItems[0].Name;
             
-            // Get required attributes (ID and display name)
+            // Get required attributes (ID, display name, and relationship lookup columns)
             var requiredAttrs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             if (_selectedTables.ContainsKey(logicalName))
             {
@@ -1884,6 +1909,8 @@ namespace DataverseToPowerBI.XrmToolBox
                 if (!string.IsNullOrEmpty(table.PrimaryNameAttribute))
                     requiredAttrs.Add(table.PrimaryNameAttribute);
             }
+            // Lock lookup columns required by relationships to dimension tables
+            requiredAttrs.UnionWith(GetRelationshipRequiredColumns(logicalName));
             
             _isLoading = true;
             foreach (ListViewItem item in listViewAttributes.Items)
