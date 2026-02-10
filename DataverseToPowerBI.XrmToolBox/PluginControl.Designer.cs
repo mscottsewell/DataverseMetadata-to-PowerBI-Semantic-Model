@@ -22,6 +22,7 @@ namespace DataverseToPowerBI.XrmToolBox
             this.btnSelectTables = new System.Windows.Forms.ToolStripButton();
             this.btnCalendarTable = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator3 = new System.Windows.Forms.ToolStripSeparator();
+            this.btnPreviewTmdl = new System.Windows.Forms.ToolStripButton();
             this.btnBuildSemanticModel = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.btnSemanticModel = new System.Windows.Forms.ToolStripButton();
@@ -96,6 +97,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 this.btnSelectTables,
                 this.btnCalendarTable,
                 this.toolStripSeparator3,
+                this.btnPreviewTmdl,
                 this.btnBuildSemanticModel,
                 this.toolStripSeparator2,
                 this.btnSemanticModel,
@@ -155,7 +157,14 @@ namespace DataverseToPowerBI.XrmToolBox
             // toolStripSeparator3
             this.toolStripSeparator3.Name = "toolStripSeparator3";
             this.toolStripSeparator3.Size = new System.Drawing.Size(6, 28);
-
+            // btnPreviewTmdl
+            this.btnPreviewTmdl.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.ImageAndText;
+            this.btnPreviewTmdl.Name = "btnPreviewTmdl";
+            this.btnPreviewTmdl.Size = new System.Drawing.Size(120, 25);
+            this.btnPreviewTmdl.Text = "Preview TMDL";
+            this.btnPreviewTmdl.ToolTipText = "Preview TMDL table definitions as they will be written to the model";
+            this.btnPreviewTmdl.Enabled = false;
+            this.btnPreviewTmdl.Click += new System.EventHandler(this.BtnPreviewTmdl_Click);
             // btnSemanticModel
             this.btnSemanticModel.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.ImageAndText;
             this.btnSemanticModel.Name = "btnSemanticModel";
@@ -404,6 +413,7 @@ namespace DataverseToPowerBI.XrmToolBox
             this.listViewAttributes.View = System.Windows.Forms.View.Details;
             this.listViewAttributes.ItemChecked += new System.Windows.Forms.ItemCheckedEventHandler(this.ListViewAttributes_ItemChecked);
             this.listViewAttributes.ColumnClick += new System.Windows.Forms.ColumnClickEventHandler(this.ListViewAttributes_ColumnClick);
+            this.listViewAttributes.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.ListViewAttributes_MouseDoubleClick);
             this.listViewAttributes.Resize += new System.EventHandler(this.ListViewAttributes_Resize);
 
             // colAttrSelected
@@ -543,6 +553,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
         private System.Windows.Forms.ToolStripButton btnSelectTables;
         private System.Windows.Forms.ToolStripButton btnBuildSemanticModel;
+        private System.Windows.Forms.ToolStripButton btnPreviewTmdl;
         private System.Windows.Forms.ToolStripButton btnCalendarTable;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator3;

@@ -160,8 +160,13 @@ namespace DataverseToPowerBI.XrmToolBox
                         break;
                     case ChangeType.Warning:
                         item.BackColor = Color.LightCoral;
+                        break;                    case ChangeType.Error:
+                        item.BackColor = Color.IndianRed;
+                        item.ForeColor = Color.White;
                         break;
-                }
+                    case ChangeType.Info:
+                        item.BackColor = Color.LightCyan;
+                        break;                }
 
                 listViewChanges.Items.Add(item);
             }
@@ -184,6 +189,8 @@ namespace DataverseToPowerBI.XrmToolBox
         New,
         Update,
         Preserve,
-        Warning
+        Warning,
+        Error,
+        Info
     }
 }

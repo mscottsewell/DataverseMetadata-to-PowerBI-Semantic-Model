@@ -85,6 +85,9 @@ namespace DataverseToPowerBI.XrmToolBox
         private string? _factTable = null;
         private List<ExportRelationship> _relationships = new List<ExportRelationship>();
         
+        // Display name override state
+        private Dictionary<string, Dictionary<string, string>> _attributeDisplayNameOverrides = new Dictionary<string, Dictionary<string, string>>();
+        
         // Sorting state
         private int _selectedTablesSortColumn = -1;
         private bool _selectedTablesSortAscending = true;
@@ -239,6 +242,7 @@ namespace DataverseToPowerBI.XrmToolBox
             // Disable controls until connected
             btnSelectTables.Enabled = false;
             btnCalendarTable.Enabled = false;
+            btnPreviewTmdl.Enabled = false;
             
             // Update semantic model display
             UpdateSemanticModelDisplay();
@@ -348,6 +352,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 
                 btnSelectTables.Enabled = true;
                 btnCalendarTable.Enabled = _selectedTables.Count > 0;
+                btnPreviewTmdl.Enabled = _selectedTables.Count > 0;
             }
             else
             {
@@ -598,6 +603,14 @@ namespace DataverseToPowerBI.XrmToolBox
             _selectedFormIds = settings.SelectedFormIds ?? new Dictionary<string, string>();
             _selectedViewIds = settings.SelectedViewIds ?? new Dictionary<string, string>();
             
+            // Restore display name overrides
+            _attributeDisplayNameOverrides.Clear();
+            if (settings.AttributeDisplayNameOverrides != null)
+            {
+                foreach (var kvp in settings.AttributeDisplayNameOverrides)
+                    _attributeDisplayNameOverrides[kvp.Key] = new Dictionary<string, string>(kvp.Value);
+            }
+            
             // Restore relationships
             _relationships.Clear();
             if (settings.Relationships != null)
@@ -698,6 +711,14 @@ namespace DataverseToPowerBI.XrmToolBox
                     AssumeReferentialIntegrity = r.AssumeReferentialIntegrity
                 }).ToList();
                 
+                // Save display name overrides
+                settings.AttributeDisplayNameOverrides = new Dictionary<string, Dictionary<string, string>>();
+                foreach (var kvp in _attributeDisplayNameOverrides)
+                {
+                    if (kvp.Value.Count > 0)
+                        settings.AttributeDisplayNameOverrides[kvp.Key] = new Dictionary<string, string>(kvp.Value);
+                }
+
                 // Save table display info for offline display
                 settings.TableDisplayInfo = new Dictionary<string, TableDisplayInfo>();
                 foreach (var kvp in _selectedTables)
@@ -1172,6 +1193,10 @@ namespace DataverseToPowerBI.XrmToolBox
                     }
                     
                     SetStatus($"Loaded metadata for {tablesToLoad.Count} tables");
+                    
+                    // Auto-create display name overrides for primary name attributes
+                    AutoOverridePrimaryNameAttributes();
+                    
                     RefreshTableListDisplay();
                     
                     // Select first table (Fact) and show its attributes
@@ -1259,6 +1284,9 @@ namespace DataverseToPowerBI.XrmToolBox
                         }
                     }
                     
+                    // Re-apply auto-overrides for any new or updated primary name attributes
+                    AutoOverridePrimaryNameAttributes();
+                    
                     SetStatus($"Revalidated metadata for {tablesToLoad.Count} tables");
                     RefreshTableListDisplay();
                     
@@ -1278,8 +1306,7 @@ namespace DataverseToPowerBI.XrmToolBox
                     // Enable buttons now that metadata is loaded
                     btnSelectTables.Enabled = true;
                     btnCalendarTable.Enabled = _selectedTables.Count > 0;
-                    
-                    SaveSettings();
+                    btnPreviewTmdl.Enabled = _selectedTables.Count > 0;
                 }
             });
         }
@@ -1385,6 +1412,52 @@ namespace DataverseToPowerBI.XrmToolBox
                         _selectedViewIds.Remove(tableName);
                     }
                 }
+            }
+        }
+        
+        /// <summary>
+        /// Auto-creates display name overrides for primary name attributes to disambiguate
+        /// generic names like "Name" across tables (e.g., "Account Name", "Contact Name").
+        /// Only runs when UseDisplayNameAliasesInSql is enabled.
+        /// Skips if the display name already starts with the table display name.
+        /// </summary>
+        private void AutoOverridePrimaryNameAttributes()
+        {
+            if (_currentModel?.UseDisplayNameAliasesInSql != true)
+                return;
+            
+            foreach (var kvp in _selectedTables)
+            {
+                var tableName = kvp.Key;
+                var table = kvp.Value;
+                var primaryName = table.PrimaryNameAttribute;
+                
+                if (string.IsNullOrEmpty(primaryName) || !_tableAttributes.ContainsKey(tableName))
+                    continue;
+                
+                // Skip if an override already exists for this attribute
+                if (_attributeDisplayNameOverrides.ContainsKey(tableName) &&
+                    _attributeDisplayNameOverrides[tableName].ContainsKey(primaryName))
+                    continue;
+                
+                var attr = _tableAttributes[tableName].FirstOrDefault(a =>
+                    a.LogicalName.Equals(primaryName, StringComparison.OrdinalIgnoreCase));
+                if (attr == null) continue;
+                
+                var tableDisplayName = table.DisplayName ?? tableName;
+                var attrDisplayName = attr.DisplayName ?? attr.SchemaName ?? attr.LogicalName;
+                
+                // Skip if display name already starts with the table name
+                if (attrDisplayName.StartsWith(tableDisplayName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                
+                // Create override: "{TableDisplayName} {OriginalDisplayName}"
+                var overrideName = $"{tableDisplayName} {attrDisplayName}";
+                
+                if (!_attributeDisplayNameOverrides.ContainsKey(tableName))
+                    _attributeDisplayNameOverrides[tableName] = new Dictionary<string, string>();
+                
+                _attributeDisplayNameOverrides[tableName][primaryName] = overrideName;
             }
         }
         
@@ -1564,6 +1637,7 @@ namespace DataverseToPowerBI.XrmToolBox
             }
 
             btnCalendarTable.Enabled = count > 0;
+            btnPreviewTmdl.Enabled = count > 0;
             UpdateRelationshipsDisplay();
         }
         
@@ -1744,6 +1818,31 @@ namespace DataverseToPowerBI.XrmToolBox
             if (nameAttr != null) finalList.Add(nameAttr);
             finalList.AddRange(attrList);
             
+            // Build effective display name map and detect duplicates
+            var overrides = _attributeDisplayNameOverrides.ContainsKey(logicalName)
+                ? _attributeDisplayNameOverrides[logicalName]
+                : new Dictionary<string, string>();
+            var useAliases = _currentModel?.UseDisplayNameAliasesInSql ?? true;
+            
+            // Count effective display names to detect duplicates
+            var displayNameCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            if (useAliases)
+            {
+                foreach (var attr in finalList)
+                {
+                    var isSelected2 = selected.Contains(attr.LogicalName);
+                    var isRequired2 = requiredAttrs.Contains(attr.LogicalName);
+                    if (!isSelected2 && !isRequired2) continue;
+                    
+                    var dn = overrides.ContainsKey(attr.LogicalName) 
+                        ? overrides[attr.LogicalName] 
+                        : (attr.DisplayName ?? attr.LogicalName);
+                    if (!displayNameCounts.ContainsKey(dn))
+                        displayNameCounts[dn] = 0;
+                    displayNameCounts[dn]++;
+                }
+            }
+            
             foreach (var attr in finalList)
             {
                 var isSelected = selected.Contains(attr.LogicalName);
@@ -1763,6 +1862,13 @@ namespace DataverseToPowerBI.XrmToolBox
                         continue;
                 }
                 
+                // Compute effective display name with override indicator
+                var hasOverride = useAliases && overrides.ContainsKey(attr.LogicalName);
+                var effectiveDisplayName = hasOverride 
+                    ? overrides[attr.LogicalName] 
+                    : (attr.DisplayName ?? attr.LogicalName);
+                var displayText = hasOverride ? $"{effectiveDisplayName} *" : effectiveDisplayName;
+                
                 var item = new ListViewItem();
                 item.Text = "";
                 item.Checked = isSelected || isRequired;  // Required attrs always checked
@@ -1771,7 +1877,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 // Show lock for required attributes, checkmark for form fields
                 var formColumnText = isRequired ? "🔒" : (onForm ? "✓" : "");
                 item.SubItems.Add(formColumnText);
-                item.SubItems.Add(attr.DisplayName ?? attr.LogicalName);
+                item.SubItems.Add(displayText);
                 item.SubItems.Add(attr.LogicalName);
                 item.SubItems.Add(attr.AttributeType ?? "");
                 item.Tag = attr.LogicalName;
@@ -1789,6 +1895,13 @@ namespace DataverseToPowerBI.XrmToolBox
                 else
                 {
                     item.ForeColor = Color.Gray;
+                }
+                
+                // Highlight duplicate display names in light red (only for selected/required columns)
+                if (useAliases && (isSelected || isRequired) && 
+                    displayNameCounts.ContainsKey(effectiveDisplayName) && displayNameCounts[effectiveDisplayName] > 1)
+                {
+                    item.BackColor = Color.FromArgb(255, 200, 200);
                 }
                 
                 listViewAttributes.Items.Add(item);
@@ -2004,6 +2117,89 @@ namespace DataverseToPowerBI.XrmToolBox
                 var logicalName = listViewSelectedTables.SelectedItems[0].Name;
                 UpdateAttributesDisplay(logicalName);
             }
+        }
+        
+        private void ListViewAttributes_MouseDoubleClick(object sender, MouseEventArgs e)
+        {
+            if (listViewSelectedTables.SelectedItems.Count == 0) return;
+            if (!(_currentModel?.UseDisplayNameAliasesInSql ?? true)) return;
+            
+            var hit = listViewAttributes.HitTest(e.Location);
+            if (hit.Item == null || hit.SubItem == null) return;
+            
+            // Only allow editing the Display Name column (index 2)
+            var subItemIndex = hit.Item.SubItems.IndexOf(hit.SubItem);
+            if (subItemIndex != 2) return;
+            
+            var attrLogicalName = hit.Item.Tag as string;
+            if (string.IsNullOrEmpty(attrLogicalName)) return;
+            
+            var tableName = listViewSelectedTables.SelectedItems[0].Name;
+            
+            // Get current effective display name (strip the * indicator if present)
+            var currentText = hit.SubItem.Text;
+            if (currentText.EndsWith(" *"))
+                currentText = currentText.Substring(0, currentText.Length - 2);
+            
+            // Create an inline TextBox overlay for editing
+            var bounds = hit.SubItem.Bounds;
+            var editBox = new TextBox
+            {
+                Text = currentText,
+                Bounds = bounds,
+                Font = listViewAttributes.Font,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            
+            editBox.SelectAll();
+            
+            void CommitEdit()
+            {
+                var newName = editBox.Text.Trim();
+                if (editBox.Parent == null) return; // Already removed
+                listViewAttributes.Controls.Remove(editBox);
+                editBox.Dispose();
+                
+                if (string.IsNullOrEmpty(newName)) return;
+                
+                // Get the original display name for this attribute
+                var originalDisplayName = "";
+                if (_tableAttributes.ContainsKey(tableName))
+                {
+                    var attr = _tableAttributes[tableName].FirstOrDefault(a => 
+                        a.LogicalName.Equals(attrLogicalName, StringComparison.OrdinalIgnoreCase));
+                    if (attr != null) originalDisplayName = attr.DisplayName ?? attr.LogicalName;
+                }
+                
+                if (!_attributeDisplayNameOverrides.ContainsKey(tableName))
+                    _attributeDisplayNameOverrides[tableName] = new Dictionary<string, string>();
+                
+                // If user set it back to the original name, remove the override
+                if (newName.Equals(originalDisplayName, StringComparison.OrdinalIgnoreCase))
+                    _attributeDisplayNameOverrides[tableName].Remove(attrLogicalName);
+                else
+                    _attributeDisplayNameOverrides[tableName][attrLogicalName] = newName;
+                
+                SaveSettings();
+                UpdateAttributesDisplay(tableName);
+            }
+            
+            void CancelEdit()
+            {
+                if (editBox.Parent == null) return;
+                listViewAttributes.Controls.Remove(editBox);
+                editBox.Dispose();
+            }
+            
+            editBox.KeyDown += (s, ke) =>
+            {
+                if (ke.KeyCode == Keys.Enter) { ke.SuppressKeyPress = true; CommitEdit(); }
+                else if (ke.KeyCode == Keys.Escape) { ke.SuppressKeyPress = true; CancelEdit(); }
+            };
+            editBox.LostFocus += (s, _) => CommitEdit();
+            
+            listViewAttributes.Controls.Add(editBox);
+            editBox.Focus();
         }
         
         private void ListViewRelationships_ColumnClick(object sender, ColumnClickEventArgs e)
@@ -2360,6 +2556,9 @@ namespace DataverseToPowerBI.XrmToolBox
                 }
             }
             
+            // Validate no duplicate display name aliases
+            if (HasDuplicateDisplayNames()) return;
+            
             // Use current model's working folder if available
             string? outputPath = null;
             if (_currentModel != null && !string.IsNullOrEmpty(_currentModel.WorkingFolder))
@@ -2419,35 +2618,73 @@ namespace DataverseToPowerBI.XrmToolBox
             BuildSemanticModel(outputPath);
         }
         
-        private void BuildSemanticModel(string? outputPath)
+        /// <summary>
+        /// Checks for duplicate effective display names within each table when aliasing is enabled.
+        /// Returns true if duplicates were found and the user should be blocked from proceeding.
+        /// </summary>
+        private bool HasDuplicateDisplayNames()
         {
-            if (string.IsNullOrWhiteSpace(outputPath))
-            {
-                MessageBox.Show("Please select a working folder before building the model.",
-                    "Missing Working Folder", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            var outputFolder = outputPath!;
-
-            // Prepare all data structures first
-            var modelName = _currentModel?.Name ?? _currentSolutionName ?? "MySemanticModel";
+            if (!(_currentModel?.UseDisplayNameAliasesInSql ?? true)) return false;
             
-            // Use saved template path if it exists, otherwise use detected path
-            var templatePath = _currentModel?.TemplatePath;
-            if (string.IsNullOrEmpty(templatePath) || !Directory.Exists(templatePath))
+            var conflicts = new List<string>();
+            
+            foreach (var tableName in _selectedTables.Keys)
             {
-                templatePath = _templatePath;
-            }
-            if (string.IsNullOrEmpty(templatePath) || !Directory.Exists(templatePath))
-            {
-                MessageBox.Show("Template path could not be resolved.", "Missing Template",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
+                if (!_tableAttributes.ContainsKey(tableName)) continue;
+                var selected = _selectedAttributes.ContainsKey(tableName) ? _selectedAttributes[tableName] : new HashSet<string>();
+                
+                // Include required attributes
+                var requiredAttrs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var table = _selectedTables[tableName];
+                if (!string.IsNullOrEmpty(table.PrimaryIdAttribute)) requiredAttrs.Add(table.PrimaryIdAttribute);
+                if (!string.IsNullOrEmpty(table.PrimaryNameAttribute)) requiredAttrs.Add(table.PrimaryNameAttribute);
+                requiredAttrs.UnionWith(GetRelationshipRequiredColumns(tableName));
+                
+                var overrides = _attributeDisplayNameOverrides.ContainsKey(tableName)
+                    ? _attributeDisplayNameOverrides[tableName]
+                    : new Dictionary<string, string>();
+                    
+                var nameToAttrs = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+                
+                foreach (var attr in _tableAttributes[tableName])
+                {
+                    if (!selected.Contains(attr.LogicalName) && !requiredAttrs.Contains(attr.LogicalName)) continue;
+                    
+                    var effectiveName = overrides.ContainsKey(attr.LogicalName)
+                        ? overrides[attr.LogicalName]
+                        : (attr.DisplayName ?? attr.LogicalName);
+                    
+                    if (!nameToAttrs.ContainsKey(effectiveName))
+                        nameToAttrs[effectiveName] = new List<string>();
+                    nameToAttrs[effectiveName].Add(attr.LogicalName);
+                }
+                
+                foreach (var kvp in nameToAttrs.Where(n => n.Value.Count > 1))
+                {
+                    var tableDisplay = table.DisplayName ?? tableName;
+                    conflicts.Add($"  • {tableDisplay}: \"{kvp.Key}\" → {string.Join(", ", kvp.Value)}");
+                }
             }
             
-            var fullUrl = _currentEnvironmentUrl ?? "";
+            if (conflicts.Count == 0) return false;
             
+            MessageBox.Show(
+                "Duplicate display name aliases found. Each column in a table must have a unique display name.\n\n" +
+                "Conflicts:\n" + string.Join("\n", conflicts) + "\n\n" +
+                "Double-click the Display Name column in the attributes list to rename conflicting columns.",
+                "Duplicate Column Names",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+            return true;
+        }
+        
+        /// <summary>
+        /// Prepares the export data structures needed by the SemanticModelBuilder.
+        /// Shared between Build and Preview TMDL flows.
+        /// </summary>
+        private (List<ExportTable> tables, List<ExportRelationship> relationships,
+                 Dictionary<string, Dictionary<string, AttributeDisplayInfo>> attributeDisplayInfo) PrepareExportData()
+        {
             // Build export tables with full metadata
             var exportTables = _selectedTables.Values.Select(t =>
             {
@@ -2510,7 +2747,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 var tableDict = new Dictionary<string, AttributeDisplayInfo>();
                 foreach (var attr in kvp.Value)
                 {
-                    tableDict[attr.LogicalName] = new AttributeDisplayInfo
+                    var displayInfo = new AttributeDisplayInfo
                     {
                         LogicalName = attr.LogicalName,
                         DisplayName = attr.DisplayName,
@@ -2520,9 +2757,52 @@ namespace DataverseToPowerBI.XrmToolBox
                         Targets = attr.Targets,
                         VirtualAttributeName = attr.VirtualAttributeName
                     };
+                    
+                    // Populate override display name from runtime state
+                    if (_attributeDisplayNameOverrides.ContainsKey(kvp.Key) &&
+                        _attributeDisplayNameOverrides[kvp.Key].ContainsKey(attr.LogicalName))
+                    {
+                        displayInfo.OverrideDisplayName = _attributeDisplayNameOverrides[kvp.Key][attr.LogicalName];
+                    }
+                    
+                    tableDict[attr.LogicalName] = displayInfo;
                 }
                 attributeDisplayInfo[kvp.Key] = tableDict;
             }
+            
+            return (exportTables, exportRelationships, attributeDisplayInfo);
+        }
+        
+        private void BuildSemanticModel(string? outputPath)
+        {
+            if (string.IsNullOrWhiteSpace(outputPath))
+            {
+                MessageBox.Show("Please select a working folder before building the model.",
+                    "Missing Working Folder", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var outputFolder = outputPath!;
+
+            // Prepare all data structures first
+            var modelName = _currentModel?.Name ?? _currentSolutionName ?? "MySemanticModel";
+            
+            // Use saved template path if it exists, otherwise use detected path
+            var templatePath = _currentModel?.TemplatePath;
+            if (string.IsNullOrEmpty(templatePath) || !Directory.Exists(templatePath))
+            {
+                templatePath = _templatePath;
+            }
+            if (string.IsNullOrEmpty(templatePath) || !Directory.Exists(templatePath))
+            {
+                MessageBox.Show("Template path could not be resolved.", "Missing Template",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            
+            var fullUrl = _currentEnvironmentUrl ?? "";
+            
+            var (exportTables, exportRelationships, attributeDisplayInfo) = PrepareExportData();
             
             // Single WorkAsync that does EVERYTHING including showing the dialog
             WorkAsync(new WorkAsyncInfo
@@ -2539,7 +2819,8 @@ namespace DataverseToPowerBI.XrmToolBox
                     _currentModel?.ConnectionType ?? "DataverseTDS",
                     _currentModel?.FabricLinkSQLEndpoint,
                     _currentModel?.FabricLinkSQLDatabase,
-                    _currentModel?.PluginSettings?.LanguageCode ?? 1033);
+                    _currentModel?.PluginSettings?.LanguageCode ?? 1033,
+                    _currentModel?.UseDisplayNameAliasesInSql ?? true);
                     
                     worker.ReportProgress(10, "Analyzing changes...");
 
@@ -2746,6 +3027,91 @@ namespace DataverseToPowerBI.XrmToolBox
             Directory.CreateDirectory(folder);
             System.Diagnostics.Process.Start("explorer.exe", folder);
         }
+
+        private void BtnPreviewTmdl_Click(object sender, EventArgs e)
+        {
+            if (_selectedTables.Count == 0)
+            {
+                MessageBox.Show("Please select tables first.", "No Tables", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Check if all selected tables have their metadata loaded
+            var tablesWithoutMetadata = _selectedTables.Keys
+                .Where(tableName => !_tableAttributes.ContainsKey(tableName))
+                .ToList();
+
+            if (tablesWithoutMetadata.Any())
+            {
+                MessageBox.Show(
+                    "Metadata has not been loaded for all tables. Please wait for metadata to load before previewing.",
+                    "Metadata Required",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Validate no duplicate display name aliases
+            if (HasDuplicateDisplayNames()) return;
+
+            string connectionType = _currentModel?.ConnectionType ?? "DataverseTDS";
+            var fullUrl = _currentEnvironmentUrl ?? "";
+
+            // Use saved template path if it exists, otherwise use detected path
+            var templatePath = _currentModel?.TemplatePath;
+            if (string.IsNullOrEmpty(templatePath) || !Directory.Exists(templatePath))
+            {
+                templatePath = _templatePath;
+            }
+            if (string.IsNullOrEmpty(templatePath) || !Directory.Exists(templatePath))
+            {
+                MessageBox.Show("Template path could not be resolved.", "Missing Template",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            try
+            {
+                SetStatus("Generating TMDL preview...");
+
+                var (exportTables, exportRelationships, attributeDisplayInfo) = PrepareExportData();
+                var dateTableConfig = _currentModel?.PluginSettings?.DateTableConfig;
+
+                var builder = new SemanticModelBuilder(templatePath, msg => { },
+                    connectionType,
+                    _currentModel?.FabricLinkSQLEndpoint,
+                    _currentModel?.FabricLinkSQLDatabase,
+                    _currentModel?.PluginSettings?.LanguageCode ?? 1033,
+                    _currentModel?.UseDisplayNameAliasesInSql ?? true);
+
+                var entries = builder.GenerateTmdlPreview(
+                    fullUrl,
+                    exportTables,
+                    exportRelationships,
+                    attributeDisplayInfo,
+                    dateTableConfig);
+
+                SetStatus("Opening TMDL preview...");
+
+                using (var dialog = new TmdlPreviewDialog(entries, connectionType))
+                {
+                    dialog.ShowDialog(this);
+                }
+
+                SetStatus("Ready.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error generating TMDL preview:\n\n{ex.Message}",
+                    "Preview Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+
+                SetStatus("Preview failed.");
+                DebugLogger.Log($"TMDL Preview error: {ex}");
+            }
+        }
         
         #endregion
         
@@ -2792,6 +3158,12 @@ namespace DataverseToPowerBI.XrmToolBox
         /// </summary>
         [System.Runtime.Serialization.DataMember]
         public int LanguageCode { get; set; } = 1033;
+        /// <summary>
+        /// User-specified override display names for attributes.
+        /// Outer key = table logical name, inner key = attribute logical name, value = override display name.
+        /// </summary>
+        [System.Runtime.Serialization.DataMember]
+        public Dictionary<string, Dictionary<string, string>> AttributeDisplayNameOverrides { get; set; } = new Dictionary<string, Dictionary<string, string>>();
     }
     
     [System.Runtime.Serialization.DataContract]
@@ -2902,6 +3274,8 @@ namespace DataverseToPowerBI.XrmToolBox
         public bool? IsGlobal { get; set; }
         [System.Runtime.Serialization.DataMember]
         public string? OptionSetName { get; set; }
+        [System.Runtime.Serialization.DataMember]
+        public string? OverrideDisplayName { get; set; }
     }
     
     #endregion

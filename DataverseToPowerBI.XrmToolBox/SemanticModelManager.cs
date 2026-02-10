@@ -485,6 +485,13 @@ namespace DataverseToPowerBI.XrmToolBox
         public string FabricLinkSQLDatabase { get; set; } = "";
 
         /// <summary>
+        /// When true, uses display names as SQL column aliases (AS [Display Name])
+        /// instead of renaming columns at the TMDL level. Default: true.
+        /// </summary>
+        [DataMember]
+        public bool UseDisplayNameAliasesInSql { get; set; } = true;
+
+        /// <summary>
         /// Embedded plugin settings for this model
         /// </summary>
         [DataMember]

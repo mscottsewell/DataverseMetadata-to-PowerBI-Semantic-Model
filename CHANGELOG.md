@@ -6,6 +6,62 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **TMDL Preview Feature** — Replaced "View SQL" with "Preview TMDL" showing the exact TMDL statements that will be written to the semantic model
+  - Displays sorted preview list with automatic categorization: Expressions → Date Table → Fact Table → Dimensions (alphabetically)
+  - **Connection Mode Awareness**: 
+    - TDS mode: Shows "DataverseURL" parameter table as Expression type
+    - FabricLink mode: Shows both "Expressions" (FabricSQLEndpoint + FabricLakehouse parameters) and "DataverseURL" table
+  - **Date Table Integration**: Date table entry appears automatically if configured, positioned after Expressions and before data tables; omitted if date table is not configured
+  - **Preview-to-Build Consistency**: Output is identical to actual build — uses the real `SemanticModelBuilder.GenerateTmdlPreview()` API instead of divergent inline generation
+  - Visual distinction by entry type: italic blue text for Config/Date entries, bold for Fact table, normal for Dimensions
+  - Type labels in second column: "Config", "Date", "Fact", "Dimension"
+  - **Export Capabilities**:
+    - Copy selected TMDL to clipboard with one click
+    - Save individual `.tmdl` file with sanitized filename based on entry name
+    - Save All button exports all entries as separate `.tmdl` files to chosen folder
+  - Full TMDL content with UTF-8 encoding (no BOM): complete table declarations, column definitions with data types, measures, hierarchies, and M partition expressions
+
+- **Display Name Aliases in SQL** — Columns can now use display names as SQL aliases (`AS [Display Name]`) for human-readable column names in the semantic model
+  - **Per-model toggle**: "Use Display Name Aliases in SQL" checkbox in Semantic Model Settings (enabled by default for new models)
+  - **Per-attribute override**: Double-click the Display Name column in the attributes list to set a custom alias for any column; setting it back to the original removes the override
+  - **Auto-override for primary name attributes**: Primary name columns automatically get "{Table Name} {Column Name}" aliases to avoid duplicates across tables (e.g., "Account Name" instead of "Name")
+  - **Duplicate detection**: Conflicting display name aliases are highlighted in light red in the attributes list; build and preview are blocked with a descriptive error listing all conflicts
+  - **Override indicators**: Overridden display names show an asterisk (*) suffix in the attributes list
+  - **Full TMDL integration**: Aliases are applied consistently across `GenerateTableTmdl`, `GenerateMQuery`, and `GenerateExpectedColumns` for all column types (regular, lookup, choice/boolean, multi-select, datetime-wrapped)
+  - **Settings persistence**: Overrides are saved per-table and restored when loading a semantic model
+
+### Changed
+
+- **SQL Preview → TMDL Preview** — Renamed toolbar button from "Validate SQL" (btnValidateSql) to "Preview TMDL" (btnPreviewTmdl)
+  - Shows actual TMDL output that matches the build output exactly
+  - No longer shows divergent inline SQL generation (eliminated ~200 lines of out-of-sync code)
+  - Uses the real `SemanticModelBuilder.GenerateTmdlPreview()` API instead of duplicated preview logic
+
+- **SemanticModelBuilder Refactoring** — Extracted reusable components for preview generation
+  - Added public `GenerateTmdlPreview()` method to generate full TMDL preview with all entry types
+  - Extracted private `GenerateDataverseUrlTableTmdl()` method to decouple content generation from file I/O
+  - `WriteDataverseUrlTable()` now calls the extracted method for content generation
+
+- **Build Pipeline Optimization** — Extracted `PrepareExportData()` helper in PluginControl
+  - Shared method builds `exportTables`, `exportRelationships`, and `attributeDisplayInfo` structures
+  - Used by both incremental build (`BuildSemanticModel`) and TMDL preview flows
+  - Eliminates code duplication for export data preparation
+
+### Removed
+
+- **Obsolete SQL Validation Infrastructure** — Removed all dependencies and code related to the old SQL validation feature:
+  - Deleted `SqlQueryValidator.cs` service class
+  - Deleted `SqlQueryValidationDialog.cs` form (replaced by `TmdlPreviewDialog.cs`)
+  - Removed NuGet package references: Azure.Identity, Azure.Core, Microsoft.Data.SqlClient, Microsoft.Identity.Client, Microsoft.IdentityModel.Abstractions, System.Memory.Data, Microsoft.Identity.Client.Extensions.Msal
+  - Deleted entire `packages/` folder containing NuGet assemblies
+  - Reduced project bloat by ~350 MB of unused dependencies
+
+---
+
 ## [1.2026.3.10] - 2026-02-08
 
 ### Added

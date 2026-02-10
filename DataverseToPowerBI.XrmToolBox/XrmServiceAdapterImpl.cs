@@ -446,37 +446,55 @@ namespace DataverseToPowerBI.XrmToolBox
                             // Search for any virtual attribute that might be associated
                             // Virtual attributes often have names related to the base attribute
                             // For example: donotsendmm -> donotsendmarketingmaterial
+                            string? fallbackMatch = null;
+                            
                             foreach (var kvp in allAttributes)
                             {
                                 var candidateAttr = kvp.Value;
+                                var candidateName = candidateAttr.LogicalName ?? "";
                                 
-                                // Check if this is a virtual attribute
-                                if (candidateAttr.AttributeTypeName?.Value == "VirtualType")
+                                // Skip the base attribute itself
+                                if (candidateName.Equals(logicalName, StringComparison.OrdinalIgnoreCase))
+                                    continue;
+                                
+                                // Check if this starts with the base attribute name
+                                if (candidateName.StartsWith(logicalName ?? "", StringComparison.OrdinalIgnoreCase) &&
+                                    candidateName.Length > (logicalName?.Length ?? 0))
                                 {
-                                    // Check if the virtual attribute name contains the base attribute name
-                                    // or if there's a logical connection
-                                    var candidateName = candidateAttr.LogicalName ?? "";
+                                    // Check if this is explicitly marked as a virtual attribute
+                                    var isVirtual = candidateAttr.AttributeTypeName?.Value == "VirtualType";
                                     
-                                    // Look for virtual attributes that:
-                                    // 1. Start with the base attribute name (e.g., donotsend... -> donotsend...)
-                                    // 2. Are not already mapped
-                                    // 3. Have "name" in the suffix or are clearly related
-                                    if (candidateName.StartsWith(logicalName ?? "", StringComparison.OrdinalIgnoreCase) &&
-                                        candidateName.Length > (logicalName?.Length ?? 0))
+                                    // Prefer attributes with "name" in the logical name
+                                    if (candidateName.IndexOf("name", StringComparison.OrdinalIgnoreCase) >= 0)
                                     {
-                                        // Prefer attributes with "name" in the logical name
-                                        if (candidateName.IndexOf("name", StringComparison.OrdinalIgnoreCase) >= 0)
+                                        if (isVirtual)
                                         {
+                                            // Best match: virtual attribute with "name" in it
                                             virtualAttributeName = candidateName;
                                             break;
                                         }
-                                        // Otherwise, take the first match as a fallback
-                                        else if (virtualAttributeName == null)
+                                        else if (fallbackMatch == null)
                                         {
-                                            virtualAttributeName = candidateName;
+                                            // Good match: attribute with "name" (may not be explicitly virtual)
+                                            fallbackMatch = candidateName;
                                         }
                                     }
+                                    // Match without "name"
+                                    else if (isVirtual && virtualAttributeName == null)
+                                    {
+                                        virtualAttributeName = candidateName;
+                                    }
+                                    else if (!isVirtual && fallbackMatch == null && virtualAttributeName == null)
+                                    {
+                                        fallbackMatch = candidateName;
+                                    }
                                 }
+                            }
+                            
+                            // Use fallback if no virtual attribute was found
+                            if (virtualAttributeName == null && fallbackMatch != null)
+                            {
+                                virtualAttributeName = fallbackMatch;
                             }
                         }
                         
@@ -485,6 +503,13 @@ namespace DataverseToPowerBI.XrmToolBox
                         if (virtualAttributeName == null)
                         {
                             virtualAttributeName = standardVirtualName;
+                            // Log when falling back to standard pattern for debugging
+                            System.Diagnostics.Debug.WriteLine($"VirtualAttribute: {logicalName} -> {standardVirtualName} (fallback - virtual attr not found)");
+                        }
+                        else if (virtualAttributeName != standardVirtualName)
+                        {
+                            // Log when using non-standard virtual attribute name
+                            System.Diagnostics.Debug.WriteLine($"VirtualAttribute: {logicalName} -> {virtualAttributeName} (found)");
                         }
                     }
                     

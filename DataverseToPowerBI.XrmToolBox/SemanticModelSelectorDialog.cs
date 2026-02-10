@@ -58,6 +58,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private TextBox txtFabricDatabase = null!;
         private Label lblFabricEndpoint = null!;
         private Label lblFabricDatabase = null!;
+        private CheckBox chkUseDisplayNameAliases = null!;
         private TextBox txtWorkingFolder = null!;
         private TextBox txtTemplatePath = null!;
         private Button btnChangeFolder = null!;
@@ -328,6 +329,16 @@ namespace DataverseToPowerBI.XrmToolBox
             };
             txtFabricDatabase.TextChanged += TxtFabricDatabase_TextChanged;
 
+            // Display Name Aliases checkbox - below connection fields
+            chkUseDisplayNameAliases = new CheckBox
+            {
+                Text = "Use display name aliases in SQL queries",
+                Location = new Point(15, 440),
+                Size = new Size(365, 20),
+                Checked = true
+            };
+            chkUseDisplayNameAliases.CheckedChanged += ChkUseDisplayNameAliases_CheckedChanged;
+
             groupDetails.Controls.Add(lblName);
             groupDetails.Controls.Add(txtName);
             groupDetails.Controls.Add(lblEnvironmentUrl);
@@ -344,6 +355,7 @@ namespace DataverseToPowerBI.XrmToolBox
             groupDetails.Controls.Add(txtFabricEndpoint);
             groupDetails.Controls.Add(lblFabricDatabase);
             groupDetails.Controls.Add(txtFabricDatabase);
+            groupDetails.Controls.Add(chkUseDisplayNameAliases);
 
             // Bottom buttons
             btnSelect = new Button
@@ -543,6 +555,7 @@ namespace DataverseToPowerBI.XrmToolBox
             
             txtWorkingFolder.Text = model.WorkingFolder ?? "";
             txtTemplatePath.Text = model.TemplatePath ?? "";
+            chkUseDisplayNameAliases.Checked = model.UseDisplayNameAliasesInSql;
 
             // Indicate if model is from different environment
             bool isCurrentEnv = NormalizeUrl(model.DataverseUrl ?? "") == _currentEnvironmentUrl;
@@ -559,6 +572,7 @@ namespace DataverseToPowerBI.XrmToolBox
             UpdateFabricLinkFieldsVisibility();
             txtWorkingFolder.Text = "";
             txtTemplatePath.Text = "";
+            chkUseDisplayNameAliases.Checked = true;
         }
 
         private void CboConnectionType_SelectedIndexChanged(object sender, EventArgs e)
@@ -587,6 +601,16 @@ namespace DataverseToPowerBI.XrmToolBox
             if (_selectedModel != null)
             {
                 _selectedModel.FabricLinkSQLDatabase = txtFabricDatabase.Text.Trim();
+                _modelManager.SaveModel(_selectedModel);
+                ConfigurationsChanged = true;
+            }
+        }
+
+        private void ChkUseDisplayNameAliases_CheckedChanged(object sender, EventArgs e)
+        {
+            if (_selectedModel != null)
+            {
+                _selectedModel.UseDisplayNameAliasesInSql = chkUseDisplayNameAliases.Checked;
                 _modelManager.SaveModel(_selectedModel);
                 ConfigurationsChanged = true;
             }
@@ -719,6 +743,7 @@ namespace DataverseToPowerBI.XrmToolBox
                             FabricLinkSQLDatabase = dialog.FabricLinkSQLDatabase,
                             WorkingFolder = dialog.WorkingFolder,
                             TemplatePath = dialog.TemplatePath,
+                            UseDisplayNameAliasesInSql = dialog.UseDisplayNameAliasesInSql,
                             LastUsed = DateTime.Now,
                             CreatedDate = DateTime.Now,
                             PluginSettings = new PluginSettings()  // Explicitly initialize with empty settings
@@ -1049,6 +1074,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private TextBox txtFabricDatabase = null!;
         private Label lblFabricEndpoint = null!;
         private Label lblFabricDatabase = null!;
+        private CheckBox chkUseDisplayNameAliases = null!;
         private TextBox txtFolder = null!;
         private TextBox txtTemplate = null!;
         private Button btnChangeFolder = null!;
@@ -1064,6 +1090,7 @@ namespace DataverseToPowerBI.XrmToolBox
         public string FabricLinkSQLDatabase { get; private set; } = "";
         public string WorkingFolder { get; private set; } = "";
         public string TemplatePath { get; private set; } = "";
+        public bool UseDisplayNameAliasesInSql { get; private set; } = true;
 
         public NewSemanticModelDialogXrm(string defaultFolder, string environmentUrl, string defaultTemplate)
         {
@@ -1077,7 +1104,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private void InitializeComponent(string environmentUrl)
         {
             this.Text = "Create New Semantic Model";
-            this.Size = new Size(520, 560);
+            this.Size = new Size(520, 585);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
@@ -1222,10 +1249,19 @@ namespace DataverseToPowerBI.XrmToolBox
                 Visible = false
             };
 
+            // Display Name Aliases checkbox
+            chkUseDisplayNameAliases = new CheckBox
+            {
+                Text = "Use display name aliases in SQL queries",
+                Location = new Point(20, 485),
+                Size = new Size(460, 20),
+                Checked = true
+            };
+
             btnCreate = new Button
             {
                 Text = "Create",
-                Location = new Point(310, 485),
+                Location = new Point(310, 515),
                 Size = new Size(80, 28),
                 DialogResult = DialogResult.OK,
                 Enabled = false
@@ -1235,7 +1271,7 @@ namespace DataverseToPowerBI.XrmToolBox
             btnCancelDlg = new Button
             {
                 Text = "Cancel",
-                Location = new Point(400, 485),
+                Location = new Point(400, 515),
                 Size = new Size(80, 28),
                 DialogResult = DialogResult.Cancel
             };
@@ -1257,6 +1293,7 @@ namespace DataverseToPowerBI.XrmToolBox
             this.Controls.Add(txtFabricEndpoint);
             this.Controls.Add(lblFabricDatabase);
             this.Controls.Add(txtFabricDatabase);
+            this.Controls.Add(chkUseDisplayNameAliases);
             this.Controls.Add(btnCreate);
             this.Controls.Add(btnCancelDlg);
 
@@ -1360,6 +1397,7 @@ namespace DataverseToPowerBI.XrmToolBox
             FabricLinkSQLDatabase = txtFabricDatabase.Text.Trim();
             WorkingFolder = txtFolder.Text.Trim();
             TemplatePath = txtTemplate.Text.Trim();
+            UseDisplayNameAliasesInSql = chkUseDisplayNameAliases.Checked;
 
             if (string.IsNullOrWhiteSpace(SemanticModelName))
             {

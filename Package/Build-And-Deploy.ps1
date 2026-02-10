@@ -187,9 +187,6 @@ if (-not $PackageOnly) {
     # Copy assemblies
     Copy-Item "$packageRoot\lib\net48\*.dll" $xrmToolBoxPluginsPath -Force
     Write-Host "  ✓ Copied DLLs to: $xrmToolBoxPluginsPath" -ForegroundColor Green
-
-    # Note: No additional dependencies needed - XrmToolBox handles authentication
-    # and Newtonsoft.Json is already provided by XrmToolBox
     
     # Copy Assets
     $targetAssetsPath = Join-Path $xrmToolBoxPluginsPath "DataverseToPowerBI"

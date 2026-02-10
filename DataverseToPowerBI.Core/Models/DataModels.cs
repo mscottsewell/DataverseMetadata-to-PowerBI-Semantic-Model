@@ -417,6 +417,20 @@ namespace DataverseToPowerBI.Core.Models
         /// Null if not configured.
         /// </summary>
         public DateTableConfig? DateTableConfig { get; set; }
+
+        /// <summary>
+        /// When true, uses display names as SQL column aliases (AS [Display Name])
+        /// instead of renaming columns at the TMDL level.
+        /// Default: true.
+        /// </summary>
+        public bool UseDisplayNameAliasesInSql { get; set; } = true;
+
+        /// <summary>
+        /// User-specified override display names for attributes.
+        /// Outer key = table logical name, inner key = attribute logical name, value = override display name.
+        /// Used for disambiguating duplicate display names and custom naming.
+        /// </summary>
+        public Dictionary<string, Dictionary<string, string>> AttributeDisplayNameOverrides { get; set; } = new();
     }
 
     #endregion
@@ -524,6 +538,13 @@ namespace DataverseToPowerBI.Core.Models
         /// Used for JOINs to metadata tables in FabricLink queries.
         /// </summary>
         public string? OptionSetName { get; set; }
+
+        /// <summary>
+        /// User-specified override display name for SQL AS alias.
+        /// When set, this value is used instead of DisplayName for SQL column aliases.
+        /// Allows disambiguation of duplicate display names and custom naming.
+        /// </summary>
+        public string? OverrideDisplayName { get; set; }
     }
 
     #endregion
