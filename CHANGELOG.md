@@ -8,6 +8,64 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **TMDL Preview Icon** — Preview TMDL toolbar button now displays with a dedicated preview icon for better visual identification
+  - Icon image: `TMDLPreviewIcon.png` loaded via `RibbonIcons.PreviewIcon`
+  - All ribbon toolbar buttons now have consistent icon styling
+
+- **Virtual Column Name Corrections** — Table-scoped correction dictionary for problematic virtual columns that don't exist in TDS endpoint
+  - Format: `"tablename.incorrectcolumnname" → "correctcolumnname"`
+  - Example: `"contact.donotsendmmname" → "donotsendmarketingmaterial"`
+  - Prevents SQL errors from bad metadata by applying corrections automatically
+  - Applied across all three generation methods (TMDL export, change analysis, comparison queries)
+  - Add new corrections to `VirtualColumnCorrections` dictionary in `SemanticModelBuilder.cs`
+
+- **Enhanced Column Descriptions** — TMDL column descriptions now include comprehensive metadata
+  - **Dataverse Description**: User-provided description from attribute metadata (if available) shown first
+  - **Source Attribution**: `Source: {tableLogicalName}.{attributeLogicalName}` format for clear data lineage
+  - **Lookup Targets**: Target table names for lookup/polymorphic lookup columns
+  - Example: `"The primary contact for the account | Source: account.primarycontactid | Targets: contact"`
+  - Applied to all column types (regular, lookup, choice/boolean, multi-select, primary keys, relationship-required lookups)
+  - `Description` property added to `AttributeMetadata` model, populated from XRM SDK metadata
+  - `BuildDescription()` method refactored to accept table/attribute names and Dataverse description
+
+### Changed
+
+- **TMDL Preview Sort Order** — Reordered preview list for better usability and logical flow
+  - **New order**: Fact Tables → Dimension Tables → Date Table → Expressions (alphabetically within each category)
+  - **Previous order**: Expressions → Date Table → Fact Table → Dimension Tables
+  - `TmdlEntryType` enum values changed: `FactTable=0, DimensionTable=1, DateTable=2, Expression=3`
+  - More intuitive for users to find their primary data tables first
+
+- **TMDL Preview SQL Formatting** — Fixed line breaks in Windows Forms TextBox display
+  - Replaced all embedded `\n` (LF) with `\r\n` (CRLF) in SQL SELECT list, JOIN clauses, and OUTER APPLY subqueries
+  - Windows Forms TextBox requires CRLF for proper line rendering (LF-only appears on same line)
+  - Affected areas: SELECT field continuation, State/Status/Boolean/Picklist JOINs, multi-select OUTER APPLY
+  - Fixed: `FROM {table} as Base` → `FROM {table} AS Base` (uppercase AS for consistency)
+
+- **UseDisplayNameAliasesInSql Default Handling** — Added `[OnDeserializing]` callback to ensure correct default value
+  - `DataContractJsonSerializer` bypasses constructors and property initializers
+  - Models saved before the aliasing feature existed were loading with `false` instead of declared `true` default
+  - `SetDefaults()` method in `SemanticModelConfig` sets `UseDisplayNameAliasesInSql = true` before deserialization
+
+### Fixed
+
+- **PrepareExportData Bug Fixes** — Critical metadata propagation issues resolved
+  - `HasStateCode` now correctly set on `ExportTable` by checking if `_tableAttributes` contains `statecode` attribute
+  - `IsGlobal` and `OptionSetName` now copied from `AttributeMetadata` to `AttributeDisplayInfo`
+  - Prevents missing WHERE clause in SQL queries (when `HasStateCode` was false incorrectly)
+  - Ensures FabricLink JOINs use correct metadata table (`GlobalOptionsetMetadata` vs `OptionsetMetadata`)
+
+- **Build Warnings Eliminated** — Removed all NuGet package conflicts and nullable reference warnings
+  - Fixed 2× MSB3277 assembly version conflicts (System.ValueTuple, System.Text.Json)
+  - Fixed 6× CS8618 non-nullable field warnings in `TmdlPreviewDialog.cs` (added `= null!` initialization)
+  - Removed `System.ValueTuple` NuGet package (built into .NET Framework 4.8)
+  - Upgraded `System.Text.Json` from 8.0.0 to 8.0.5 (then removed entirely as unused)
+  - Removed ALL 17 unused NuGet packages left from deleted `SqlQueryValidator` (Azure.Identity, Azure.Core, Microsoft.Data.SqlClient, etc.)
+  - Emptied `packages.config` and deleted all package folders
+  - **Build now succeeds with 0 warnings and 0 errors**
+
 ---
 
 ## [1.2026.4.16] - 2026-02-10

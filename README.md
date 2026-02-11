@@ -55,6 +55,8 @@ This tool solves these problems by:
 | **Dual Connection Support** | Choose between **Dataverse TDS** (Direct to Dataverse for medium and small datasets) or **FabricLink** (Using the FabricLink Lakehouse for larger volumes of data) — see [Connection Modes](#-connection-modes-tds-vs-fabriclink) |
 | **Smart Column Selection** | Uses your Dataverse forms and views to include only relevant fields |
 | **Friendly Field Names** | Automatically renames columns to their display names (no more "cai_accountid"!) |
+| **Display Name Customization** | Override display names per-attribute with inline double-click editing; automatic conflict detection prevents duplicate names |
+| **TMDL Preview** | See the exact TMDL code that will be generated before building, with copy/save capabilities for individual tables or entire model |
 | **Relationship Detection** | Finds and creates relationships from your lookup fields |
 | **Date Table Generation** | Creates a proper calendar dimension with timezone support |
 | **View-Based Filtering** | Applies your Dataverse view filters directly to the data model |
@@ -113,10 +115,19 @@ This tool solves these problems by:
 - The **form** determines which columns are selected by default to appear in your model
 - The **view** determines which rows are included (filtering data to current data helps improve performance.)
 - Check/Uncheck Attributes in the right column to include/exclude fields from the query.
-- **Tip:** Start with a only the needed columns to optimize performance.
+- **Double-click any Display Name** to override it with a custom alias (e.g., rename "Name" to "Account Name" to avoid conflicts)
+- Overridden names show an asterisk (*) suffix; duplicates are highlighted in red and must be fixed before building
+- **Tip:** Start with only the needed columns to optimize performance.
 - Memo (text area) fields with lots of text are the slowest fields to retrieve - use sparingly.
 
-#### Step 7: Add a Date Table (Recommended)
+#### Step 7: Preview Your Model (Optional)
+
+- Click **Preview TMDL** to see the exact code that will be generated
+- Review the TMDL definitions for tables, columns, relationships, and expressions
+- Copy individual table definitions or save all .tmdl files to a folder for inspection
+- Tables are shown in logical order: Fact tables first, then Dimensions, Date table, and configuration Expressions
+
+#### Step 8: Add a Date Table (Recommended)
 
 - Click **Dates** to configure your date dimension
 - Select your primary date field (e.g., "Created On")
@@ -124,13 +135,31 @@ This tool solves these problems by:
 - Set the timezone adjustment to adjust the GMT date/time stored to a standardized timezone.
 - Identify any other fields that you want standardized to the chosen timezone.
 
-#### Step 8: Build Your Model
+#### Step 9: Build Your Model
 
 - Click **Build Semantic Model**
 - Review the changes that will be made
 - Click **Apply** to generate your Power BI project
 - Once built, it will ask if you want to open the project.
 - Start building your reports!
+
+> **⚠️ Important: Security Warning on First Open**
+> 
+> When you first open the generated Power BI project, you may see a security warning stating *"This file uses multiple data sources. Information in one data source might be shared with other data sources without your knowledge."*
+> 
+> **This is expected behavior** — you can safely click **OK** to proceed.
+> 
+> **Why this happens:** The generated model is a composite model by design. It combines:
+> - Your Dataverse tables (via DirectQuery to the Dataverse/Fabric endpoint)  
+> - A DAX-calculated Date table
+> 
+> You can review all queries before opening the project by:
+> - Using the **Preview TMDL** feature in the tool
+> - Browsing the `.tmdl` files in your project's `{ModelName}.SemanticModel/definition/tables/` folder
+> 
+> 📚 **Learn more:** [Composite models in Power BI Desktop](https://learn.microsoft.com/power-bi/transform-model/desktop-composite-models)
+> 
+> **Screenshot location:** Place your screenshot at `Images/composite-model-warning.png`
 
 ---
 
@@ -141,6 +170,20 @@ This tool implements several Power BI best practices behind the scenes:
 ### 📝 Friendly Column Names
 
 All columns are renamed from their logical names (like `cai_primarycontactid`) to their display names (like `Primary Contact`). This makes your reports much easier to understand and your field list cleaner to navigate.
+
+**Advanced:** You can override any display name by double-clicking it in the attributes list. For example, rename "Name" to "Account Name" to differentiate it from other "Name" columns in your model. The tool prevents duplicate names and highlights conflicts before you build.
+
+### 📋 Rich Column Metadata
+
+Each column in your TMDL model includes comprehensive descriptions:
+
+- **Dataverse Description**: If the attribute has a description in Dataverse metadata, it appears first
+- **Source Attribution**: Shows the exact source table and field (e.g., `Source: account.primarycontactid`)
+- **Lookup Targets**: For lookup fields, lists which tables can be referenced
+
+Example: `"The primary contact for the account | Source: account.primarycontactid | Targets: contact"`
+
+This metadata makes it easy for report builders to understand where data comes from and how to use it correctly.
 
 ### 🎯 Optimized Queries
 
@@ -292,6 +335,11 @@ results are reflective of your intent.
 ### Q: Can I version control my Power BI project?
 
 **A:** Yes! The PBIP format is designed for Git. Each table, relationship, and report element is a separate text file that shows meaningful changes in version control.
+
+### Q: I see a security warning about "multiple data sources" when opening my project. Is this safe?
+> ![Composite Model Security Warning](../Images/composite-model-warning.png)
+
+**A:** Yes, this is expected and safe to proceed. The warning appears because the model is a composite model—it combines Dataverse tables (DirectQuery) with a parameter table used to store the DataverseURL. You can review all queries before opening by using the **Preview TMDL** feature or inspecting the `.tmdl` files in your project folder. Learn more about [composite models](https://learn.microsoft.com/power-bi/transform-model/desktop-composite-models).
 
 ---
 
