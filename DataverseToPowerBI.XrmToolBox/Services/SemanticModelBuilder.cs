@@ -66,6 +66,18 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         private readonly string _templatePath;
         private readonly Action<string>? _statusCallback;
         private static readonly Encoding Utf8WithoutBom = new UTF8Encoding(false);
+        
+        /// <summary>
+        /// Corrections for virtual column names that don't match metadata or don't exist in TDS.
+        /// Maps table.incorrectColumnName to the actual column name that exists in the endpoint.
+        /// Key format: "tablename.columnname" (both lowercase for case-insensitive matching).
+        /// </summary>
+        private static readonly Dictionary<string, string> VirtualColumnCorrections = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "contact.donotsendmmname", "donotsendmarketingmaterialname" },  // contact.donotsendmm virtual attribute correction
+            { "account.donotsendmmname", "donotsendmarketingmaterialname" }  // account.donotsendmm virtual attribute correction
+        };
+        
         private readonly string _connectionType;
         private readonly string? _fabricLinkEndpoint;
         private readonly string? _fabricLinkDatabase;
@@ -990,6 +1002,14 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         {
                             // TDS: use the virtual attribute name from metadata
                             var nameColumn = attrDisplayInfo?.VirtualAttributeName ?? (attr.LogicalName + "name");
+                            
+                            // Apply correction if this virtual column name needs fixing
+                            var correctionKey = $"{table.LogicalName}.{nameColumn}";
+                            if (VirtualColumnCorrections.TryGetValue(correctionKey, out var correctedName))
+                            {
+                                nameColumn = correctedName;
+                            }
+                            
                             if (!processedColumns.Contains(nameColumn))
                             {
                                 var tdsChoiceSourceCol = _useDisplayNameAliasesInSql ? effectiveName : nameColumn;
@@ -1012,6 +1032,14 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         // FabricLink: uses {attributename}name pattern; TDS: uses actual VirtualAttributeName
                         var nameColumn = IsFabricLink ? (attr.LogicalName + "name") 
                                                        : (attrDisplayInfo?.VirtualAttributeName ?? (attr.LogicalName + "name"));
+                        
+                        // Apply correction if this virtual column name needs fixing
+                        var correctionKey = $"{table.LogicalName}.{nameColumn}";
+                        if (VirtualColumnCorrections.TryGetValue(correctionKey, out var correctedName))
+                        {
+                            nameColumn = correctedName;
+                        }
+                        
                         if (!processedColumns.Contains(nameColumn))
                         {
                             var msSourceCol = _useDisplayNameAliasesInSql ? effectiveName : nameColumn;
@@ -1264,6 +1292,14 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         {
                             // TDS: add virtual name column only (use actual virtual attribute name from metadata)
                             var nameColumn2 = attrDisplayInfo2?.VirtualAttributeName ?? (attr.LogicalName + "name");
+                            
+                            // Apply correction if this virtual column name needs fixing
+                            var correctionKey = $"{table.LogicalName}.{nameColumn2}";
+                            if (VirtualColumnCorrections.TryGetValue(correctionKey, out var correctedName))
+                            {
+                                nameColumn2 = correctedName;
+                            }
+                            
                             if (!processedColumns.Contains(nameColumn2))
                             {
                                 sqlFields.Add(ApplySqlAlias($"Base.{nameColumn2}", effectiveName, nameColumn2, false));
@@ -1297,6 +1333,14 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         {
                             // TDS: use the actual virtual name column from metadata (e.g., donotsendmm -> donotsendmarketingmaterial)
                             nameColumn = attrDisplayInfo2?.VirtualAttributeName ?? (attr.LogicalName + "name");
+                            
+                            // Apply correction if this virtual column name needs fixing
+                            var correctionKey = $"{table.LogicalName}.{nameColumn}";
+                            if (VirtualColumnCorrections.TryGetValue(correctionKey, out var correctedName))
+                            {
+                                nameColumn = correctedName;
+                            }
+                            
                             if (!processedColumns.Contains(nameColumn))
                             {
                                 sqlFields.Add(ApplySqlAlias($"Base.{nameColumn}", effectiveName, nameColumn, false));
@@ -2685,6 +2729,14 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     // Most follow pattern {attributename}name, but there are exceptions (e.g., donotsendmm -> donotsendmarketingmaterial)
                     var nameColumn = attrDisplayInfo?.VirtualAttributeName ?? (attr.LogicalName + "name");
                     
+                    // Apply correction if this virtual column name needs fixing
+                    var correctionKey = $"{table.LogicalName}.{nameColumn}";
+                    if (VirtualColumnCorrections.TryGetValue(correctionKey, out var correctedName))
+                    {
+                        DebugLogger.Log($"CORRECTED: Virtual column {correctionKey} -> {correctedName} (base: {attr.LogicalName})");
+                        nameColumn = correctedName;
+                    }
+                    
                     // Debug logging for virtual attribute name resolution
                     if (attrDisplayInfo == null)
                     {
@@ -2825,10 +2877,10 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             // Write columns
             foreach (var col in columns)
             {
-                // Add column description using logical name
-                if (!string.IsNullOrEmpty(col.LogicalName))
+                // Add column description
+                if (!string.IsNullOrEmpty(col.Description))
                 {
-                    sb.AppendLine($"\t/// {col.LogicalName}");
+                    sb.AppendLine($"\t/// {col.Description}");
                 }
 
                 // Map the data type
