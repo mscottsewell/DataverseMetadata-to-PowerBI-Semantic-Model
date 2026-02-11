@@ -44,8 +44,8 @@ This tool solves these problems by:
 - [For Developers](#-for-developers)
 
 ---
+<img width="1600" alt="Screenshot of application" src="https://github.com/user-attachments/assets/812e27f3-d89f-46d8-bc8e-4887f19fcbb5" />
 
-<img width="1600" alt="Screenshot of application" src="https://github.com/user-attachments/assets/6d2603b3-118b-46ba-9d6e-f4cc9dc2215f" />
 
 ## ✨ Key Features
 
