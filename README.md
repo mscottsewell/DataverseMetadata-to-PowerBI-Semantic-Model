@@ -146,12 +146,14 @@ This tool solves these problems by:
 > **⚠️ Important: Security Warning on First Open**
 > 
 > When you first open the generated Power BI project, you may see a security warning stating *"This file uses multiple data sources. Information in one data source might be shared with other data sources without your knowledge."*
+> <img width="800" alt="Composite Model Security Warning" src="https://github.com/user-attachments/assets/3ddd7d1a-9e5c-43ed-9528-4368d64a9409" />
 > 
 > **This is expected behavior** — you can safely click **OK** to proceed.
 > 
 > **Why this happens:** The generated model is a composite model by design. It combines:
-> - Your Dataverse tables (via DirectQuery to the Dataverse/Fabric endpoint)  
-> - A DAX-calculated Date table
+> - Your Dataverse tables (via DirectQuery to the Dataverse/Fabric endpoint)
+> - A static parameter table containing the DataverseURL
+> - (optionally) A DAX-calculated Date table
 > 
 > You can review all queries before opening the project by:
 > - Using the **Preview TMDL** feature in the tool
@@ -159,7 +161,7 @@ This tool solves these problems by:
 > 
 > 📚 **Learn more:** [Composite models in Power BI Desktop](https://learn.microsoft.com/power-bi/transform-model/desktop-composite-models)
 > 
-> **Screenshot location:** Place your screenshot at `Images/composite-model-warning.png`
+
 
 ---
 
@@ -337,8 +339,7 @@ results are reflective of your intent.
 **A:** Yes! The PBIP format is designed for Git. Each table, relationship, and report element is a separate text file that shows meaningful changes in version control.
 
 ### Q: I see a security warning about "multiple data sources" when opening my project. Is this safe?
-> ![Composite Model Security Warning](../Images/composite-model-warning.png)
-
+> <img width="400" alt="Composite Model Security Warning" src="https://github.com/user-attachments/assets/3ddd7d1a-9e5c-43ed-9528-4368d64a9409" />
 **A:** Yes, this is expected and safe to proceed. The warning appears because the model is a composite model—it combines Dataverse tables (DirectQuery) with a parameter table used to store the DataverseURL. You can review all queries before opening by using the **Preview TMDL** feature or inspecting the `.tmdl` files in your project folder. Learn more about [composite models](https://learn.microsoft.com/power-bi/transform-model/desktop-composite-models).
 
 ---
