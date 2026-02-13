@@ -128,6 +128,8 @@ This tool solves these problems by:
 
 #### Step 7: Preview Your Model (Optional)
 
+><img width="200" alt="Preview Your TMDL Screenshot" src="https://github.com/user-attachments/assets/2da36c14-f9dc-4e64-a5bf-70836e496366" />
+
 - Click **Preview TMDL** to see the exact code that will be generated
 - Review the TMDL definitions for tables, columns, relationships, and expressions
 - Copy individual table definitions or save all .tmdl files to a folder for inspection
