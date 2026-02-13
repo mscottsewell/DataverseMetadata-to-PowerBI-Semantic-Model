@@ -32,6 +32,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace DataverseToPowerBI.XrmToolBox
@@ -43,12 +44,20 @@ namespace DataverseToPowerBI.XrmToolBox
         private Button btnCancel = null!;
         private Label lblSummary = null!;
         private CheckBox chkBackup = null!;
+        private CheckBox chkRemoveOrphaned = null!;
+
+        private readonly List<string> _orphanedTableNames;
 
         public bool UserApproved { get; private set; }
         public bool CreateBackup => chkBackup.Checked;
+        public bool RemoveOrphanedTables => chkRemoveOrphaned.Checked;
 
         public SemanticModelChangesDialog(List<SemanticModelChange> changes)
         {
+            _orphanedTableNames = changes
+                .Where(c => c.ChangeType == ChangeType.Warning && c.ObjectType == "Table")
+                .Select(c => c.ObjectName)
+                .ToList();
             InitializeComponent();
             LoadChanges(changes);
         }
@@ -97,10 +106,21 @@ namespace DataverseToPowerBI.XrmToolBox
             };
             this.Controls.Add(chkBackup);
 
+            // Remove orphaned tables checkbox
+            chkRemoveOrphaned = new CheckBox
+            {
+                Location = new Point(12, 504),
+                Size = new Size(400, 24),
+                Text = "Remove tables no longer in the model",
+                Checked = false,
+                Visible = _orphanedTableNames.Count > 0
+            };
+            this.Controls.Add(chkRemoveOrphaned);
+
             // Buttons
             btnCancel = new Button
             {
-                Location = new Point(596, 510),
+                Location = new Point(596, 494),
                 Size = new Size(80, 30),
                 Text = "Cancel",
                 DialogResult = DialogResult.Cancel
@@ -110,16 +130,39 @@ namespace DataverseToPowerBI.XrmToolBox
 
             btnApply = new Button
             {
-                Location = new Point(692, 510),
+                Location = new Point(692, 494),
                 Size = new Size(80, 30),
-                Text = "Apply",
-                DialogResult = DialogResult.OK
+                Text = "Apply"
             };
-            btnApply.Click += (s, e) => { UserApproved = true; this.Close(); };
+            btnApply.Click += BtnApply_Click;
             this.Controls.Add(btnApply);
 
             this.AcceptButton = btnApply;
             this.CancelButton = btnCancel;
+        }
+
+        private void BtnApply_Click(object? sender, EventArgs e)
+        {
+            if (chkRemoveOrphaned.Checked && _orphanedTableNames.Count > 0)
+            {
+                var tableList = string.Join("\n  • ", _orphanedTableNames);
+                var confirmResult = MessageBox.Show(
+                    this,
+                    $"The following tables will be permanently deleted from the PBIP:\n\n  • {tableList}\n\nAre you sure you want to proceed?",
+                    "Confirm Table Removal",
+                    MessageBoxButtons.OKCancel,
+                    MessageBoxIcon.Warning);
+
+                if (confirmResult != DialogResult.OK)
+                {
+                    chkRemoveOrphaned.Checked = false;
+                    return;
+                }
+            }
+
+            UserApproved = true;
+            this.DialogResult = DialogResult.OK;
+            this.Close();
         }
 
         private void LoadChanges(List<SemanticModelChange> changes)

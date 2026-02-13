@@ -40,6 +40,20 @@ namespace DataverseToPowerBI.XrmToolBox
         // Sorted list of entry keys for consistent ordering
         private readonly List<string> _sortedKeys;
 
+        // Cached fonts to avoid GDI handle leaks
+        private Font? _italicFont;
+        private Font? _boldFont;
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _italicFont?.Dispose();
+                _boldFont?.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
         public TmdlPreviewDialog(
             Dictionary<string, TmdlPreviewEntry> entries,
             string connectionType)
@@ -178,16 +192,19 @@ namespace DataverseToPowerBI.XrmToolBox
                     case TmdlEntryType.Expression:
                         typeLabel = "Config";
                         item.ForeColor = Color.FromArgb(100, 100, 180);
-                        item.Font = new Font(listViewTables.Font, FontStyle.Italic);
+                        _italicFont ??= new Font(listViewTables.Font, FontStyle.Italic);
+                        item.Font = _italicFont;
                         break;
                     case TmdlEntryType.DateTable:
                         typeLabel = "Date";
                         item.ForeColor = Color.FromArgb(100, 100, 180);
-                        item.Font = new Font(listViewTables.Font, FontStyle.Italic);
+                        _italicFont ??= new Font(listViewTables.Font, FontStyle.Italic);
+                        item.Font = _italicFont;
                         break;
                     case TmdlEntryType.FactTable:
                         typeLabel = "Fact";
-                        item.Font = new Font(listViewTables.Font, FontStyle.Bold);
+                        _boldFont ??= new Font(listViewTables.Font, FontStyle.Bold);
+                        item.Font = _boldFont;
                         break;
                     case TmdlEntryType.DimensionTable:
                         typeLabel = "Dimension";

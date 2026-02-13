@@ -97,6 +97,10 @@ namespace DataverseToPowerBI.XrmToolBox
         private bool _relationshipsSortAscending = true;
         private readonly ToolTip _versionToolTip = new ToolTip();
 
+        // Cached fonts to avoid GDI handle leaks (WinForms does not dispose replaced Fonts)
+        private Font? _boldTableFont;
+        private Font? _boldAttrFont;
+
         /// <summary>
         /// Extracts the environment name from a Dataverse URL
         /// Example: "portfolioshapingdev.crm.dynamics.com" returns "portfolioshapingdev"
@@ -1512,7 +1516,8 @@ namespace DataverseToPowerBI.XrmToolBox
             if (isFact)
             {
                 item.BackColor = Color.LightYellow;
-                item.Font = new Font(listViewSelectedTables.Font, FontStyle.Bold);
+                _boldTableFont ??= new Font(listViewSelectedTables.Font, FontStyle.Bold);
+                item.Font = _boldTableFont;
             }
 
             listViewSelectedTables.Items.Add(item);
@@ -1540,7 +1545,8 @@ namespace DataverseToPowerBI.XrmToolBox
                 if (isFact)
                 {
                     item.BackColor = Color.LightYellow;
-                    item.Font = new Font(listViewSelectedTables.Font, FontStyle.Bold);
+                    _boldTableFont ??= new Font(listViewSelectedTables.Font, FontStyle.Bold);
+                    item.Font = _boldTableFont;
                 }
                 else
                 {
@@ -1887,7 +1893,8 @@ namespace DataverseToPowerBI.XrmToolBox
                 if (isRequired)
                 {
                     item.ForeColor = Color.Blue;
-                    item.Font = new Font(listViewAttributes.Font, FontStyle.Bold);
+                    _boldAttrFont ??= new Font(listViewAttributes.Font, FontStyle.Bold);
+                    item.Font = _boldAttrFont;
                 }
                 else if (isSelected)
                 {
@@ -2848,6 +2855,7 @@ namespace DataverseToPowerBI.XrmToolBox
                     // Show the dialog on the UI thread and wait for response
                     bool userApproved = false;
                     bool createBackup = false;
+                    bool removeOrphanedTables = false;
                     
                     this.Invoke(new Action(() =>
                     {
@@ -2857,6 +2865,7 @@ namespace DataverseToPowerBI.XrmToolBox
                             {
                                 userApproved = true;
                                 createBackup = dialog.CreateBackup;
+                                removeOrphanedTables = dialog.RemoveOrphanedTables;
                             }
                         }
                     }));
@@ -2878,7 +2887,8 @@ namespace DataverseToPowerBI.XrmToolBox
                         exportRelationships,
                         attributeDisplayInfo,
                         createBackup,
-                        dateTableConfig);
+                        dateTableConfig,
+                        removeOrphanedTables);
                     
                     args.Result = new { 
                         Success = success, 

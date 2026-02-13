@@ -1823,7 +1823,8 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             List<ExportRelationship> relationships,
             Dictionary<string, Dictionary<string, AttributeDisplayInfo>> attributeDisplayInfo,
             bool createBackup,
-            DateTableConfig? dateTableConfig = null)
+            DateTableConfig? dateTableConfig = null,
+            bool removeOrphanedTables = false)
         {
             try
             {
@@ -1853,7 +1854,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 // Apply changes
                 if (pbipExists && !requiresFullRebuild)
                 {
-                    BuildIncremental(semanticModelName, outputFolder, dataverseUrl, tables, relationships, attributeDisplayInfo, dateTableConfig);
+                    BuildIncremental(semanticModelName, outputFolder, dataverseUrl, tables, relationships, attributeDisplayInfo, dateTableConfig, removeOrphanedTables);
                 }
                 else
                 {
@@ -1971,7 +1972,8 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             List<ExportTable> tables,
             List<ExportRelationship> relationships,
             Dictionary<string, Dictionary<string, AttributeDisplayInfo>> attributeDisplayInfo,
-            DateTableConfig? dateTableConfig = null)
+            DateTableConfig? dateTableConfig = null,
+            bool removeOrphanedTables = false)
         {
             SetStatus("Performing incremental update...");
 
@@ -2025,6 +2027,26 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 }
 
                 WriteTmdlFile(tablePath, tableTmdl);
+            }
+
+            // Remove orphaned tables if requested
+            if (removeOrphanedTables)
+            {
+                var generatedTables = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Date", "DateAutoTemplate", "DataverseURL" };
+                var metadataTables = tables.Select(t => SanitizeFileName(t.DisplayName ?? t.SchemaName ?? t.LogicalName))
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                var existingTableFiles = Directory.GetFiles(tablesFolder, "*.tmdl");
+                foreach (var filePath in existingTableFiles)
+                {
+                    var tableName = Path.GetFileNameWithoutExtension(filePath);
+                    if (!metadataTables.Contains(tableName) && !generatedTables.Contains(tableName))
+                    {
+                        SetStatus($"Removing orphaned table: {tableName}...");
+                        DebugLogger.Log($"Removing orphaned table file: {filePath}");
+                        File.Delete(filePath);
+                    }
+                }
             }
 
             // Build/Update Date table if configured (only if model doesn't already have a date table)
@@ -3219,7 +3241,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         tableAttrs.TryGetValue(dateTableConfig.PrimaryDateField, out var fieldDisplayInfo))
                     {
                         isDateFieldRequired = fieldDisplayInfo.IsRequired;
-                        primaryDateFieldName = fieldDisplayInfo.DisplayName ?? primaryDateFieldName;
+                        primaryDateFieldName = GetEffectiveDisplayName(fieldDisplayInfo, fieldDisplayInfo.DisplayName ?? primaryDateFieldName);
                     }
 
                     sb.AppendLine($"relationship {Guid.NewGuid()}");

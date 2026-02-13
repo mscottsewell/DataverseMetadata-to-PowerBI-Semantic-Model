@@ -6,9 +6,12 @@ namespace DataverseToPowerBI.XrmToolBox
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (disposing)
             {
-                components.Dispose();
+                _boldTableFont?.Dispose();
+                _boldAttrFont?.Dispose();
+                _versionToolTip?.Dispose();
+                components?.Dispose();
             }
             base.Dispose(disposing);
         }

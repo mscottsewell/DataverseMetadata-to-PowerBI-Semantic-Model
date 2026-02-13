@@ -382,7 +382,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             var adjustedNow = $"DATEADD(hour, {_utcOffsetHours}, GETUTCDATE())";
             
             // older-x-months: < start of x months ago
-            var threshold = $"DATEADD({datepart}, DATEDIFF({datepart}, {units}, {adjustedNow}), 0)";
+            var threshold = $"DATEADD({datepart}, DATEDIFF({datepart}, 0, {adjustedNow}) - {units}, 0)";
             return $"{adjustedColumn} < {threshold}";
         }
 
