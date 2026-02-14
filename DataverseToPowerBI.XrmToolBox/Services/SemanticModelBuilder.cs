@@ -3223,11 +3223,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 }
             }
 
-            // Add table description if available
-            if (!string.IsNullOrEmpty(table.LogicalName))
-            {
-                sb.AppendLine($"/// Source: {table.LogicalName}");
-            }
+            // Note: TMDL doc comments (///) are not supported for tables and are omitted
             sb.AppendLine($"table {QuoteTmdlName(displayName)}");
             sb.AppendLine($"\tlineageTag: {tableLineageTag}");
             sb.AppendLine();
@@ -3605,11 +3601,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
             foreach (var col in columns)
             {
-                // Add column description as TMDL doc comment
-                if (!string.IsNullOrEmpty(col.Description))
-                {
-                    sb.AppendLine($"\t/// {col.Description}");
-                }
+                // Note: Column descriptions are not supported in TMDL and are omitted
 
                 // Map the data type
                 var (dataType, formatString, sourceProviderType, summarizeBy) = MapDataType(col.AttributeType);
