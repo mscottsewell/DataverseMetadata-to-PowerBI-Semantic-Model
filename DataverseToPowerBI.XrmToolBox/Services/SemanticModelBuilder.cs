@@ -1335,8 +1335,25 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             : "query structure changed";
                         
                         DebugLogger.Log($"  ✗ Query CHANGED: {analysis.QueryChangeDetail}");
-                        DebugLogger.Log($"  Existing (normalized): {existingQuery.Substring(0, Math.Min(150, existingQuery.Length))}");
-                        DebugLogger.Log($"  Expected (normalized): {newQuery.Substring(0, Math.Min(150, newQuery.Length))}");
+                        // Log the exact difference to aid debugging
+                        var diffPos = -1;
+                        var minLen = Math.Min(existingQuery.Length, newQuery.Length);
+                        for (int i = 0; i < minLen; i++)
+                        {
+                            if (char.ToUpperInvariant(existingQuery[i]) != char.ToUpperInvariant(newQuery[i]))
+                            {
+                                diffPos = i;
+                                break;
+                            }
+                        }
+                        if (diffPos < 0 && existingQuery.Length != newQuery.Length) diffPos = minLen;
+                        DebugLogger.Log($"  Existing len={existingQuery.Length}, Expected len={newQuery.Length}, first diff at pos={diffPos}");
+                        if (diffPos >= 0)
+                        {
+                            var ctx = Math.Max(0, diffPos - 20);
+                            DebugLogger.Log($"  Existing[{ctx}..]: {existingQuery.Substring(ctx, Math.Min(80, existingQuery.Length - ctx))}");
+                            DebugLogger.Log($"  Expected[{ctx}..]: {newQuery.Substring(ctx, Math.Min(80, newQuery.Length - ctx))}");
+                        }
                     }
                     else
                     {
@@ -1786,6 +1803,12 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             else if (isStatus2)
                             {
                                 joinClauses.Add($"JOIN [StatusMetadata] {joinAlias} ON {joinAlias}.[EntityName]='{table.LogicalName}' AND {joinAlias}.[LocalizedLabelLanguageCode]={_languageCode} AND {joinAlias}.[State]=Base.statecode AND {joinAlias}.[Status]=Base.statuscode");
+                            }
+                            else if (isBoolean)
+                            {
+                                // Boolean fields always use GlobalOptionsetMetadata (matches GenerateTableTmdl)
+                                var optionSetName = attr.OptionSetName ?? attrDisplayInfo2?.OptionSetName ?? attr.LogicalName;
+                                joinClauses.Add($"LEFT JOIN [GlobalOptionsetMetadata] {joinAlias} ON {joinAlias}.[OptionSetName]='{optionSetName}' AND {joinAlias}.[EntityName]='{table.LogicalName}' AND {joinAlias}.[LocalizedLabelLanguageCode]={_languageCode} AND {joinAlias}.[Option]=Base.{attr.LogicalName}");
                             }
                             else
                             {
