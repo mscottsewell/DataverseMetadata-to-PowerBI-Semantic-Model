@@ -3223,7 +3223,12 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 }
             }
 
-            // Note: TMDL doc comments (///) are not supported for tables and are omitted
+            // Add table description comment (/// syntax)
+            // NOTE: No whitespace allowed between description and table declaration!
+            if (!string.IsNullOrEmpty(table.LogicalName))
+            {
+                sb.AppendLine($"/// Source: {table.LogicalName}");
+            }
             sb.AppendLine($"table {QuoteTmdlName(displayName)}");
             sb.AppendLine($"\tlineageTag: {tableLineageTag}");
             sb.AppendLine();
@@ -3601,8 +3606,6 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
             foreach (var col in columns)
             {
-                // Note: Column descriptions are not supported in TMDL and are omitted
-
                 // Map the data type
                 var (dataType, formatString, sourceProviderType, summarizeBy) = MapDataType(col.AttributeType);
                 var isDateTime = col.AttributeType?.Equals("dateonly", StringComparison.OrdinalIgnoreCase) == true ||
@@ -3619,8 +3622,12 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     if (existingCol.SummarizeBy != null) summarizeBy = existingCol.SummarizeBy;
                 }
 
-                // Note: TMDL does not support description property on columns, so it is omitted
-
+                // Add column description as TMDL doc comment (/// syntax)
+                // NOTE: No whitespace allowed between description and column declaration!
+                if (!string.IsNullOrEmpty(col.Description))
+                {
+                    sb.AppendLine($"\t/// {col.Description}");
+                }
                 sb.AppendLine($"\tcolumn {QuoteTmdlName(col.DisplayName)}");
                 sb.AppendLine($"\t\tdataType: {dataType}");
                 if (formatString != null)
