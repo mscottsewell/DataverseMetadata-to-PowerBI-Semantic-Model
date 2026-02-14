@@ -3627,20 +3627,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     if (existingCol.SummarizeBy != null) summarizeBy = existingCol.SummarizeBy;
                 }
 
-                // Determine description: prefer user-edited description over tool-generated
-                string? descriptionValue = null;
-                if (existingCol?.Description != null)
-                {
-                    // If existing description doesn't match tool pattern, it's user-edited — preserve it
-                    if (!existingCol.Description.Contains("| Source:"))
-                        descriptionValue = existingCol.Description;
-                    else
-                        descriptionValue = col.Description;
-                }
-                else if (!string.IsNullOrEmpty(col.Description))
-                {
-                    descriptionValue = col.Description;
-                }
+                // Note: TMDL does not support description property on columns, so it is omitted
 
                 sb.AppendLine($"\tcolumn {QuoteTmdlName(col.DisplayName)}");
                 sb.AppendLine($"\t\tdataType: {dataType}");
@@ -3667,10 +3654,6 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 }
                 sb.AppendLine($"\t\tsummarizeBy: {summarizeBy}");
                 sb.AppendLine($"\t\tsourceColumn: {col.SourceColumn}");
-                if (!string.IsNullOrEmpty(descriptionValue))
-                {
-                    sb.AppendLine($"\t\tdescription: {descriptionValue}");
-                }
                 sb.AppendLine();
                 if (isDateTime)
                 {
