@@ -40,6 +40,7 @@ namespace DataverseToPowerBI.XrmToolBox
             this.colEdit = new System.Windows.Forms.ColumnHeader();
             this.colRole = new System.Windows.Forms.ColumnHeader();
             this.colTable = new System.Windows.Forms.ColumnHeader();
+            this.colMode = new System.Windows.Forms.ColumnHeader();
             this.colForm = new System.Windows.Forms.ColumnHeader();
             this.colView = new System.Windows.Forms.ColumnHeader();
             this.colAttrs = new System.Windows.Forms.ColumnHeader();
@@ -241,6 +242,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 this.colEdit,
                 this.colRole,
                 this.colTable,
+                this.colMode,
                 this.colForm,
                 this.colView,
                 this.colAttrs});
@@ -270,19 +272,23 @@ namespace DataverseToPowerBI.XrmToolBox
 
             // colTable
             this.colTable.Text = "Table";
-            this.colTable.Width = 130;
+            this.colTable.Width = 90;
+
+            // colMode
+            this.colMode.Text = "Mode";
+            this.colMode.Width = 0;
 
             // colForm
             this.colForm.Text = "Form";
-            this.colForm.Width = 100;
+            this.colForm.Width = 90;
 
             // colView
             this.colView.Text = "Filter";
-            this.colView.Width = 160;
+            this.colView.Width = 100;
 
             // colAttrs
             this.colAttrs.Text = "Attrs";
-            this.colAttrs.Width = 60;
+            this.colAttrs.Width = 30;
 
             // groupBoxRelationships
             this.groupBoxRelationships.Controls.Add(this.listViewRelationships);
@@ -572,6 +578,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private System.Windows.Forms.ColumnHeader colEdit;
         private System.Windows.Forms.ColumnHeader colRole;
         private System.Windows.Forms.ColumnHeader colTable;
+        private System.Windows.Forms.ColumnHeader colMode;
         private System.Windows.Forms.ColumnHeader colForm;
         private System.Windows.Forms.ColumnHeader colView;
         private System.Windows.Forms.ColumnHeader colAttrs;

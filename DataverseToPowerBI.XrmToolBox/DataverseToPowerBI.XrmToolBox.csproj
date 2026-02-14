@@ -119,6 +119,7 @@
     <Compile Include="Services\SemanticModelBuilder.cs" />
     <Compile Include="Services\FetchXmlToSqlConverter.cs" />
     <Compile Include="Services\DebugLogger.cs" />
+    <Compile Include="VistaFolderPicker.cs" />
 
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

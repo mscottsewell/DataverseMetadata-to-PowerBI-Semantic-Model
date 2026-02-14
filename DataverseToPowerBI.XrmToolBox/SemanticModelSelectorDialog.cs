@@ -59,6 +59,8 @@ namespace DataverseToPowerBI.XrmToolBox
         private Label lblFabricEndpoint = null!;
         private Label lblFabricDatabase = null!;
         private CheckBox chkUseDisplayNameAliases = null!;
+        private ComboBox cboStorageMode = null!;
+        private Label lblStorageMode = null!;
         private TextBox txtWorkingFolder = null!;
         private TextBox txtTemplatePath = null!;
         private Button btnChangeFolder = null!;
@@ -67,6 +69,8 @@ namespace DataverseToPowerBI.XrmToolBox
         private Button btnCopy = null!;
         private Button btnRename = null!;
         private Button btnDelete = null!;
+        private Button btnExport = null!;
+        private Button btnImport = null!;
         private Button btnSelect = null!;
         private Button btnCancel = null!;
         private Label lblName = null!;
@@ -106,7 +110,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private void InitializeComponent()
         {
             this.Text = "Semantic Model Manager";
-            this.Size = new Size(935, 580);
+            this.Size = new Size(1050, 620);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
@@ -134,17 +138,18 @@ namespace DataverseToPowerBI.XrmToolBox
             listViewModels = new ListView
             {
                 Location = new Point(35, 58),
-                Size = new Size(450, 362),
+                Size = new Size(565, 362),
                 View = View.Details,
                 FullRowSelect = true,
                 MultiSelect = false,
                 HideSelection = false
             };
-            listViewModels.Columns.Add("Name", 150);
-            listViewModels.Columns.Add("Fact Table", 100);
-            listViewModels.Columns.Add("Tables", 60);
-            listViewModels.Columns.Add("Connection", 80);
-            listViewModels.Columns.Add("Last Used", 140);
+            listViewModels.Columns.Add("Name", 130);
+            listViewModels.Columns.Add("Fact Table", 90);
+            listViewModels.Columns.Add("Tables", 45);
+            listViewModels.Columns.Add("Mode", 80);
+            listViewModels.Columns.Add("Connection", 75);
+            listViewModels.Columns.Add("Last Used", 80);
             listViewModels.SelectedIndexChanged += ListViewModels_SelectedIndexChanged;
             listViewModels.DoubleClick += ListViewModels_DoubleClick;
             
@@ -190,12 +195,29 @@ namespace DataverseToPowerBI.XrmToolBox
             };
             btnDelete.Click += BtnDelete_Click;
 
+            btnExport = new Button
+            {
+                Text = "Export...",
+                Location = new Point(370, 428),
+                Size = new Size(70, 28),
+                Enabled = false
+            };
+            btnExport.Click += BtnExport_Click;
+
+            btnImport = new Button
+            {
+                Text = "Import...",
+                Location = new Point(445, 428),
+                Size = new Size(70, 28)
+            };
+            btnImport.Click += BtnImport_Click;
+
             // Right panel - configuration details
             groupDetails = new GroupBox
             {
                 Text = "Configuration Details",
-                Location = new Point(505, 15),
-                Size = new Size(400, 465)
+                Location = new Point(620, 15),
+                Size = new Size(400, 505)
             };
 
             lblName = new Label
@@ -278,17 +300,35 @@ namespace DataverseToPowerBI.XrmToolBox
             };
             btnChangeTemplate.Click += BtnChangeTemplate_Click;
 
-            // Connection Type - moved down below PBIP Template
+            // Storage Mode - above Connection Type
+            lblStorageMode = new Label
+            {
+                Text = "Storage Mode:",
+                Location = new Point(15, 265),
+                AutoSize = true
+            };
+
+            cboStorageMode = new ComboBox
+            {
+                Location = new Point(15, 285),
+                Size = new Size(365, 23),
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            cboStorageMode.Items.AddRange(new object[] { "Direct Query", "Dual - All Dimensions", "Dual - Select Tables", "Import" });
+            cboStorageMode.SelectedIndex = 0;
+            cboStorageMode.SelectedIndexChanged += CboStorageMode_SelectedIndexChanged;
+
+            // Connection Type - below Storage Mode
             lblConnectionType = new Label
             {
                 Text = "Connection Type:",
-                Location = new Point(15, 265),
+                Location = new Point(15, 315),
                 AutoSize = true
             };
 
             cboConnectionType = new ComboBox
             {
-                Location = new Point(15, 285),
+                Location = new Point(15, 335),
                 Size = new Size(365, 23),
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
@@ -296,18 +336,18 @@ namespace DataverseToPowerBI.XrmToolBox
             cboConnectionType.SelectedIndex = 0;
             cboConnectionType.SelectedIndexChanged += CboConnectionType_SelectedIndexChanged;
 
-            // Fabric fields - below Connection Type
+            // Fabric fields - below Storage Mode
             lblFabricEndpoint = new Label
             {
                 Text = "FabricLink SQL Endpoint:",
-                Location = new Point(15, 325),
+                Location = new Point(15, 365),
                 AutoSize = true,
                 Visible = false
             };
 
             txtFabricEndpoint = new TextBox
             {
-                Location = new Point(15, 345),
+                Location = new Point(15, 385),
                 Size = new Size(365, 23),
                 Visible = false
             };
@@ -316,14 +356,14 @@ namespace DataverseToPowerBI.XrmToolBox
             lblFabricDatabase = new Label
             {
                 Text = "FabricLink Lakehouse:",
-                Location = new Point(15, 385),
+                Location = new Point(15, 425),
                 AutoSize = true,
                 Visible = false
             };
 
             txtFabricDatabase = new TextBox
             {
-                Location = new Point(15, 405),
+                Location = new Point(15, 445),
                 Size = new Size(365, 23),
                 Visible = false
             };
@@ -333,7 +373,7 @@ namespace DataverseToPowerBI.XrmToolBox
             chkUseDisplayNameAliases = new CheckBox
             {
                 Text = "Use display name aliases in SQL queries",
-                Location = new Point(15, 440),
+                Location = new Point(15, 475),
                 Size = new Size(365, 20),
                 Checked = true
             };
@@ -349,6 +389,8 @@ namespace DataverseToPowerBI.XrmToolBox
             groupDetails.Controls.Add(lblTemplatePath);
             groupDetails.Controls.Add(txtTemplatePath);
             groupDetails.Controls.Add(btnChangeTemplate);
+            groupDetails.Controls.Add(lblStorageMode);
+            groupDetails.Controls.Add(cboStorageMode);
             groupDetails.Controls.Add(lblConnectionType);
             groupDetails.Controls.Add(cboConnectionType);
             groupDetails.Controls.Add(lblFabricEndpoint);
@@ -361,7 +403,7 @@ namespace DataverseToPowerBI.XrmToolBox
             btnSelect = new Button
             {
                 Text = "Select",
-                Location = new Point(725, 500),
+                Location = new Point(840, 540),
                 Size = new Size(90, 30),
                 DialogResult = DialogResult.OK,
                 Enabled = false
@@ -371,7 +413,7 @@ namespace DataverseToPowerBI.XrmToolBox
             btnCancel = new Button
             {
                 Text = "Cancel",
-                Location = new Point(825, 500),
+                Location = new Point(940, 540),
                 Size = new Size(80, 30),
                 DialogResult = DialogResult.Cancel
             };
@@ -383,6 +425,8 @@ namespace DataverseToPowerBI.XrmToolBox
             this.Controls.Add(btnCopy);
             this.Controls.Add(btnRename);
             this.Controls.Add(btnDelete);
+            this.Controls.Add(btnExport);
+            this.Controls.Add(btnImport);
             this.Controls.Add(groupDetails);
             this.Controls.Add(btnSelect);
             this.Controls.Add(btnCancel);
@@ -437,12 +481,22 @@ namespace DataverseToPowerBI.XrmToolBox
                 var tableCount = model.PluginSettings?.SelectedTableNames?.Count ?? 0;
                 item.SubItems.Add(tableCount.ToString());
                 
+                // Storage Mode column
+                var storageMode = (model.StorageMode ?? "DirectQuery") switch
+                {
+                    "Dual" => "Dual - All",
+                    "DualSelect" => "Dual - Select",
+                    "Import" => "Import",
+                    _ => "Direct Query"
+                };
+                item.SubItems.Add(storageMode);
+                
                 // Connection column
                 var connectionType = string.IsNullOrEmpty(model.ConnectionType) || model.ConnectionType == "DataverseTDS" ? "TDS" : "FabricLink";
                 item.SubItems.Add(connectionType);
                 
                 // Last Used column
-                item.SubItems.Add(model.LastUsed.ToString("g"));
+                item.SubItems.Add(model.LastUsed.ToString("d"));
                 listViewModels.Items.Add(item);
             }
 
@@ -477,12 +531,22 @@ namespace DataverseToPowerBI.XrmToolBox
                     var tableCount = model.PluginSettings?.SelectedTableNames?.Count ?? 0;
                     item.SubItems.Add(tableCount.ToString());
                     
+                    // Storage Mode column
+                    var storageMode = (model.StorageMode ?? "DirectQuery") switch
+                    {
+                        "Dual" => "Dual - All",
+                        "DualSelect" => "Dual - Select",
+                        "Import" => "Import",
+                        _ => "Direct Query"
+                    };
+                    item.SubItems.Add(storageMode);
+                    
                     // Connection column
                     var connectionType = string.IsNullOrEmpty(model.ConnectionType) || model.ConnectionType == "DataverseTDS" ? "TDS" : "FabricLink";
                     item.SubItems.Add(connectionType);
                     
                     // Last Used column
-                    item.SubItems.Add(model.LastUsed.ToString("g"));
+                    item.SubItems.Add(model.LastUsed.ToString("d"));
                     listViewModels.Items.Add(item);
                 }
             }
@@ -535,6 +599,7 @@ namespace DataverseToPowerBI.XrmToolBox
             btnCopy.Enabled = hasSelection;
             btnRename.Enabled = hasSelection;
             btnDelete.Enabled = hasSelection && _modelManager.GetAllModels().Count > 1;
+            btnExport.Enabled = hasSelection;
             btnChangeFolder.Enabled = hasSelection;
             btnChangeTemplate.Enabled = hasSelection;
         }
@@ -547,6 +612,15 @@ namespace DataverseToPowerBI.XrmToolBox
             // Set connection type
             var connectionType = model.ConnectionType ?? "DataverseTDS";
             cboConnectionType.SelectedIndex = connectionType == "FabricLink" ? 1 : 0;
+            
+            // Set storage mode
+            cboStorageMode.SelectedIndex = (model.StorageMode ?? "DirectQuery") switch
+            {
+                "Dual" => 1,
+                "DualSelect" => 2,
+                "Import" => 3,
+                _ => 0
+            };
             
             // Set FabricLink fields
             txtFabricEndpoint.Text = model.FabricLinkSQLEndpoint ?? "";
@@ -567,6 +641,7 @@ namespace DataverseToPowerBI.XrmToolBox
             txtName.Text = "";
             txtEnvironmentUrl.Text = "";
             cboConnectionType.SelectedIndex = 0;
+            cboStorageMode.SelectedIndex = 0;
             txtFabricEndpoint.Text = "";
             txtFabricDatabase.Text = "";
             UpdateFabricLinkFieldsVisibility();
@@ -611,6 +686,22 @@ namespace DataverseToPowerBI.XrmToolBox
             if (_selectedModel != null)
             {
                 _selectedModel.UseDisplayNameAliasesInSql = chkUseDisplayNameAliases.Checked;
+                _modelManager.SaveModel(_selectedModel);
+                ConfigurationsChanged = true;
+            }
+        }
+
+        private void CboStorageMode_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (_selectedModel != null)
+            {
+                _selectedModel.StorageMode = cboStorageMode.SelectedIndex switch
+                {
+                    1 => "Dual",
+                    2 => "DualSelect",
+                    3 => "Import",
+                    _ => "DirectQuery"
+                };
                 _modelManager.SaveModel(_selectedModel);
                 ConfigurationsChanged = true;
             }
@@ -739,6 +830,7 @@ namespace DataverseToPowerBI.XrmToolBox
                             Name = dialog.SemanticModelName,
                             DataverseUrl = _currentEnvironmentUrl,
                             ConnectionType = dialog.ConnectionType,
+                            StorageMode = dialog.StorageMode,
                             FabricLinkSQLEndpoint = dialog.FabricLinkSQLEndpoint,
                             FabricLinkSQLDatabase = dialog.FabricLinkSQLDatabase,
                             WorkingFolder = dialog.WorkingFolder,
@@ -983,22 +1075,124 @@ namespace DataverseToPowerBI.XrmToolBox
             }
         }
 
+        private void BtnExport_Click(object sender, EventArgs e)
+        {
+            if (_selectedModel == null) return;
+
+            using (var dialog = new SaveFileDialog())
+            {
+                dialog.Title = "Export Semantic Model Configuration";
+                dialog.Filter = "JSON files (*.json)|*.json";
+                dialog.FileName = $"{_selectedModel.Name}.json";
+
+                if (dialog.ShowDialog(this) == DialogResult.OK)
+                {
+                    try
+                    {
+                        var serializer = new System.Runtime.Serialization.Json.DataContractJsonSerializer(
+                            typeof(SemanticModelConfig),
+                            new System.Runtime.Serialization.Json.DataContractJsonSerializerSettings
+                            {
+                                UseSimpleDictionaryFormat = true
+                            });
+                        using (var ms = new System.IO.MemoryStream())
+                        {
+                            serializer.WriteObject(ms, _selectedModel);
+                            System.IO.File.WriteAllText(dialog.FileName,
+                                System.Text.Encoding.UTF8.GetString(ms.ToArray()));
+                        }
+                        MessageBox.Show($"Configuration exported to:\n{dialog.FileName}",
+                            "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error exporting configuration:\n{ex.Message}",
+                            "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+
+        private void BtnImport_Click(object sender, EventArgs e)
+        {
+            using (var dialog = new OpenFileDialog())
+            {
+                dialog.Title = "Import Semantic Model Configuration";
+                dialog.Filter = "JSON files (*.json)|*.json";
+
+                if (dialog.ShowDialog(this) == DialogResult.OK)
+                {
+                    try
+                    {
+                        var json = System.IO.File.ReadAllText(dialog.FileName);
+                        SemanticModelConfig? imported;
+                        var serializer = new System.Runtime.Serialization.Json.DataContractJsonSerializer(
+                            typeof(SemanticModelConfig),
+                            new System.Runtime.Serialization.Json.DataContractJsonSerializerSettings
+                            {
+                                UseSimpleDictionaryFormat = true
+                            });
+                        using (var ms = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(json)))
+                        {
+                            imported = serializer.ReadObject(ms) as SemanticModelConfig;
+                        }
+
+                        if (imported == null)
+                        {
+                            MessageBox.Show("The file does not contain a valid semantic model configuration.",
+                                "Import Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return;
+                        }
+
+                        // Ensure unique name
+                        var baseName = imported.Name;
+                        var existingNames = _modelManager.GetAllModels().Select(m => m.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                        if (existingNames.Contains(baseName))
+                        {
+                            int suffix = 2;
+                            while (existingNames.Contains($"{baseName} ({suffix})"))
+                                suffix++;
+                            imported.Name = $"{baseName} ({suffix})";
+                        }
+
+                        imported.LastUsed = DateTime.Now;
+                        _modelManager.CreateModel(imported);
+                        ConfigurationsChanged = true;
+                        LoadModels();
+
+                        // Select the imported model
+                        var item = listViewModels.Items.Cast<ListViewItem>()
+                            .FirstOrDefault(i => ((SemanticModelConfig)i.Tag).Name == imported.Name);
+                        if (item != null)
+                        {
+                            item.Selected = true;
+                            item.EnsureVisible();
+                        }
+
+                        MessageBox.Show($"Configuration imported as '{imported.Name}'.\n\n" +
+                            "You may need to update the Working Folder and Template Path for this machine.",
+                            "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error importing configuration:\n{ex.Message}",
+                            "Import Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+
         private void BtnChangeFolder_Click(object sender, EventArgs e)
         {
             if (_selectedModel == null) return;
 
-            using (var dialog = new FolderBrowserDialog())
+            var selectedPath = VistaFolderPicker.ShowDialog(this, "Select Working Folder", txtWorkingFolder.Text);
+            if (selectedPath != null)
             {
-                dialog.Description = "Select Working Folder";
-                dialog.SelectedPath = txtWorkingFolder.Text;
-
-                if (dialog.ShowDialog(this) == DialogResult.OK)
-                {
-                    txtWorkingFolder.Text = dialog.SelectedPath;
-                    _selectedModel.WorkingFolder = dialog.SelectedPath;
-                    _modelManager.SaveModel(_selectedModel);
-                    ConfigurationsChanged = true;
-                }
+                txtWorkingFolder.Text = selectedPath;
+                _selectedModel.WorkingFolder = selectedPath;
+                _modelManager.SaveModel(_selectedModel);
+                ConfigurationsChanged = true;
             }
         }
 
@@ -1006,27 +1200,22 @@ namespace DataverseToPowerBI.XrmToolBox
         {
             if (_selectedModel == null) return;
 
-            using (var dialog = new FolderBrowserDialog())
+            var selectedPath = VistaFolderPicker.ShowDialog(this, "Select PBIP Template Folder", txtTemplatePath.Text);
+            if (selectedPath != null)
             {
-                dialog.Description = "Select PBIP Template Folder";
-                dialog.SelectedPath = txtTemplatePath.Text;
-
-                if (dialog.ShowDialog(this) == DialogResult.OK)
+                // Verify it's a valid template folder
+                var pbipFiles = Directory.GetFiles(selectedPath, "*.pbip");
+                if (pbipFiles.Length == 0)
                 {
-                    // Verify it's a valid template folder
-                    var pbipFiles = Directory.GetFiles(dialog.SelectedPath, "*.pbip");
-                    if (pbipFiles.Length == 0)
-                    {
-                        MessageBox.Show("Selected folder does not contain a valid PBIP template (.pbip file not found).",
-                            "Invalid Template", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return;
-                    }
-
-                    txtTemplatePath.Text = dialog.SelectedPath;
-                    _selectedModel.TemplatePath = dialog.SelectedPath;
-                    _modelManager.SaveModel(_selectedModel);
-                    ConfigurationsChanged = true;
+                    MessageBox.Show("Selected folder does not contain a valid PBIP template (.pbip file not found).",
+                        "Invalid Template", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
                 }
+
+                txtTemplatePath.Text = selectedPath;
+                _selectedModel.TemplatePath = selectedPath;
+                _modelManager.SaveModel(_selectedModel);
+                ConfigurationsChanged = true;
             }
         }
 
@@ -1070,6 +1259,7 @@ namespace DataverseToPowerBI.XrmToolBox
     {
         private TextBox txtName = null!;
         private ComboBox cboConnectionType = null!;
+        private ComboBox cboStorageMode = null!;
         private TextBox txtFabricEndpoint = null!;
         private TextBox txtFabricDatabase = null!;
         private Label lblFabricEndpoint = null!;
@@ -1086,6 +1276,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
         public string SemanticModelName { get; private set; } = "";
         public string ConnectionType { get; private set; } = "DataverseTDS";
+        public string StorageMode { get; private set; } = "DirectQuery";
         public string FabricLinkSQLEndpoint { get; private set; } = "";
         public string FabricLinkSQLDatabase { get; private set; } = "";
         public string WorkingFolder { get; private set; } = "";
@@ -1104,7 +1295,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private void InitializeComponent(string environmentUrl)
         {
             this.Text = "Create New Semantic Model";
-            this.Size = new Size(520, 585);
+            this.Size = new Size(520, 635);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
@@ -1218,18 +1409,35 @@ namespace DataverseToPowerBI.XrmToolBox
             cboConnectionType.SelectedIndex = 0;
             cboConnectionType.SelectedIndexChanged += CboConnectionType_SelectedIndexChanged_New;
 
-            // Fabric fields - moved down
+            // Storage Mode
+            var lblStorageModeNew = new Label
+            {
+                Text = "Storage Mode:",
+                Location = new Point(20, 355),
+                AutoSize = true
+            };
+
+            cboStorageMode = new ComboBox
+            {
+                Location = new Point(20, 375),
+                Size = new Size(460, 23),
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            cboStorageMode.Items.AddRange(new object[] { "Direct Query", "Dual - All Dimensions", "Dual - Select Tables", "Import" });
+            cboStorageMode.SelectedIndex = 0;
+
+            // Fabric fields
             lblFabricEndpoint = new Label
             {
                 Text = "FabricLink SQL Endpoint:",
-                Location = new Point(20, 360),
+                Location = new Point(20, 410),
                 AutoSize = true,
                 Visible = false
             };
 
             txtFabricEndpoint = new TextBox
             {
-                Location = new Point(20, 385),
+                Location = new Point(20, 435),
                 Size = new Size(460, 23),
                 Visible = false
             };
@@ -1237,14 +1445,14 @@ namespace DataverseToPowerBI.XrmToolBox
             lblFabricDatabase = new Label
             {
                 Text = "FabricLink Lakehouse:",
-                Location = new Point(20, 425),
+                Location = new Point(20, 475),
                 AutoSize = true,
                 Visible = false
             };
 
             txtFabricDatabase = new TextBox
             {
-                Location = new Point(20, 450),
+                Location = new Point(20, 500),
                 Size = new Size(460, 23),
                 Visible = false
             };
@@ -1253,7 +1461,7 @@ namespace DataverseToPowerBI.XrmToolBox
             chkUseDisplayNameAliases = new CheckBox
             {
                 Text = "Use display name aliases in SQL queries",
-                Location = new Point(20, 485),
+                Location = new Point(20, 535),
                 Size = new Size(460, 20),
                 Checked = true
             };
@@ -1261,7 +1469,7 @@ namespace DataverseToPowerBI.XrmToolBox
             btnCreate = new Button
             {
                 Text = "Create",
-                Location = new Point(310, 515),
+                Location = new Point(310, 565),
                 Size = new Size(80, 28),
                 DialogResult = DialogResult.OK,
                 Enabled = false
@@ -1271,7 +1479,7 @@ namespace DataverseToPowerBI.XrmToolBox
             btnCancelDlg = new Button
             {
                 Text = "Cancel",
-                Location = new Point(400, 515),
+                Location = new Point(400, 565),
                 Size = new Size(80, 28),
                 DialogResult = DialogResult.Cancel
             };
@@ -1289,6 +1497,8 @@ namespace DataverseToPowerBI.XrmToolBox
             this.Controls.Add(lblPreviewPath);
             this.Controls.Add(lblConnectionType);
             this.Controls.Add(cboConnectionType);
+            this.Controls.Add(lblStorageModeNew);
+            this.Controls.Add(cboStorageMode);
             this.Controls.Add(lblFabricEndpoint);
             this.Controls.Add(txtFabricEndpoint);
             this.Controls.Add(lblFabricDatabase);
@@ -1352,40 +1562,30 @@ namespace DataverseToPowerBI.XrmToolBox
 
         private void BtnChangeFolder_Click(object sender, EventArgs e)
         {
-            using (var dialog = new FolderBrowserDialog())
+            var selectedPath = VistaFolderPicker.ShowDialog(this, "Select Working Folder", txtFolder.Text);
+            if (selectedPath != null)
             {
-                dialog.Description = "Select Working Folder";
-                dialog.SelectedPath = txtFolder.Text;
-
-                if (dialog.ShowDialog(this) == DialogResult.OK)
-                {
-                    txtFolder.Text = dialog.SelectedPath;
-                    WorkingFolder = dialog.SelectedPath;
-                    UpdatePreview();
-                }
+                txtFolder.Text = selectedPath;
+                WorkingFolder = selectedPath;
+                UpdatePreview();
             }
         }
 
         private void BtnChangeTemplate_Click(object sender, EventArgs e)
         {
-            using (var dialog = new FolderBrowserDialog())
+            var selectedPath = VistaFolderPicker.ShowDialog(this, "Select PBIP Template Folder", txtTemplate.Text);
+            if (selectedPath != null)
             {
-                dialog.Description = "Select PBIP Template Folder";
-                dialog.SelectedPath = txtTemplate.Text;
-
-                if (dialog.ShowDialog(this) == DialogResult.OK)
+                var pbipFiles = Directory.GetFiles(selectedPath, "*.pbip");
+                if (pbipFiles.Length == 0)
                 {
-                    var pbipFiles = Directory.GetFiles(dialog.SelectedPath, "*.pbip");
-                    if (pbipFiles.Length == 0)
-                    {
-                        MessageBox.Show("Selected folder does not contain a valid PBIP template.",
-                            "Invalid Template", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return;
-                    }
-
-                    txtTemplate.Text = dialog.SelectedPath;
-                    TemplatePath = dialog.SelectedPath;
+                    MessageBox.Show("Selected folder does not contain a valid PBIP template.",
+                        "Invalid Template", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
                 }
+
+                txtTemplate.Text = selectedPath;
+                TemplatePath = selectedPath;
             }
         }
 
@@ -1393,6 +1593,13 @@ namespace DataverseToPowerBI.XrmToolBox
         {
             SemanticModelName = txtName.Text.Trim();
             ConnectionType = cboConnectionType.SelectedIndex == 1 ? "FabricLink" : "DataverseTDS";
+            StorageMode = cboStorageMode.SelectedIndex switch
+            {
+                1 => "Dual",
+                2 => "DualSelect",
+                3 => "Import",
+                _ => "DirectQuery"
+            };
             FabricLinkSQLEndpoint = txtFabricEndpoint.Text.Trim();
             FabricLinkSQLDatabase = txtFabricDatabase.Text.Trim();
             WorkingFolder = txtFolder.Text.Trim();

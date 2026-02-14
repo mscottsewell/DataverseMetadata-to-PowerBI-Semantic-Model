@@ -2,7 +2,7 @@
 <package>
 	<metadata>
     <id>DataverseToPowerBI.XrmToolBox</id>
-    <version>1.2026.5.8</version>
+    <version>1.2026.5.21</version>
     <title>Dataverse to Power BI Semantic Model</title>
     <authors>Scott Sewell</authors>
     <owners>mScottSewell</owners>
@@ -11,14 +11,21 @@
     <description>Extract Dataverse metadata and generate Power BI TMDL/PBIP semantic models with automatic table relationships, calendar tables, and incremental change detection.</description>
     <summary>XrmToolBox plugin for generating Power BI semantic models from Dataverse metadata</summary>
     <releaseNotes>
-- **Visual Grouping for Multiple Relationships** — Dimensions with multiple relationships are now visually grouped with headers showing "(Multiple Relationships)" label for easier identification
-- **Solution Tables Filter** — Added "Solution tables only" checkbox (enabled by default) to show only relationships to tables in the current solution
-- **Relationship Search** — Real-time search box to filter relationships by field names and dimension table names
-- **Smart Relationship Selection** — Checking or double-clicking a relationship automatically marks ALL other relationships to that dimension as "Inactive"
-- **Default Active Status** — All relationships now default to "Active" status instead of "Inactive" for clearer initial state
-- **Column Width Optimization** — Increased Type column width to 140px to prevent truncation; Filter column now gets 50% of flexible space
-- **Dialog Layout Improvements** — Reduced Fact/Dimension selector width to 900px; reorganized layout with search on right aligned to grid
-- **NullReferenceException Fixes** — Comprehensive null checks and event suppression to prevent crashes during list manipulation
+v1.2026.5.21:
+- **Storage Mode Support** — Choose between Direct Query, Dual (All Dimensions), Dual (Select Tables), or Import mode per semantic model
+- **Per-Table Storage Mode** — Toggle individual dimension tables between Direct Query and Dual; auto-switches model to "Dual - Select Tables" with notification
+- **Export/Import Configurations** — Share semantic model configurations as JSON files between machines or team members
+- **Vista Folder Picker** — Modern Explorer-style folder dialogs replace legacy folder browser (breadcrumbs, search, favorites)
+- **Attribute List Performance** — Pre-sorted cache built during metadata refresh for instant table/filter switching
+- **Bug Fixes** — Fixed DATEDIFF in older-than-x operators, date table relationship display names, Font GDI resource leaks
+
+v1.2026.5.1:
+- **Visual Grouping for Multiple Relationships** — Dimensions with multiple relationships grouped with "(Multiple Relationships)" header
+- **Solution Tables Filter** — "Solution tables only" checkbox to show only in-solution relationships
+- **Relationship Search** — Real-time search across lookup fields and dimension table names
+- **Smart Relationship Selection** — Auto-inactivates other relationships to the same dimension when one is selected
+- **NullReferenceException Fixes** — Comprehensive null checks and event suppression during list manipulation
+- **FabricLink Current User Filter** — User context operators now properly skipped in FabricLink mode
     </releaseNotes>
     <tags>XrmToolBox PowerBI Dataverse TMDL PBIP SemanticModel</tags>
     <projectUrl>https://github.com/mscottsewell/DataverseMetadata-to-PowerBI-Semantic-Model</projectUrl>

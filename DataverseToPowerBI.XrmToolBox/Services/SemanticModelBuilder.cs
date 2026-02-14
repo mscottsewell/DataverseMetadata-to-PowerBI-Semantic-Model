@@ -83,6 +83,8 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         private readonly string? _fabricLinkDatabase;
         private readonly int _languageCode;
         private readonly bool _useDisplayNameAliasesInSql;
+        private readonly string _storageMode;
+        private Dictionary<string, string> _tableStorageModeOverrides = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
 
         /// <summary>
@@ -92,7 +94,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
         public SemanticModelBuilder(string templatePath, Action<string>? statusCallback = null,
             string connectionType = "DataverseTDS", string? fabricLinkEndpoint = null, string? fabricLinkDatabase = null,
-            int languageCode = 1033, bool useDisplayNameAliasesInSql = true)
+            int languageCode = 1033, bool useDisplayNameAliasesInSql = true, string storageMode = "DirectQuery")
         {
             if (string.IsNullOrWhiteSpace(templatePath))
             {
@@ -106,6 +108,58 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             _fabricLinkDatabase = fabricLinkDatabase;
             _languageCode = languageCode;
             _useDisplayNameAliasesInSql = useDisplayNameAliasesInSql;
+            _storageMode = storageMode ?? "DirectQuery";
+        }
+
+        /// <summary>
+        /// Sets per-table storage mode overrides for DualSelect mode.
+        /// Key = table logical name, Value = "directQuery" or "dual".
+        /// </summary>
+        public void SetTableStorageModeOverrides(Dictionary<string, string>? overrides)
+        {
+            _tableStorageModeOverrides = overrides != null
+                ? new Dictionary<string, string>(overrides, StringComparer.OrdinalIgnoreCase)
+                : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Returns the TMDL partition mode string for a table based on the global storage mode setting.
+        /// DirectQuery: all tables use directQuery.
+        /// Dual: fact table uses directQuery, dimensions use dual.
+        /// DualSelect: fact uses directQuery, dimensions use per-table override (default directQuery).
+        /// Import: all Dataverse/FabricLink tables use import.
+        /// </summary>
+        private string GetPartitionMode(string tableRole, string? tableLogicalName = null)
+        {
+            return _storageMode switch
+            {
+                "Import" => "import",
+                "Dual" => tableRole == "Fact" ? "directQuery" : "dual",
+                "DualSelect" => tableRole == "Fact" ? "directQuery" : GetDualSelectMode(tableLogicalName),
+                _ => "directQuery"
+            };
+        }
+
+        private string GetDualSelectMode(string? tableLogicalName)
+        {
+            if (tableLogicalName != null && _tableStorageModeOverrides.TryGetValue(tableLogicalName, out var mode))
+                return mode;
+            return "directQuery";
+        }
+
+        /// <summary>
+        /// Returns true if user-context view filters (CURRENT_USER) should be stripped for this table.
+        /// User context requires DirectQuery; it is not available in import or dual modes.
+        /// </summary>
+        private bool ShouldStripUserContext(string tableRole, string? tableLogicalName = null)
+        {
+            return _storageMode switch
+            {
+                "Import" => true,
+                "Dual" => tableRole != "Fact",
+                "DualSelect" => tableRole == "Fact" ? false : GetDualSelectMode(tableLogicalName) == "dual",
+                _ => false
+            };
         }
 
         /// <summary>
@@ -418,7 +472,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     ObjectName = projectName,
                     Description = requiresFullRebuild
                         ? "Full rebuild of Power BI project (missing structural files)"
-                        : "Create new Power BI project from template"
+                        : $"Create new Power BI project from template (storage: {_storageMode})"
                 });
 
                 foreach (var table in tables)
@@ -447,6 +501,23 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             {
                 // PBIP exists - analyze incremental changes with deep comparison
                 var tablesFolder = Path.Combine(pbipFolder, $"{projectName}.SemanticModel", "definition", "tables");
+
+                // Detect storage mode change by reading an existing table TMDL
+                if (Directory.Exists(tablesFolder))
+                {
+                    var existingMode = DetectExistingStorageMode(tablesFolder);
+                    if (existingMode != null && !existingMode.Equals(_storageMode, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Normalize for comparison: existing file says "directQuery"/"import"/"dual", config says "DirectQuery"/"Import"/"Dual"
+                        changes.Add(new SemanticModelChange
+                        {
+                            ChangeType = ChangeType.Warning,
+                            ObjectType = "StorageMode",
+                            ObjectName = "Storage Mode Change",
+                            Description = $"Changing from {existingMode} to {_storageMode} — cache.abf will be deleted to prevent stale data"
+                        });
+                    }
+                }
 
                 // Build relationship columns lookup
                 var relationshipColumnsPerTable = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
@@ -1383,7 +1454,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             {
                 // Convert FetchXML to SQL WHERE clause for comparison
                 var utcOffset = (int)(dateTableConfig?.UtcOffsetHours ?? -6);
-                var converter = new FetchXmlToSqlConverter(utcOffset, IsFabricLink);
+                var converter = new FetchXmlToSqlConverter(utcOffset, IsFabricLink, ShouldStripUserContext(table.Role, table.LogicalName));
                 var conversionResult = converter.ConvertToWhereClause(table.View.FetchXml, "Base");
                 
                 if (!string.IsNullOrWhiteSpace(conversionResult.SqlWhereClause))
@@ -1813,6 +1884,60 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         }
 
         /// <summary>
+        /// Detects the existing storage mode by reading the partition mode from the first
+        /// non-generated table TMDL file found in the tables folder.
+        /// Returns "DirectQuery", "Import", or "Dual", or null if not determinable.
+        /// </summary>
+        private string? DetectExistingStorageMode(string tablesFolder)
+        {
+            var generatedTables = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Date", "DateAutoTemplate", "DataverseURL" };
+            
+            foreach (var file in Directory.GetFiles(tablesFolder, "*.tmdl"))
+            {
+                var tableName = Path.GetFileNameWithoutExtension(file);
+                if (generatedTables.Contains(tableName)) continue;
+
+                try
+                {
+                    var content = File.ReadAllText(file);
+                    if (content.Contains("mode: import"))
+                        return "Import";
+                    if (content.Contains("mode: dual"))
+                        return "Dual";
+                    if (content.Contains("mode: directQuery"))
+                        return "DirectQuery";
+                }
+                catch
+                {
+                    continue;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Deletes the cache.abf file to prevent stale imported data after a storage mode change.
+        /// </summary>
+        private void DeleteCacheAbf(string pbipFolder, string projectName)
+        {
+            var cacheAbfPath = Path.Combine(pbipFolder, $"{projectName}.SemanticModel", ".pbi", "cache.abf");
+            if (File.Exists(cacheAbfPath))
+            {
+                try
+                {
+                    File.Delete(cacheAbfPath);
+                    SetStatus("Deleted cache.abf (storage mode changed)");
+                    DebugLogger.Log($"Deleted cache.abf due to storage mode change: {cacheAbfPath}");
+                }
+                catch (Exception ex)
+                {
+                    SetStatus($"Warning: Could not delete cache.abf: {ex.Message}");
+                    DebugLogger.Log($"Failed to delete cache.abf: {ex.Message}");
+                }
+            }
+        }
+
+        /// <summary>
         /// Applies changes to the semantic model
         /// </summary>
         public bool ApplyChanges(
@@ -1849,6 +1974,20 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 if (createBackup && pbipExists)
                 {
                     CreateBackup(pbipFolder, outputFolder, environmentName, semanticModelName);
+                }
+
+                // Delete cache.abf if storage mode is changing
+                if (pbipExists)
+                {
+                    var tablesFolder = Path.Combine(pbipFolder, $"{semanticModelName}.SemanticModel", "definition", "tables");
+                    if (Directory.Exists(tablesFolder))
+                    {
+                        var existingMode = DetectExistingStorageMode(tablesFolder);
+                        if (existingMode != null && !existingMode.Equals(_storageMode, StringComparison.OrdinalIgnoreCase))
+                        {
+                            DeleteCacheAbf(pbipFolder, semanticModelName);
+                        }
+                    }
                 }
 
                 // Apply changes
@@ -2483,7 +2622,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             if (table.View != null && !string.IsNullOrWhiteSpace(table.View.FetchXml))
             {
                 var utcOffset = (int)(dateTableConfig?.UtcOffsetHours ?? -6);
-                var converter = new FetchXmlToSqlConverter(utcOffset, IsFabricLink);
+                var converter = new FetchXmlToSqlConverter(utcOffset, IsFabricLink, ShouldStripUserContext(table.Role, table.LogicalName));
                 var conversionResult = converter.ConvertToWhereClause(table.View.FetchXml, "Base");
                 
                 if (!string.IsNullOrWhiteSpace(conversionResult.SqlWhereClause))
@@ -2996,7 +3135,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             }
 
             sb.AppendLine($"\tpartition {QuoteTmdlName(partitionName)} = m");
-            sb.AppendLine($"\t\tmode: directQuery");
+            sb.AppendLine($"\t\tmode: {GetPartitionMode(table.Role, table.LogicalName)}");
             sb.AppendLine($"\t\tsource =");
             sb.AppendLine($"\t\t\t\tlet");
             if (IsFabricLink)

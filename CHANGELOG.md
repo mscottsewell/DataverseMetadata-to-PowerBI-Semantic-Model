@@ -6,6 +6,64 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2026.5.21] - 2026-02-14
+
+### Added
+
+- **Storage Mode Support** — Full storage mode selection for semantic models: Direct Query, Dual - All Dimensions, Dual - Select Tables, and Import
+  - **Direct Query**: All tables use `directQuery` partition mode (existing default behavior)
+  - **Dual - All Dimensions**: Fact tables remain `directQuery`, all dimension tables use `dual` mode
+  - **Dual - Select Tables**: Per-table storage mode overrides — individually toggle dimension tables between `directQuery` and `dual`
+  - **Import**: All Dataverse/FabricLink tables use `import` mode; automatically deletes `cache.abf` when switching away from Import
+  - Storage mode persisted per semantic model configuration
+  - Auto-strips `current_user` view filters when appropriate (Import: always; Dual: on dimensions; DualSelect: on dual tables)
+
+- **Per-Table Storage Mode Editing** — Mode column in Selected Tables list shows each table's storage mode
+  - Always visible with values: "Direct Query", "Dual", or "Import"
+  - Click a dimension table's Mode cell to toggle between Direct Query ↔ Dual
+  - Automatically switches model to "Dual - Select Tables" mode when individual table modes are changed, with user notification
+  - Fact tables and Import mode tables are read-only
+
+- **Export/Import Configurations** — Export or import individual semantic model configurations as JSON files
+  - Export saves selected model's full configuration (settings, table selections, storage modes) to a `.json` file
+  - Import loads a configuration file, auto-renames if name conflicts, and reminds user to update folder paths
+  - Enables sharing configurations between machines or team members
+
+- **Vista Folder Picker** — Modern Windows Explorer-style folder selection dialogs
+  - Replaced legacy `FolderBrowserDialog` with Vista `IFileOpenDialog` (COM interop, no external dependencies)
+  - Full navigation, search, breadcrumb bar, and favorites pane
+  - Applied to all 4 folder selection locations (Working Folder and PBIP Template in both Manager and New Model dialogs)
+
+- **Attribute List Performance** — Pre-built sorted attribute cache during metadata loading
+  - Attributes sorted once during refresh, cached for instant display when switching tables or filter modes
+  - Uses `Items.AddRange()` batch insertion instead of individual adds
+  - Added `_isLoading` guard to prevent `ItemChecked` events from corrupting selection state during list population
+
+### Changed
+
+- **Semantic Model Manager Dialog** — Widened from 935px to 1050px for better content display
+  - Added Storage Mode column to model list (Name, Fact Table, Tables, Mode, Connection, Last Used)
+  - Storage Mode moved above Connection Type in details panel
+  - Last Used column now shows date-only (was date+time) to prevent truncation
+  - Column widths optimized to fit within list pane without horizontal scrolling
+
+- **Selected Tables Column Widths** — Adjusted for better proportions: Table=90, Mode=90, Form=90, Filter=100, Attrs=30
+  - Fixed `ResizeTableColumns()` resize handler to respect new proportions (was overriding Designer widths)
+  - Mode column included in proportional resize calculations
+
+### Fixed
+
+- **DATEDIFF Bug in FetchXML Converter** — Fixed `older-than-x-*` operators passing integer where date expression was expected
+  - `DATEDIFF(day, column, 30)` → `DATEDIFF(day, column, GETDATE()) > 30`
+
+- **Date Table Relationship Display Names** — Date table relationships now honor user display name overrides
+  - Previously used logical name even when display name alias was configured
+
+- **Font GDI Resource Leaks** — Cached Font objects in `PluginControl` and `TmdlPreviewDialog` to prevent GDI handle exhaustion
+  - Added proper `Dispose` overrides to clean up cached fonts
+
+---
+
 ## [1.2026.5.1] - 2026-02-12
 
 ### Added

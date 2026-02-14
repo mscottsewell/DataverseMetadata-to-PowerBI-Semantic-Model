@@ -58,11 +58,13 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         private bool _hasUnsupportedFeatures = false;
         private readonly int _utcOffsetHours;
         private readonly bool _isFabricLink;
+        private readonly bool _isImportMode;
 
-        public FetchXmlToSqlConverter(int utcOffsetHours = -6, bool isFabricLink = false)
+        public FetchXmlToSqlConverter(int utcOffsetHours = -6, bool isFabricLink = false, bool isImportMode = false)
         {
             _utcOffsetHours = utcOffsetHours;
             _isFabricLink = isFabricLink;
+            _isImportMode = isImportMode;
         }
 
         /// <summary>
@@ -282,11 +284,11 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     "on-or-after" => $"DATEADD(hour, {_utcOffsetHours}, {columnRef}) >= {FormatValue(safeValue)}",
                     "on-or-before" => $"DATEADD(hour, {_utcOffsetHours}, {columnRef}) <= {FormatValue(safeValue)}",
                     
-                    // User context operators (only supported for TDS, not FabricLink)
-                    "eq-userid" => _isFabricLink ? UnsupportedInFabricLink("eq-userid", attribute) : $"{columnRef} = CURRENT_USER",
-                    "ne-userid" => _isFabricLink ? UnsupportedInFabricLink("ne-userid", attribute) : $"{columnRef} <> CURRENT_USER",
-                    "eq-userteams" => _isFabricLink ? UnsupportedInFabricLink("eq-userteams", attribute) : ConvertUserTeamsOperator(columnRef, true),
-                    "ne-userteams" => _isFabricLink ? UnsupportedInFabricLink("ne-userteams", attribute) : ConvertUserTeamsOperator(columnRef, false),
+                    // User context operators (not supported in FabricLink or Import mode)
+                    "eq-userid" => (_isFabricLink || _isImportMode) ? UnsupportedUserContextOp("eq-userid", attribute) : $"{columnRef} = CURRENT_USER",
+                    "ne-userid" => (_isFabricLink || _isImportMode) ? UnsupportedUserContextOp("ne-userid", attribute) : $"{columnRef} <> CURRENT_USER",
+                    "eq-userteams" => (_isFabricLink || _isImportMode) ? UnsupportedUserContextOp("eq-userteams", attribute) : ConvertUserTeamsOperator(columnRef, true),
+                    "ne-userteams" => (_isFabricLink || _isImportMode) ? UnsupportedUserContextOp("ne-userteams", attribute) : ConvertUserTeamsOperator(columnRef, false),
                     
                     // List operators
                     "in" => ProcessInOperator(condition, columnRef),
@@ -471,6 +473,15 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             var message = $"Operator '{operatorValue}' for attribute '{attribute ?? ""}' - not supported in FabricLink (use TDS for current user filters)";
             LogUnsupported(message);
             _debugLog.Add($"  UNSUPPORTED IN FABRICLINK: {message}");
+            return "";
+        }
+
+        private string UnsupportedUserContextOp(string operatorValue, string? attribute)
+        {
+            var reason = _isImportMode ? "Import mode" : "FabricLink";
+            var message = $"Operator '{operatorValue}' for attribute '{attribute ?? ""}' - not supported in {reason} (current user filters require DirectQuery)";
+            LogUnsupported(message);
+            _debugLog.Add($"  UNSUPPORTED ({reason.ToUpperInvariant()}): {message}");
             return "";
         }
 

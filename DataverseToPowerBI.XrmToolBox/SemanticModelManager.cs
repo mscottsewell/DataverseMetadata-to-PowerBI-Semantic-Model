@@ -424,7 +424,9 @@ namespace DataverseToPowerBI.XrmToolBox
                         PrimaryNameAttribute = v.Value.PrimaryNameAttribute
                     }
                 ) ?? new Dictionary<string, TableDisplayInfo>(),
-                ShowAllAttributes = source.ShowAllAttributes
+                ShowAllAttributes = source.ShowAllAttributes,
+                TableStorageModes = source.TableStorageModes?.ToDictionary(k => k.Key, v => v.Value)
+                    ?? new Dictionary<string, string>()
             };
         }
     }
@@ -496,6 +498,15 @@ namespace DataverseToPowerBI.XrmToolBox
         /// </summary>
         [DataMember]
         public bool UseDisplayNameAliasesInSql { get; set; } = true;
+
+        /// <summary>
+        /// Storage mode for Dataverse tables: "DirectQuery", "Dual", or "Import".
+        /// DirectQuery: all tables use directQuery (default).
+        /// Dual: fact table stays directQuery, dimensions use dual mode.
+        /// Import: all Dataverse/FabricLink tables use import mode.
+        /// </summary>
+        [DataMember]
+        public string StorageMode { get; set; } = "DirectQuery";
 
         /// <summary>
         /// Embedded plugin settings for this model

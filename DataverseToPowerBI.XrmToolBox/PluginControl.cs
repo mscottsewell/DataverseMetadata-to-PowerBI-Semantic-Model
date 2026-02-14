@@ -79,6 +79,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private Dictionary<string, HashSet<string>> _selectedAttributes = new Dictionary<string, HashSet<string>>();
         private Dictionary<string, string> _selectedFormIds = new Dictionary<string, string>();
         private Dictionary<string, string> _selectedViewIds = new Dictionary<string, string>();
+        private Dictionary<string, string> _tableStorageModes = new Dictionary<string, string>();
         private Dictionary<string, bool> _loadingStates = new Dictionary<string, bool>();
         
         // Star-schema state
@@ -96,6 +97,11 @@ namespace DataverseToPowerBI.XrmToolBox
         private int _relationshipsSortColumn = -1;
         private bool _relationshipsSortAscending = true;
         private readonly ToolTip _versionToolTip = new ToolTip();
+
+        // Pre-sorted attribute cache per table (built during metadata load)
+        private Dictionary<string, List<AttributeMetadata>> _sortedAttributeCache = new Dictionary<string, List<AttributeMetadata>>();
+        private int _sortedCacheSortColumn = -1;
+        private bool _sortedCacheSortAscending = true;
 
         // Cached fonts to avoid GDI handle leaks (WinForms does not dispose replaced Fonts)
         private Font? _boldTableFont;
@@ -560,6 +566,7 @@ namespace DataverseToPowerBI.XrmToolBox
             _tableForms.Clear();
             _tableViews.Clear();
             _tableAttributes.Clear();
+            _sortedAttributeCache.Clear();
             _selectedAttributes.Clear();
             _selectedFormIds.Clear();
             _selectedViewIds.Clear();
@@ -607,6 +614,7 @@ namespace DataverseToPowerBI.XrmToolBox
             // Restore form/view selections
             _selectedFormIds = settings.SelectedFormIds ?? new Dictionary<string, string>();
             _selectedViewIds = settings.SelectedViewIds ?? new Dictionary<string, string>();
+            _tableStorageModes = settings.TableStorageModes ?? new Dictionary<string, string>();
             
             // Restore display name overrides
             _attributeDisplayNameOverrides.Clear();
@@ -736,6 +744,9 @@ namespace DataverseToPowerBI.XrmToolBox
                         PrimaryNameAttribute = kvp.Value.PrimaryNameAttribute
                     };
                 }
+
+                // Save per-table storage mode overrides
+                settings.TableStorageModes = new Dictionary<string, string>(_tableStorageModes);
                 
                 _currentModel.PluginSettings = settings;
                 _modelManager.SaveModel(_currentModel);
@@ -805,6 +816,8 @@ namespace DataverseToPowerBI.XrmToolBox
             }
             
             UpdateSemanticModelDisplay();
+            UpdateModeColumnVisibility();
+            RefreshTableListDisplay();
         }
         
         private void UpdateSemanticModelDisplay()
@@ -1202,6 +1215,9 @@ namespace DataverseToPowerBI.XrmToolBox
                     // Auto-create display name overrides for primary name attributes
                     AutoOverridePrimaryNameAttributes();
                     
+                    // Pre-build sorted attribute cache for all tables (default sort: Display Name ascending)
+                    PreBuildAttributeSortCache();
+                    
                     RefreshTableListDisplay();
                     
                     // Select first table (Fact) and show its attributes
@@ -1472,6 +1488,7 @@ namespace DataverseToPowerBI.XrmToolBox
         
         private void RefreshTableListDisplay()
         {
+            UpdateModeColumnVisibility();
             listViewSelectedTables.Items.Clear();
             
             // Sort: Fact first, then by display name
@@ -1509,6 +1526,7 @@ namespace DataverseToPowerBI.XrmToolBox
             item.Name = logicalName;
             item.SubItems.Add(roleText);
             item.SubItems.Add(table.DisplayName ?? logicalName);
+            item.SubItems.Add(GetTableModeDisplayText(logicalName, isFact));
             item.SubItems.Add(formText);
             item.SubItems.Add(viewText);
             item.SubItems.Add(attrCount);
@@ -1536,9 +1554,10 @@ namespace DataverseToPowerBI.XrmToolBox
                     r.IsSnowflake);
                 
                 item.SubItems[1].Text = isFact ? "⭐ Fact" : (isSnowflake ? "Dim ❄️" : "Dim");
-                item.SubItems[3].Text = GetFormDisplayText(logicalName);
-                item.SubItems[4].Text = GetViewDisplayText(logicalName);
-                item.SubItems[5].Text = _selectedAttributes.ContainsKey(logicalName)
+                item.SubItems[3].Text = GetTableModeDisplayText(logicalName, isFact);
+                item.SubItems[4].Text = GetFormDisplayText(logicalName);
+                item.SubItems[5].Text = GetViewDisplayText(logicalName);
+                item.SubItems[6].Text = _selectedAttributes.ContainsKey(logicalName)
                     ? _selectedAttributes[logicalName].Count.ToString()
                     : "0";
 
@@ -1588,6 +1607,30 @@ namespace DataverseToPowerBI.XrmToolBox
             
             var view = views.FirstOrDefault(v => v.ViewId == selectedViewId);
             return view != null ? view.Name : views.First().Name;
+        }
+        
+        private string GetTableModeDisplayText(string logicalName, bool isFact)
+        {
+            var mode = (_currentModel?.StorageMode ?? "DirectQuery");
+            switch (mode)
+            {
+                case "Import":
+                    return "Import";
+                case "Dual":
+                    return isFact ? "Direct Query" : "Dual";
+                case "DualSelect":
+                    if (isFact) return "Direct Query";
+                    if (_tableStorageModes.TryGetValue(logicalName, out var overrideMode))
+                        return overrideMode == "dual" ? "Dual" : "Direct Query";
+                    return "Direct Query";
+                default: // DirectQuery
+                    return "Direct Query";
+            }
+        }
+
+        private void UpdateModeColumnVisibility()
+        {
+            colMode.Width = 90;
         }
         
         private void AddDateTableToDisplay()
@@ -1783,47 +1826,8 @@ namespace DataverseToPowerBI.XrmToolBox
                     formFields = new HashSet<string>(form.Fields, StringComparer.OrdinalIgnoreCase);
             }
             
-            // Sort attributes based on current sort column
-            IEnumerable<AttributeMetadata> sortedAttrs;
-            switch (_attributesSortColumn)
-            {
-                case 1: // Form column
-                    sortedAttrs = _attributesSortAscending
-                        ? attributes.OrderBy(a => formFields.Contains(a.LogicalName) ? "✓" : "")
-                        : attributes.OrderByDescending(a => formFields.Contains(a.LogicalName) ? "✓" : "");
-                    break;
-                case 2: // Display Name column
-                    sortedAttrs = _attributesSortAscending
-                        ? attributes.OrderBy(a => a.DisplayName ?? a.LogicalName, StringComparer.OrdinalIgnoreCase)
-                        : attributes.OrderByDescending(a => a.DisplayName ?? a.LogicalName, StringComparer.OrdinalIgnoreCase);
-                    break;
-                case 3: // Logical Name column
-                    sortedAttrs = _attributesSortAscending
-                        ? attributes.OrderBy(a => a.LogicalName, StringComparer.OrdinalIgnoreCase)
-                        : attributes.OrderByDescending(a => a.LogicalName, StringComparer.OrdinalIgnoreCase);
-                    break;
-                case 4: // Type column
-                    sortedAttrs = _attributesSortAscending
-                        ? attributes.OrderBy(a => a.AttributeType ?? "", StringComparer.OrdinalIgnoreCase)
-                        : attributes.OrderByDescending(a => a.AttributeType ?? "", StringComparer.OrdinalIgnoreCase);
-                    break;
-                default:
-                    sortedAttrs = attributes.OrderBy(a => a.DisplayName ?? a.LogicalName, StringComparer.OrdinalIgnoreCase);
-                    break;
-            }
-            
-            // Force Id and Name attributes to top (always, regardless of sort)
-            var attrList = sortedAttrs.ToList();
-            var idAttr = attrList.FirstOrDefault(a => a.LogicalName.Equals(primaryIdAttr, StringComparison.OrdinalIgnoreCase));
-            var nameAttr = attrList.FirstOrDefault(a => a.LogicalName.Equals(primaryNameAttr, StringComparison.OrdinalIgnoreCase));
-            
-            if (idAttr != null) attrList.Remove(idAttr);
-            if (nameAttr != null) attrList.Remove(nameAttr);
-            
-            var finalList = new List<AttributeMetadata>();
-            if (idAttr != null) finalList.Add(idAttr);
-            if (nameAttr != null) finalList.Add(nameAttr);
-            finalList.AddRange(attrList);
+            // Use pre-sorted cache if sort parameters match, otherwise rebuild
+            var sortedList = GetSortedAttributes(logicalName, attributes, formFields, primaryIdAttr, primaryNameAttr);
             
             // Build effective display name map and detect duplicates
             var overrides = _attributeDisplayNameOverrides.ContainsKey(logicalName)
@@ -1835,7 +1839,7 @@ namespace DataverseToPowerBI.XrmToolBox
             var displayNameCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             if (useAliases)
             {
-                foreach (var attr in finalList)
+                foreach (var attr in sortedList)
                 {
                     var isSelected2 = selected.Contains(attr.LogicalName);
                     var isRequired2 = requiredAttrs.Contains(attr.LogicalName);
@@ -1850,7 +1854,11 @@ namespace DataverseToPowerBI.XrmToolBox
                 }
             }
             
-            foreach (var attr in finalList)
+            // Pre-build all items into an array, then add in one shot
+            var items = new List<ListViewItem>(sortedList.Count);
+            _boldAttrFont ??= new Font(listViewAttributes.Font, FontStyle.Bold);
+            
+            foreach (var attr in sortedList)
             {
                 var isSelected = selected.Contains(attr.LogicalName);
                 var isRequired = requiredAttrs.Contains(attr.LogicalName);
@@ -1893,7 +1901,6 @@ namespace DataverseToPowerBI.XrmToolBox
                 if (isRequired)
                 {
                     item.ForeColor = Color.Blue;
-                    _boldAttrFont ??= new Font(listViewAttributes.Font, FontStyle.Bold);
                     item.Font = _boldAttrFont;
                 }
                 else if (isSelected)
@@ -1912,12 +1919,115 @@ namespace DataverseToPowerBI.XrmToolBox
                     item.BackColor = Color.FromArgb(255, 200, 200);
                 }
                 
-                listViewAttributes.Items.Add(item);
+                items.Add(item);
             }
+            
+            _isLoading = true;
+            listViewAttributes.Items.AddRange(items.ToArray());
+            _isLoading = false;
             }
             finally
             {
                 listViewAttributes.EndUpdate();
+            }
+        }
+
+        /// <summary>
+        /// Returns a pre-sorted attribute list for a table, using a cache to avoid re-sorting.
+        /// The cache is invalidated when sort parameters change.
+        /// </summary>
+        private List<AttributeMetadata> GetSortedAttributes(string logicalName,
+            List<AttributeMetadata> attributes, HashSet<string> formFields,
+            string? primaryIdAttr, string? primaryNameAttr)
+        {
+            // Check if we can use the cache
+            bool cacheValid = _sortedCacheSortColumn == _attributesSortColumn
+                           && _sortedCacheSortAscending == _attributesSortAscending
+                           && _sortedAttributeCache.ContainsKey(logicalName);
+
+            if (cacheValid)
+                return _sortedAttributeCache[logicalName];
+
+            // Rebuild cache for this sort order
+            if (_sortedCacheSortColumn != _attributesSortColumn || _sortedCacheSortAscending != _attributesSortAscending)
+            {
+                _sortedAttributeCache.Clear();
+                _sortedCacheSortColumn = _attributesSortColumn;
+                _sortedCacheSortAscending = _attributesSortAscending;
+            }
+
+            IEnumerable<AttributeMetadata> sortedAttrs;
+            switch (_attributesSortColumn)
+            {
+                case 1: // Form column
+                    sortedAttrs = _attributesSortAscending
+                        ? attributes.OrderBy(a => formFields.Contains(a.LogicalName) ? "✓" : "")
+                        : attributes.OrderByDescending(a => formFields.Contains(a.LogicalName) ? "✓" : "");
+                    break;
+                case 2: // Display Name column
+                    sortedAttrs = _attributesSortAscending
+                        ? attributes.OrderBy(a => a.DisplayName ?? a.LogicalName, StringComparer.OrdinalIgnoreCase)
+                        : attributes.OrderByDescending(a => a.DisplayName ?? a.LogicalName, StringComparer.OrdinalIgnoreCase);
+                    break;
+                case 3: // Logical Name column
+                    sortedAttrs = _attributesSortAscending
+                        ? attributes.OrderBy(a => a.LogicalName, StringComparer.OrdinalIgnoreCase)
+                        : attributes.OrderByDescending(a => a.LogicalName, StringComparer.OrdinalIgnoreCase);
+                    break;
+                case 4: // Type column
+                    sortedAttrs = _attributesSortAscending
+                        ? attributes.OrderBy(a => a.AttributeType ?? "", StringComparer.OrdinalIgnoreCase)
+                        : attributes.OrderByDescending(a => a.AttributeType ?? "", StringComparer.OrdinalIgnoreCase);
+                    break;
+                default:
+                    sortedAttrs = attributes.OrderBy(a => a.DisplayName ?? a.LogicalName, StringComparer.OrdinalIgnoreCase);
+                    break;
+            }
+
+            // Force Id and Name attributes to top
+            var attrList = sortedAttrs.ToList();
+            var idAttr = attrList.FirstOrDefault(a => a.LogicalName.Equals(primaryIdAttr, StringComparison.OrdinalIgnoreCase));
+            var nameAttr = attrList.FirstOrDefault(a => a.LogicalName.Equals(primaryNameAttr, StringComparison.OrdinalIgnoreCase));
+
+            if (idAttr != null) attrList.Remove(idAttr);
+            if (nameAttr != null) attrList.Remove(nameAttr);
+
+            var finalList = new List<AttributeMetadata>();
+            if (idAttr != null) finalList.Add(idAttr);
+            if (nameAttr != null) finalList.Add(nameAttr);
+            finalList.AddRange(attrList);
+
+            _sortedAttributeCache[logicalName] = finalList;
+            return finalList;
+        }
+
+        /// <summary>
+        /// Pre-builds the sorted attribute cache for all loaded tables using the current sort order.
+        /// Called after metadata loading completes to eliminate sort latency on first table selection.
+        /// </summary>
+        private void PreBuildAttributeSortCache()
+        {
+            _sortedAttributeCache.Clear();
+            _sortedCacheSortColumn = _attributesSortColumn;
+            _sortedCacheSortAscending = _attributesSortAscending;
+
+            foreach (var tableName in _tableAttributes.Keys)
+            {
+                if (!_selectedTables.ContainsKey(tableName)) continue;
+                var table = _selectedTables[tableName];
+                var attributes = _tableAttributes[tableName];
+
+                HashSet<string> formFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if (_selectedFormIds.ContainsKey(tableName) && _tableForms.ContainsKey(tableName))
+                {
+                    var formId = _selectedFormIds[tableName];
+                    var form = _tableForms[tableName].FirstOrDefault(f => f.FormId == formId);
+                    if (form?.Fields != null)
+                        formFields = new HashSet<string>(form.Fields, StringComparer.OrdinalIgnoreCase);
+                }
+
+                GetSortedAttributes(tableName, attributes, formFields,
+                    table.PrimaryIdAttribute, table.PrimaryNameAttribute);
             }
         }
         
@@ -2274,18 +2384,20 @@ namespace DataverseToPowerBI.XrmToolBox
         {
             if (listViewSelectedTables.Width <= 0) return;
             
-            // Fixed-width columns: Edit (30), Role (55), Attrs (50)
+            // Fixed-width columns
             const int editWidth = 30;
             const int roleWidth = 55;
-            const int attrsWidth = 50;
+            const int attrsWidth = 30;
             const int scrollBarWidth = 20;
             
-            var availableWidth = listViewSelectedTables.Width - editWidth - roleWidth - attrsWidth - scrollBarWidth;
+            var modeWidth = colMode.Width; // 0 when hidden, 90 when visible
+            
+            var availableWidth = listViewSelectedTables.Width - editWidth - roleWidth - modeWidth - attrsWidth - scrollBarWidth;
             if (availableWidth <= 0) return;
             
-            // Distribute remaining: Table (25%), Form (25%), Filter (50%)
-            var tableWidth = (int)(availableWidth * 0.25);
-            var formWidth = (int)(availableWidth * 0.25);
+            // Distribute remaining: Table (30%), Form (30%), Filter (40%)
+            var tableWidth = (int)(availableWidth * 0.30);
+            var formWidth = (int)(availableWidth * 0.30);
             var filterWidth = availableWidth - tableWidth - formWidth;
             
             listViewSelectedTables.BeginUpdate();
@@ -2294,6 +2406,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 colEdit.Width = editWidth;
                 colRole.Width = roleWidth;
                 colTable.Width = tableWidth;
+                colMode.Width = modeWidth;
                 colForm.Width = formWidth;
                 colView.Width = filterWidth;
                 colAttrs.Width = attrsWidth;
@@ -2345,11 +2458,51 @@ namespace DataverseToPowerBI.XrmToolBox
             var info = listViewSelectedTables.HitTest(listViewSelectedTables.PointToClient(Cursor.Position));
             if (info.Item != null && info.SubItem != null)
             {
+                var colIndex = info.Item.SubItems.IndexOf(info.SubItem);
+                
                 // Check if click was on the Edit column (first column, index 0)
-                if (info.Item.SubItems.IndexOf(info.SubItem) == 0)
+                if (colIndex == 0)
                 {
                     var logicalName = info.Item.Name;
                     ShowFormViewSelector(logicalName);
+                }
+                // Check if click was on the Mode column (index 3) — editable for non-Import modes
+                else if (colIndex == 3)
+                {
+                    var storageMode = _currentModel?.StorageMode ?? "DirectQuery";
+                    if (storageMode == "Import") return; // Import mode is not editable
+
+                    var logicalName = info.Item.Name;
+                    var isFact = logicalName == _factTable;
+                    if (!isFact) // Fact table is always Direct Query
+                    {
+                        // Determine the current effective mode for this table
+                        string currentMode;
+                        if (storageMode == "DualSelect")
+                        {
+                            currentMode = _tableStorageModes.TryGetValue(logicalName, out var m) ? m : "directQuery";
+                        }
+                        else if (storageMode == "Dual")
+                        {
+                            currentMode = "dual"; // All dims are dual in this mode
+                        }
+                        else
+                        {
+                            currentMode = "directQuery"; // All dims are DQ in DirectQuery mode
+                        }
+
+                        var newMode = currentMode == "dual" ? "directQuery" : "dual";
+
+                        // If not already in DualSelect, switch to it and seed overrides
+                        if (storageMode != "DualSelect")
+                        {
+                            SwitchToDualSelect(storageMode);
+                        }
+
+                        _tableStorageModes[logicalName] = newMode;
+                        RefreshTableListDisplay();
+                        SaveSettings();
+                    }
                 }
             }
         }
@@ -2359,6 +2512,31 @@ namespace DataverseToPowerBI.XrmToolBox
             if (listViewSelectedTables.SelectedItems.Count == 0) return;
             var logicalName = listViewSelectedTables.SelectedItems[0].Name;
             ShowFormViewSelector(logicalName);
+        }
+
+        /// <summary>
+        /// Switches the model from DirectQuery or Dual to DualSelect, seeding per-table overrides
+        /// based on the previous mode, and alerting the user.
+        /// </summary>
+        private void SwitchToDualSelect(string previousMode)
+        {
+            // Seed per-table overrides from the previous mode
+            _tableStorageModes.Clear();
+            foreach (var tableName in _selectedTables.Keys)
+            {
+                if (tableName == _factTable) continue; // Fact is always directQuery
+                _tableStorageModes[tableName] = previousMode == "Dual" ? "dual" : "directQuery";
+            }
+
+            _currentModel!.StorageMode = "DualSelect";
+            _modelManager.SaveModel(_currentModel);
+
+            var fromLabel = previousMode == "Dual" ? "Dual - All Dimensions" : "Direct Query";
+            MessageBox.Show(
+                $"Storage mode has been changed from \"{fromLabel}\" to \"Dual - Select Tables\" " +
+                "to allow per-table mode selection.\n\n" +
+                "You can change this back in the Semantic Model Manager.",
+                "Storage Mode Changed", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         
         private void ShowFormViewSelector(string logicalName)
@@ -2836,8 +3014,11 @@ namespace DataverseToPowerBI.XrmToolBox
                     _currentModel?.FabricLinkSQLEndpoint,
                     _currentModel?.FabricLinkSQLDatabase,
                     _currentModel?.PluginSettings?.LanguageCode ?? 1033,
-                    _currentModel?.UseDisplayNameAliasesInSql ?? true);
+                    _currentModel?.UseDisplayNameAliasesInSql ?? true,
+                    _currentModel?.StorageMode ?? "DirectQuery");
                     
+                    if ((_currentModel?.StorageMode ?? "DirectQuery") == "DualSelect")
+                        builder.SetTableStorageModeOverrides(_currentModel?.PluginSettings?.TableStorageModes);
                     worker.ReportProgress(10, "Analyzing changes...");
 
                     // Get date table config from current model
@@ -3101,7 +3282,11 @@ namespace DataverseToPowerBI.XrmToolBox
                     _currentModel?.FabricLinkSQLEndpoint,
                     _currentModel?.FabricLinkSQLDatabase,
                     _currentModel?.PluginSettings?.LanguageCode ?? 1033,
-                    _currentModel?.UseDisplayNameAliasesInSql ?? true);
+                    _currentModel?.UseDisplayNameAliasesInSql ?? true,
+                    _currentModel?.StorageMode ?? "DirectQuery");
+
+                if ((_currentModel?.StorageMode ?? "DirectQuery") == "DualSelect")
+                    builder.SetTableStorageModeOverrides(_currentModel?.PluginSettings?.TableStorageModes);
 
                 var entries = builder.GenerateTmdlPreview(
                     fullUrl,
@@ -3183,6 +3368,12 @@ namespace DataverseToPowerBI.XrmToolBox
         /// </summary>
         [System.Runtime.Serialization.DataMember]
         public Dictionary<string, Dictionary<string, string>> AttributeDisplayNameOverrides { get; set; } = new Dictionary<string, Dictionary<string, string>>();
+        /// <summary>
+        /// Per-table storage mode overrides for "DualSelect" mode.
+        /// Key = table logical name, Value = "directQuery" or "dual".
+        /// </summary>
+        [System.Runtime.Serialization.DataMember]
+        public Dictionary<string, string> TableStorageModes { get; set; } = new Dictionary<string, string>();
     }
     
     [System.Runtime.Serialization.DataContract]
