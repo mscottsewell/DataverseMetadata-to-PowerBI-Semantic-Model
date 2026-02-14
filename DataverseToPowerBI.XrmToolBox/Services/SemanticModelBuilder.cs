@@ -807,7 +807,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         ChangeType = ChangeType.Warning,
                         ObjectType = "Integrity",
                         ObjectName = "Model Structure",
-                        Description = $"Incomplete PBIP structure detected — {missingElements.Count} missing element(s). A full rebuild is recommended."
+                        Impact = ImpactLevel.Destructive,
+                        Description = $"Incomplete PBIP structure detected — {missingElements.Count} missing element(s). A full rebuild is recommended.",
+                        DetailText = $"Missing elements:\n{string.Join("\n", missingElements.Select(m => $"  • {m}"))}"
                     });
 
                     foreach (var missing in missingElements)
@@ -817,6 +819,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             ChangeType = ChangeType.Warning,
                             ObjectType = "Missing",
                             ObjectName = missing,
+                            Impact = ImpactLevel.Destructive,
                             Description = "Required file or folder is missing"
                         });
                     }
@@ -831,19 +834,28 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     ChangeType = ChangeType.New,
                     ObjectType = "Project",
                     ObjectName = projectName,
+                    Impact = requiresFullRebuild ? ImpactLevel.Destructive : ImpactLevel.Additive,
                     Description = requiresFullRebuild
                         ? "Full rebuild of Power BI project (missing structural files)"
-                        : $"Create new Power BI project from template (storage: {_storageMode})"
+                        : $"Create new Power BI project from template (storage: {_storageMode})",
+                    DetailText = requiresFullRebuild
+                        ? "The existing PBIP structure is incomplete and will be fully regenerated.\nAll files will be overwritten."
+                        : $"A new PBIP project will be created at:\n  {pbipFolder}\n\nStorage mode: {_storageMode}\nConnection type: {(_connectionType ?? "TDS")}"
                 });
 
                 foreach (var table in tables)
                 {
+                    var colNames = table.Attributes?.Select(a => a.DisplayName ?? a.LogicalName).Take(10).ToList() ?? new List<string>();
+                    var colPreview = string.Join("\n  ", colNames);
+                    if ((table.Attributes?.Count ?? 0) > 10) colPreview += $"\n  ... and {table.Attributes!.Count - 10} more";
                     changes.Add(new SemanticModelChange
                     {
                         ChangeType = ChangeType.New,
                         ObjectType = "Table",
                         ObjectName = table.DisplayName ?? table.LogicalName,
-                        Description = $"Create table with {table.Attributes?.Count ?? 0} columns"
+                        Impact = ImpactLevel.Additive,
+                        Description = $"Create table with {table.Attributes?.Count ?? 0} columns",
+                        DetailText = $"Logical name: {table.LogicalName}\nColumns:\n  {colPreview}"
                     });
                 }
 
@@ -854,7 +866,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         ChangeType = ChangeType.New,
                         ObjectType = "Relationship",
                         ObjectName = $"{rel.SourceTable} → {rel.TargetTable}",
-                        Description = $"via {rel.SourceAttribute}"
+                        Impact = ImpactLevel.Additive,
+                        Description = $"via {rel.SourceAttribute}",
+                        DetailText = $"From: {rel.SourceTable}.{rel.SourceAttribute}\nTo: {rel.TargetTable} (primary key)"
                     });
                 }
             }
@@ -875,7 +889,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             ChangeType = ChangeType.Warning,
                             ObjectType = "StorageMode",
                             ObjectName = "Storage Mode Change",
-                            Description = $"Changing from {existingMode} to {_storageMode} — cache.abf will be deleted to prevent stale data"
+                            Impact = ImpactLevel.Moderate,
+                            Description = $"Changing from {existingMode} to {_storageMode} — cache.abf will be deleted to prevent stale data",
+                            DetailText = $"Current mode: {existingMode}\nNew mode: {_storageMode}\n\nThe cache file (cache.abf) will be deleted.\nYou will need to refresh data in Power BI Desktop after opening."
                         });
                     }
                 }
@@ -893,7 +909,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         ChangeType = ChangeType.Warning,
                         ObjectType = "ConnectionType",
                         ObjectName = "Connection Type Change",
-                        Description = $"Changing from {fromType} to {toType} — all table queries will be restructured. User measures and relationships will be preserved."
+                        Impact = ImpactLevel.Destructive,
+                        Description = $"Changing from {fromType} to {toType} — all table queries will be restructured. User measures and relationships will be preserved.",
+                        DetailText = $"Current: {fromType}\nNew: {toType}\n\nAll partition expressions (table queries) will be regenerated.\nUser measures, descriptions, formatting, and relationships are preserved.\n\nThis is a structural change — review the model in Power BI Desktop after applying."
                     });
                 }
 
@@ -929,7 +947,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                 ChangeType = ChangeType.New,
                                 ObjectType = "Table",
                                 ObjectName = table.DisplayName ?? table.LogicalName,
-                                Description = $"Create new table with {table.Attributes?.Count ?? 0} columns"
+                                Impact = ImpactLevel.Additive,
+                                Description = $"Create new table with {table.Attributes?.Count ?? 0} columns",
+                                DetailText = $"Logical name: {table.LogicalName}\nThis table does not yet exist in the PBIP and will be created."
                             });
                         }
                         else
@@ -950,7 +970,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                     ChangeType = ChangeType.Preserve,
                                     ObjectType = "Measures",
                                     ObjectName = table.DisplayName ?? table.LogicalName,
-                                    Description = $"Preserve {userMeasures.Count} user-created measure(s): {string.Join(", ", userMeasures.Take(3))}{(userMeasures.Count > 3 ? "..." : "")}"
+                                    Impact = ImpactLevel.Safe,
+                                    Description = $"Preserve {userMeasures.Count} user-created measure(s): {string.Join(", ", userMeasures.Take(3))}{(userMeasures.Count > 3 ? "..." : "")}",
+                                    DetailText = $"User measures that will be preserved:\n{string.Join("\n", userMeasures.Select(m => $"  • {m}"))}"
                                 });
                             }
 
@@ -970,22 +992,37 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                 if (tableChanges.ModifiedColumns.Count > 0) changeDetails.Add($"{tableChanges.ModifiedColumns.Count} modified column(s)");
                                 if (tableChanges.RemovedColumns.Count > 0) changeDetails.Add($"{tableChanges.RemovedColumns.Count} removed column(s)");
 
+                                var tableDetailSb = new StringBuilder();
+                                tableDetailSb.AppendLine($"Logical name: {table.LogicalName}");
+                                if (tableChanges.NewColumns.Count > 0) tableDetailSb.AppendLine($"New columns: {string.Join(", ", tableChanges.NewColumns)}");
+                                if (tableChanges.RemovedColumns.Count > 0) tableDetailSb.AppendLine($"Removed columns: {string.Join(", ", tableChanges.RemovedColumns)}");
+                                if (tableChanges.ModifiedColumns.Count > 0) tableDetailSb.AppendLine($"Modified columns:\n{string.Join("\n", tableChanges.ModifiedColumns.Select(kv => $"  {kv.Key}: {kv.Value}"))}");
+
+                                var tableImpact = tableChanges.RemovedColumns.Count > 0 ? ImpactLevel.Moderate
+                                    : tableChanges.QueryChanged ? ImpactLevel.Moderate
+                                    : ImpactLevel.Additive;
+
                                 changes.Add(new SemanticModelChange
                                 {
                                     ChangeType = ChangeType.Update,
                                     ObjectType = "Table",
                                     ObjectName = table.DisplayName ?? table.LogicalName,
-                                    Description = $"Update: {string.Join(", ", changeDetails)}"
+                                    Impact = tableImpact,
+                                    Description = $"Update: {string.Join(", ", changeDetails)}",
+                                    DetailText = tableDetailSb.ToString()
                                 });
 
-                                // Add detailed changes
+                                // Add detailed column changes as children
+                                var parentTableName = table.DisplayName ?? table.LogicalName;
                                 foreach (var col in tableChanges.NewColumns)
                                 {
                                     changes.Add(new SemanticModelChange
                                     {
                                         ChangeType = ChangeType.New,
                                         ObjectType = "Column",
-                                        ObjectName = $"{table.DisplayName}.{col}",
+                                        ObjectName = $"{parentTableName}.{col}",
+                                        Impact = ImpactLevel.Additive,
+                                        ParentKey = parentTableName,
                                         Description = "New column"
                                     });
                                 }
@@ -996,8 +1033,13 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                     {
                                         ChangeType = ChangeType.Update,
                                         ObjectType = "Column",
-                                        ObjectName = $"{table.DisplayName}.{kvp.Key}",
-                                        Description = $"Changed: {kvp.Value}"
+                                        ObjectName = $"{parentTableName}.{kvp.Key}",
+                                        Impact = kvp.Value.Contains("dataType") ? ImpactLevel.Moderate : ImpactLevel.Safe,
+                                        ParentKey = parentTableName,
+                                        Description = $"Changed: {kvp.Value}",
+                                        DetailText = kvp.Value.Contains("dataType")
+                                            ? "Data type change — user formatting (formatString/summarizeBy) will be reset."
+                                            : ""
                                     });
                                 }
                             }
@@ -1009,6 +1051,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                     ChangeType = ChangeType.Preserve,
                                     ObjectType = "Table",
                                     ObjectName = table.DisplayName ?? table.LogicalName,
+                                    Impact = ImpactLevel.Safe,
                                     Description = "No changes detected"
                                 });
                             }
@@ -1029,7 +1072,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             ChangeType = ChangeType.Warning,
                             ObjectType = "Table",
                             ObjectName = orphan,
-                            Description = "Exists in PBIP but not in Dataverse metadata (will be kept as-is)"
+                            Impact = ImpactLevel.Safe,
+                            Description = "Exists in PBIP but not in Dataverse metadata (will be kept as-is)",
+                            DetailText = "This table file exists in the PBIP folder but is not in the current\ntable selection. It will be left untouched unless you check\n'Remove tables no longer in the model'."
                         });
                     }
                 }
@@ -1043,12 +1088,22 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     if (relationshipChanges.ModifiedRelationships.Count > 0) relDetails.Add($"{relationshipChanges.ModifiedRelationships.Count} modified");
                     if (relationshipChanges.RemovedRelationships.Count > 0) relDetails.Add($"{relationshipChanges.RemovedRelationships.Count} removed");
 
+                    var relDetailSb = new StringBuilder();
+                    if (relationshipChanges.NewRelationships.Count > 0)
+                        relDetailSb.AppendLine($"New:\n{string.Join("\n", relationshipChanges.NewRelationships.Select(r => $"  {r}"))}");
+                    if (relationshipChanges.ModifiedRelationships.Count > 0)
+                        relDetailSb.AppendLine($"Modified:\n{string.Join("\n", relationshipChanges.ModifiedRelationships.Select(r => $"  {r}"))}");
+                    if (relationshipChanges.RemovedRelationships.Count > 0)
+                        relDetailSb.AppendLine($"Removed:\n{string.Join("\n", relationshipChanges.RemovedRelationships.Select(r => $"  {r}"))}");
+
                     changes.Add(new SemanticModelChange
                     {
                         ChangeType = ChangeType.Update,
                         ObjectType = "Relationships",
                         ObjectName = "Relationships",
-                        Description = $"Update: {string.Join(", ", relDetails)}"
+                        Impact = relationshipChanges.RemovedRelationships.Count > 0 ? ImpactLevel.Moderate : ImpactLevel.Additive,
+                        Description = $"Update: {string.Join(", ", relDetails)}",
+                        DetailText = relDetailSb.ToString()
                     });
                 }
                 else
@@ -1058,6 +1113,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         ChangeType = ChangeType.Preserve,
                         ObjectType = "Relationships",
                         ObjectName = "All",
+                        Impact = ImpactLevel.Safe,
                         Description = "No changes detected"
                     });
                 }
@@ -1085,7 +1141,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             ChangeType = ChangeType.Update,
                             ObjectType = "FabricLink",
                             ObjectName = "Expressions",
-                            Description = $"Update: {string.Join(", ", details)}"
+                            Impact = ImpactLevel.Moderate,
+                            Description = $"Update: {string.Join(", ", details)}",
+                            DetailText = $"FabricLink connection parameters are changing:\n{string.Join("\n", details)}"
                         });
                     }
                     else
@@ -1095,6 +1153,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             ChangeType = ChangeType.Preserve,
                             ObjectType = "FabricLink",
                             ObjectName = "Expressions",
+                            Impact = ImpactLevel.Safe,
                             Description = "No changes detected"
                         });
                     }
@@ -1115,7 +1174,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         ChangeType = ChangeType.Update,
                         ObjectType = "DataverseURL",
                         ObjectName = "Table",
-                        Description = $"Update: {currentUrl} → {normalizedDataverseUrl}"
+                        Impact = ImpactLevel.Moderate,
+                        Description = $"Update: {currentUrl} → {normalizedDataverseUrl}",
+                        DetailText = $"The Dataverse URL parameter will be updated.\nOld: {currentUrl}\nNew: {normalizedDataverseUrl}"
                     });
                 }
                 else
@@ -1125,6 +1186,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         ChangeType = ChangeType.Preserve,
                         ObjectType = "DataverseURL",
                         ObjectName = "Table",
+                        Impact = ImpactLevel.Safe,
                         Description = "No changes detected"
                     });
                 }
