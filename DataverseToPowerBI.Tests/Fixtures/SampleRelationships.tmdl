@@ -1,0 +1,18 @@
+relationship aaaaaaaa-1111-2222-3333-444444444444
+	relyOnReferentialIntegrity
+	fromColumn: Account.parentaccountid
+	toColumn: Account.accountid
+
+relationship bbbbbbbb-1111-2222-3333-444444444444
+	isActive: false
+	fromColumn: 'Opportunity'.accountid
+	toColumn: Account.accountid
+
+/// User-added relationship (preserved by DataverseToPowerBI)
+relationship cccccccc-1111-2222-3333-444444444444
+	fromColumn: Account.'Custom Field'
+	toColumn: 'Custom Table'.'Custom Id'
+
+relationship dddddddd-1111-2222-3333-444444444444
+	fromColumn: Account.createdon
+	toColumn: Date.Date

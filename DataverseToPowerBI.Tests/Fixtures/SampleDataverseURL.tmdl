@@ -1,0 +1,24 @@
+table DataverseURL
+	isHidden
+	lineageTag: dvurl-1111-2222-3333-444444444444
+
+	column DataverseURL
+		dataType: string
+		isHidden
+		lineageTag: dvurl-2222-3333-4444-555555555555
+		summarizeBy: none
+		sourceColumn: DataverseURL
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	partition DataverseURL = m
+		mode: import
+		source = "myorg.crm.dynamics.com" meta [IsParameterQuery=true, Type="Any", IsParameterQueryRequired=true]
+
+	changedProperty = IsHidden
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Text

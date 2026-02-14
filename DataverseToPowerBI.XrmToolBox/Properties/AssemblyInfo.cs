@@ -18,3 +18,5 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyVersion("1.2026.5.22")]
 [assembly: AssemblyFileVersion("1.2026.5.22")]
 
+[assembly: InternalsVisibleTo("DataverseToPowerBI.Tests")]
+

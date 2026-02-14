@@ -1,0 +1,11 @@
+expression FabricSQLEndpoint = "myendpoint.datawarehouse.fabric.microsoft.com" meta [IsParameterQuery=true, Type="Any", IsParameterQueryRequired=true]
+	lineageTag: expr-1111-2222-3333-444444444444
+
+	annotation PBI_ResultType = Text
+
+expression FabricLakehouse = "MyLakehouse" meta [IsParameterQuery=true, Type="Any", IsParameterQueryRequired=true]
+	lineageTag: expr-2222-3333-4444-555555555555
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Text

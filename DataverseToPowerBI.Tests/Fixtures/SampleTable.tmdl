@@ -1,0 +1,88 @@
+/// Source: account
+table Account
+	lineageTag: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+
+	/// Primary key | Source: account.accountid
+	column accountid
+		dataType: string
+		isHidden
+		isKey
+		lineageTag: 11111111-2222-3333-4444-555555555555
+		summarizeBy: none
+		sourceColumn: accountid
+
+		annotation SummarizationSetBy = Automatic
+
+	/// The name of the account | Source: account.name
+	column 'Account Name'
+		dataType: string
+		lineageTag: 22222222-3333-4444-5555-666666666666
+		isDefaultLabel
+		summarizeBy: none
+		sourceColumn: name
+		description: The primary name of the account
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UserCustomAnnotation = MyValue
+
+	/// Revenue | Source: account.revenue
+	column Revenue
+		dataType: decimal
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		lineageTag: 33333333-4444-5555-6666-777777777777
+		summarizeBy: sum
+		sourceColumn: revenue
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Created date | Source: account.createdon
+	column 'Created On'
+		dataType: dateTime
+		formatString: Short Date
+		lineageTag: 44444444-5555-6666-7777-888888888888
+		summarizeBy: none
+		sourceColumn: createdon
+		description: User-edited description here
+
+		changedProperty = DataType
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	measure 'Custom Measure' = SUM(Account[Revenue]) * 2
+		formatString: $#,0.00
+		lineageTag: 55555555-6666-7777-8888-999999999999
+
+	measure 'Link to Account' = ```
+			
+			"https://" & DataverseURL & "/main.aspx?pagetype=entityrecord&etn=account&id=" 
+				& SELECTEDVALUE('Account'[accountid], BLANK())
+			```
+		lineageTag: 66666666-7777-8888-9999-aaaaaaaaaaaa
+		dataCategory: WebUrl
+
+	measure 'Account Count' = COUNTROWS('Account')
+		formatString: 0
+		lineageTag: 77777777-8888-9999-aaaa-bbbbbbbbbbbb
+
+	partition Account = m
+		mode: directQuery
+		source =
+				let
+				    Source = CommonDataServiceForApps.Database(DataverseURL,
+				    [Query="
+				    SELECT Base.accountid
+				        ,Base.name
+				        ,Base.revenue
+				        ,Base.createdon
+				    FROM Account AS Base
+				    WHERE Base.statecode = 0
+				    " ,null ,[EnableFolding=true])
+				in
+				    Source
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table

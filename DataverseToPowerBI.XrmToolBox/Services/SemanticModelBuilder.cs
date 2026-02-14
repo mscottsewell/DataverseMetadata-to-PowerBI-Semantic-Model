@@ -129,7 +129,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// For measures: key = "measure:{measureName}" → lineageTag
         /// For expressions: key = "expr:{expressionName}" → lineageTag
         /// </summary>
-        private Dictionary<string, string> ParseExistingLineageTags(string tmdlPath)
+        internal Dictionary<string, string> ParseExistingLineageTags(string tmdlPath)
         {
             var tags = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             if (!File.Exists(tmdlPath))
@@ -226,7 +226,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// Parses existing TMDL to extract per-column metadata (description, formatString, summarizeBy, annotations).
         /// Key = sourceColumn value. Used by Phases 3-5 to preserve user customizations.
         /// </summary>
-        private Dictionary<string, ExistingColumnInfo> ParseExistingColumnMetadata(string tmdlPath)
+        internal Dictionary<string, ExistingColumnInfo> ParseExistingColumnMetadata(string tmdlPath)
         {
             var columns = new Dictionary<string, ExistingColumnInfo>(StringComparer.OrdinalIgnoreCase);
             if (!File.Exists(tmdlPath))
@@ -285,7 +285,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// <summary>
         /// Metadata parsed from an existing column in a TMDL file.
         /// </summary>
-        private class ExistingColumnInfo
+        internal class ExistingColumnInfo
         {
             public string SourceColumn { get; set; } = "";
             public string? Description { get; set; }
@@ -299,7 +299,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// Parses existing relationships.tmdl and returns a map of relationship keys to their GUIDs.
         /// Key format: "fromTable.fromColumn→toTable.toColumn" (using display names as they appear in TMDL).
         /// </summary>
-        private Dictionary<string, string> ParseExistingRelationshipGuids(string relationshipsPath)
+        internal Dictionary<string, string> ParseExistingRelationshipGuids(string relationshipsPath)
         {
             var guids = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             if (!File.Exists(relationshipsPath))
@@ -338,7 +338,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// Parses existing relationships.tmdl and returns full relationship blocks keyed by their
         /// fromColumn→toColumn key. Used to identify user-added relationships that should be preserved.
         /// </summary>
-        private Dictionary<string, string> ParseExistingRelationshipBlocks(string relationshipsPath)
+        internal Dictionary<string, string> ParseExistingRelationshipBlocks(string relationshipsPath)
         {
             var blocks = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             if (!File.Exists(relationshipsPath))
@@ -375,7 +375,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// Identifies user-added relationships by comparing existing relationship blocks against
         /// the set of tool-generated relationship keys. Returns the TMDL text for user relationships.
         /// </summary>
-        private string? ExtractUserRelationships(
+        internal string? ExtractUserRelationships(
             Dictionary<string, string> existingBlocks,
             HashSet<string> toolGeneratedKeys)
         {
@@ -405,7 +405,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// Builds the set of relationship keys that the tool would generate, without actually generating TMDL.
         /// Used to identify which existing relationships are user-added (not in this set).
         /// </summary>
-        private HashSet<string> BuildToolRelationshipKeys(
+        internal HashSet<string> BuildToolRelationshipKeys(
             List<ExportTable> tables,
             List<ExportRelationship> relationships,
             Dictionary<string, Dictionary<string, AttributeDisplayInfo>> attributeDisplayInfo,
@@ -469,7 +469,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// <summary>
         /// Gets a lineageTag from the existing tags dictionary, or generates a new one.
         /// </summary>
-        private string GetOrNewLineageTag(Dictionary<string, string>? existingTags, string key)
+        internal string GetOrNewLineageTag(Dictionary<string, string>? existingTags, string key)
         {
             if (existingTags != null && existingTags.TryGetValue(key, out var tag))
                 return tag;
@@ -585,7 +585,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// The table must have Enable Load checked (which is the default for tables) — without it,
         /// PBI Desktop throws KeyNotFoundException during CommonDataService.Database refresh.
         /// </summary>
-        private string GenerateDataverseUrlTableTmdl(string normalizedUrl, Dictionary<string, string>? existingTags = null)
+        internal string GenerateDataverseUrlTableTmdl(string normalizedUrl, Dictionary<string, string>? existingTags = null)
         {
             var sb = new StringBuilder();
             sb.AppendLine("table DataverseURL");
@@ -2617,7 +2617,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// Extracts the user measures section from existing TMDL (excludes auto-generated measures).
         /// The table parameter provides context for identifying auto-generated measure names.
         /// </summary>
-        private string? ExtractUserMeasuresSection(string tmdlPath, ExportTable? table = null)
+        internal string? ExtractUserMeasuresSection(string tmdlPath, ExportTable? table = null)
         {
             try
             {
@@ -2665,7 +2665,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// <summary>
         /// Inserts user measures into generated TMDL (after columns, before partition)
         /// </summary>
-        private string InsertUserMeasures(string tableTmdl, string measuresSection)
+        internal string InsertUserMeasures(string tableTmdl, string measuresSection)
         {
             // Find the partition section and insert measures before it
             var partitionIndex = tableTmdl.IndexOf("\tpartition");
@@ -2989,7 +2989,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// <summary>
         /// Generates TMDL content for a table
         /// </summary>
-        private string GenerateTableTmdl(ExportTable table, Dictionary<string, Dictionary<string, AttributeDisplayInfo>> attributeDisplayInfo, HashSet<string> requiredLookupColumns, DateTableConfig? dateTableConfig = null, string? outputFolder = null, Dictionary<string, string>? existingLineageTags = null, Dictionary<string, ExistingColumnInfo>? existingColumnMetadata = null)
+        internal string GenerateTableTmdl(ExportTable table, Dictionary<string, Dictionary<string, AttributeDisplayInfo>> attributeDisplayInfo, HashSet<string> requiredLookupColumns, DateTableConfig? dateTableConfig = null, string? outputFolder = null, Dictionary<string, string>? existingLineageTags = null, Dictionary<string, ExistingColumnInfo>? existingColumnMetadata = null)
         {
             var sb = new StringBuilder();
             var displayName = table.DisplayName ?? table.SchemaName ?? table.LogicalName;
@@ -3644,7 +3644,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// <summary>
         /// Generates FabricLink expressions TMDL (FabricSQLEndpoint, FabricLakehouse, and DataverseURL parameters)
         /// </summary>
-        private string GenerateFabricLinkExpressions(string endpoint, string database, Dictionary<string, string>? existingTags = null)
+        internal string GenerateFabricLinkExpressions(string endpoint, string database, Dictionary<string, string>? existingTags = null)
         {
             var sb = new StringBuilder();
 
@@ -3737,7 +3737,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// <summary>
         /// Generates relationships TMDL content
         /// </summary>
-        private string GenerateRelationshipsTmdl(
+        internal string GenerateRelationshipsTmdl(
             List<ExportTable> tables,
             List<ExportRelationship> relationships,
             Dictionary<string, Dictionary<string, AttributeDisplayInfo>> attributeDisplayInfo,
