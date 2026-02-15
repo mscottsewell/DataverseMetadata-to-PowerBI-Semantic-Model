@@ -79,73 +79,50 @@ This document tracks the progress of porting the Dataverse to Power BI Semantic 
 - src/utils/ErrorHandling.ts
 - src/utils/Validation.ts
 
-## In Progress Phases 🔄
+### Phase 3: Core Business Logic - TMDL Generation ✅
+- ✅ FetchXmlToSqlConverter.ts (580 lines)
+  - 30+ FetchXML operators, dual mode (TDS/FabricLink), recursive filters, EXISTS subqueries
+  - DOMParser for secure XML parsing (browser-native, no XXE risk)
+- ✅ TmdlHelpers.ts (315 lines)
+  - MapDataType, virtual column corrections, storage mode helpers, GUID generation
+  - ApplySqlAlias, GetEffectiveDisplayName, BuildDescription, partition mode
+- ✅ TmdlPreservation.ts (375 lines)
+  - LineageTag parsing, column metadata preservation, relationship GUID preservation
+  - User-added relationship detection, user measures extraction/insertion
+- ✅ ChangeDetector.ts (~500 lines)
+  - SemanticModelChange model, ChangeType/ImpactLevel enums
+  - Column/query/relationship change detection
+  - Storage mode detection and normalization
+- ✅ SemanticModelBuilder.ts (~1,200 lines)
+  - Full TMDL generation: tables, relationships, Date dimension, DataverseURL, FabricLink expressions, model.tmdl
+  - Dual connection mode (TDS + FabricLink with metadata JOINs)
+  - M query generation for partition expressions
+- ✅ BuildOrchestrator.ts (~450 lines)
+  - Build (fresh PBIP), BuildIncremental (preserve customizations), AnalyzeChanges
+  - Generates file maps for FileSystemAdapter output
+  - Table rename detection via `/// Source:` comments
+- ✅ 45 unit tests (28 FetchXML + 17 preservation)
+  - All tests passing with jsdom test environment
 
-### Phase 3: Core Business Logic - TMDL Generation (NEXT)
-
-**Scope**: This is the largest and most complex phase. Port ~5000 lines of C# business logic to TypeScript.
-
-**Tasks Remaining**:
-1. Port FetchXmlToSqlConverter.cs (~650 lines)
-   - 30+ FetchXML operators (eq, ne, lt, gt, in, like, contains, etc.)
-   - Date operators (absolute and relative)
-   - User context operators (TDS only)
-   - Nested filter recursion
-   - Link-entity EXISTS subqueries
-   - Dual mode support (TDS vs FabricLink)
-
-2. Port SemanticModelBuilder.cs (~4400 lines)
-   - **Preservation Logic** (critical for incremental builds):
-     - ParseExistingLineageTags (lines 131-222)
-     - ParseExistingColumnMetadata (lines 228-282)
-     - PreserveRelationshipGuids (lines 300-371)
-     - DetectUserAddedRelationships (lines 377-408)
-     - ExtractUserMeasures (lines 2798-2841)
-   
-   - **Generation Logic**:
-     - GenerateModel.tmdl
-     - GenerateTables.tmdl (one file per table)
-     - GenerateRelationships.tmdl
-     - GenerateExpression.tmdl (M queries)
-   
-   - **Dual Connection Mode Support**:
-     - DataverseTDS: CommonDataService.Database, Value.NativeQuery, virtual columns
-     - FabricLink: Sql.Database, JOINs to OptionsetMetadata, STRING_AGG for choice labels
-   
-   - **Change Detection**:
-     - SemanticModelChange types
-     - ImpactLevel (Breaking, NonBreaking)
-     - CompareModels logic
-     - Storage mode change detection
-     - Table rename detection via `/// Source:` comments
-   
-   - **TMDL Format Requirements**:
-     - UTF-8 without BOM
-     - CRLF line endings (\r\n)
-     - Tab indentation
-     - QuoteTmdlName for names with spaces
-
-3. Create unit tests
-   - FetchXmlToSqlConverter test suite
-   - SemanticModelBuilder preservation tests
-   - TMDL output validation
-
-**Estimated Files to Create**:
+**Files Created (8)**:
 - src/core/converters/FetchXmlToSqlConverter.ts
-- src/core/tmdl/SemanticModelBuilder.ts
-- src/core/tmdl/TmdlFormatter.ts
+- src/core/tmdl/TmdlHelpers.ts
 - src/core/tmdl/TmdlPreservation.ts
 - src/core/tmdl/ChangeDetector.ts
-- src/core/models/SemanticModelChange.ts
-- Tests: src/__tests__/FetchXmlToSqlConverter.test.ts, etc.
+- src/core/tmdl/SemanticModelBuilder.ts
+- src/core/tmdl/BuildOrchestrator.ts
+- src/__tests__/FetchXmlToSqlConverter.test.ts
+- src/__tests__/TmdlPreservation.test.ts
 
-## Pending Phases ⏳
+## In Progress Phases 🔄
 
-### Phase 4: State Management
+### Phase 4: State Management (NEXT)
 - Set up Zustand stores with TypeScript
 - Implement Immer for immutability
 - Add Zundo for undo/redo
 - Connection, config, table, relationship, UI state
+
+## Pending Phases ⏳
 
 ### Phase 5: Shared UI Components
 - Fluent UI components (ConnectionStatus, LoadingSpinner, etc.)
@@ -171,20 +148,21 @@ This document tracks the progress of porting the Dataverse to Power BI Semantic 
 
 ## Metrics
 
-**Current Progress**: 3 of 17 phases complete (17.6%)
+**Current Progress**: 4 of 17 phases complete (23.5%)
 
 **Lines of Code**:
-- TypeScript: ~3100 lines written
-- C# to port: ~5000 lines remaining in Phase 3 alone
+- TypeScript: ~6,500 lines written
+- C# ported: ~5,000 lines (Phase 3 complete)
 
-**Files Created**: 18 files total
+**Files Created**: 26 files total
 - Phase 0: 9 files
 - Phase 1: 3 files
 - Phase 2: 6 files
+- Phase 3: 8 files
 
-**Build Status**: ✅ All TypeScript compiles successfully with strict mode
+**Build Status**: ✅ All TypeScript compiles, production build succeeds, 45 tests passing
 
-**Dependencies**: All installed, 5 moderate vulnerabilities in dev dependencies (esbuild in vitest - not production issue)
+**Dependencies**: All installed, jsdom added for test environment
 
 ## Next Steps
 

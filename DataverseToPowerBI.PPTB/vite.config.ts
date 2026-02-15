@@ -21,6 +21,9 @@ function fixHtmlForPPTB() {
 
 export default defineConfig({
   plugins: [react(), fixHtmlForPPTB()],
+  test: {
+    environment: 'jsdom',
+  },
   build: {
     outDir: 'dist',
     rollupOptions: {
