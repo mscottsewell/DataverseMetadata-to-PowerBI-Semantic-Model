@@ -63,9 +63,10 @@ describe('useConfigStore', () => {
         sourceTable: 'account',
         sourceAttribute: 'ownerid',
         targetTable: 'systemuser',
-        targetAttribute: 'systemuserid',
         isActive: true,
-        isAutoDetected: true,
+        isSnowflake: false,
+        isReverse: false,
+        assumeReferentialIntegrity: false,
       });
 
       useConfigStore.getState().removeTable('account');
@@ -105,9 +106,10 @@ describe('useConfigStore', () => {
         sourceTable: 'account',
         sourceAttribute: 'ownerid',
         targetTable: 'systemuser',
-        targetAttribute: 'systemuserid',
         isActive: true,
-        isAutoDetected: true,
+        isSnowflake: false,
+        isReverse: false,
+        assumeReferentialIntegrity: false,
       });
 
       useConfigStore.getState().toggleRelationshipActive('account', 'ownerid', 'systemuser');
@@ -119,17 +121,19 @@ describe('useConfigStore', () => {
         sourceTable: 'account',
         sourceAttribute: 'ownerid',
         targetTable: 'systemuser',
-        targetAttribute: 'systemuserid',
         isActive: true,
-        isAutoDetected: true,
+        isSnowflake: false,
+        isReverse: false,
+        assumeReferentialIntegrity: false,
       });
       useConfigStore.getState().addRelationship({
         sourceTable: 'contact',
         sourceAttribute: 'parentcustomerid',
         targetTable: 'account',
-        targetAttribute: 'accountid',
         isActive: true,
-        isAutoDetected: true,
+        isSnowflake: false,
+        isReverse: false,
+        assumeReferentialIntegrity: false,
       });
 
       useConfigStore.getState().removeRelationship('account', 'ownerid', 'systemuser');
@@ -322,7 +326,7 @@ describe('useMetadataStore', () => {
 
   it('setSolutions stores solutions', () => {
     useMetadataStore.getState().setSolutions([
-      { uniqueName: 'default', friendlyName: 'Default Solution', solutionId: '1' },
+      { uniqueName: 'default', friendlyName: 'Default Solution', solutionId: '1', isManaged: false },
     ]);
     expect(useMetadataStore.getState().solutions).toHaveLength(1);
     expect(useMetadataStore.getState().solutions[0].uniqueName).toBe('default');
