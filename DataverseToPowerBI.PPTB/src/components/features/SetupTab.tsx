@@ -22,6 +22,9 @@ import { useConfigStore, useConnectionStore, useMetadataStore } from '../../stor
 import { ConnectionMode, StorageMode } from '../../types/Constants';
 import { useFetchSolutions, useFetchTables } from '../../hooks';
 import { FileSystemAdapter } from '../../adapters/FileSystemAdapter';
+import { SettingsAdapter } from '../../adapters/SettingsAdapter';
+
+const BUILTIN_TEMPLATE_LABEL = 'Built-in (Default)';
 
 const useStyles = makeStyles({
   container: {
@@ -81,6 +84,32 @@ export function SetupTab() {
     }
   }, [status, solutions.length, fetchSolutions]);
 
+  // Initialize default paths on first load
+  useEffect(() => {
+    const initDefaults = async () => {
+      try {
+        const settings = new SettingsAdapter();
+
+        // Set default output folder if not already set
+        if (!outputFolder) {
+          const defaultFolder = await settings.resolveDefaultOutputFolder();
+          if (defaultFolder) setOutputFolder(defaultFolder);
+        }
+
+        // Set default template path if not already set
+        if (!templatePath) {
+          const prefs = await settings.getPreferencesAsync();
+          setTemplatePath(prefs.lastTemplatePath ?? BUILTIN_TEMPLATE_LABEL);
+        }
+      } catch {
+        // Settings API unavailable (e.g. dev mode) - set template default only
+        if (!templatePath) setTemplatePath(BUILTIN_TEMPLATE_LABEL);
+      }
+    };
+    initDefaults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Fetch tables when solution changes
   const handleSolutionChange = (solutionId: string | null) => {
     setSelectedSolution(solutionId);
@@ -91,7 +120,14 @@ export function SetupTab() {
     try {
       const fs = new FileSystemAdapter();
       const folder = await fs.selectFolder('Select Output Folder');
-      if (folder) setOutputFolder(folder);
+      if (folder) {
+        setOutputFolder(folder);
+        // Persist as default for future sessions
+        try {
+          const settings = new SettingsAdapter();
+          await settings.updatePreferenceAsync('lastOutputFolder', folder);
+        } catch { /* settings unavailable */ }
+      }
     } catch { /* user cancelled */ }
   };
 
@@ -99,7 +135,14 @@ export function SetupTab() {
     try {
       const fs = new FileSystemAdapter();
       const folder = await fs.selectFolder('Select PBIP Template Folder');
-      if (folder) setTemplatePath(folder);
+      if (folder) {
+        setTemplatePath(folder);
+        // Persist as default for future sessions
+        try {
+          const settings = new SettingsAdapter();
+          await settings.updatePreferenceAsync('lastTemplatePath', folder);
+        } catch { /* settings unavailable */ }
+      }
     } catch { /* user cancelled */ }
   };
 
@@ -164,6 +207,9 @@ export function SetupTab() {
                 placeholder="Select PBIP template folder..."
                 readOnly
               />
+              <Text size={200} style={{ color: 'var(--colorNeutralForeground3)' }}>
+                Uses built-in template by default. Browse to override with your own PBIP project template.
+              </Text>
             </div>
             <Button icon={<FolderOpen24Regular />} appearance="secondary" onClick={handleBrowseTemplate}>
               Browse

@@ -39,6 +39,9 @@ export interface UserPreferences {
   
   /** Last used output folder */
   lastOutputFolder?: string;
+
+  /** Last used PBIP template folder */
+  lastTemplatePath?: string;
 }
 
 /**
@@ -263,6 +266,67 @@ export class SettingsAdapter {
     const preferences = await this.getPreferencesAsync();
     preferences[key] = value;
     await this.savePreferencesAsync(preferences);
+  }
+
+  /**
+   * Resolves default output folder path.
+   * Tries to find the user's Documents folder and appends DataverseToPowerBI.
+   * Falls back to stored preference if probing fails.
+   */
+  async resolveDefaultOutputFolder(): Promise<string | null> {
+    const prefs = await this.getPreferencesAsync();
+    if (prefs.lastOutputFolder) return prefs.lastOutputFolder;
+
+    // Probe common Documents folder locations via fileSystem API
+    const fs = this.getFileSystem();
+    if (!fs) return null;
+
+    // Try well-known paths (Windows first since PPTB is Electron on desktop)
+    const homeDirs = [
+      'C:\\Users', '/Users', '/home',
+    ];
+
+    for (const homeBase of homeDirs) {
+      try {
+        const exists = await fs.exists(homeBase);
+        if (!exists) continue;
+
+        // Read directory to find user folders
+        const entries: Array<{ name: string; type: string }> = await fs.readDirectory(homeBase);
+        for (const entry of entries) {
+          if (entry.type !== 'directory') continue;
+          // Skip system folders
+          if (['Public', 'Default', 'Default User', 'All Users'].includes(entry.name)) continue;
+
+          const sep = homeBase.includes('\\') ? '\\' : '/';
+          const docsPath = `${homeBase}${sep}${entry.name}${sep}Documents`;
+          try {
+            const docsExists = await fs.exists(docsPath);
+            if (docsExists) {
+              const defaultPath = `${docsPath}${sep}DataverseToPowerBI`;
+              await this.updatePreferenceAsync('lastOutputFolder', defaultPath);
+              return defaultPath;
+            }
+          } catch {
+            continue;
+          }
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Gets the file system API if available.
+   */
+  private getFileSystem(): any | null {
+    if (typeof window !== 'undefined' && window.toolboxAPI?.fileSystem) {
+      return window.toolboxAPI.fileSystem;
+    }
+    return null;
   }
 
   // ============================================================================
