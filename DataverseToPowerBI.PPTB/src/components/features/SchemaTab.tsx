@@ -5,7 +5,7 @@
  * the dimension tree. Users can toggle relationships active/inactive.
  */
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   makeStyles,
   Card,
@@ -91,6 +91,7 @@ export function SchemaTab() {
 
   const { detectedRelationships, autoDetect } = useRelationshipDetection();
   const fetchAttributes = useFetchAttributes();
+  const autoDetectedForRef = useRef<string | null>(null);
 
   // Auto-fetch attributes for fact table when it changes
   useEffect(() => {
@@ -99,12 +100,13 @@ export function SchemaTab() {
     }
   }, [factTable, tableAttributes, fetchAttributes]);
 
-  // Auto-detect relationships when fact table attributes are loaded
+  // Auto-detect relationships when fact table attributes are loaded (once per fact table)
   useEffect(() => {
-    if (factTable && tableAttributes[factTable] && relationships.length === 0) {
+    if (factTable && tableAttributes[factTable] && autoDetectedForRef.current !== factTable) {
+      autoDetectedForRef.current = factTable;
       autoDetect();
     }
-  }, [factTable, tableAttributes, relationships.length, autoDetect]);
+  }, [factTable, tableAttributes, autoDetect]);
 
   // Group current relationships by target table
   const groupedRelationships = useMemo(() => {

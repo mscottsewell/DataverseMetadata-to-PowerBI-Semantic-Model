@@ -185,6 +185,13 @@ export const useConfigStore = create<ConfigState & ConfigActions>()(
           state.useDisplayNameAliasesInSql = settings.useDisplayNameAliasesInSql;
           state.showAllAttributes = settings.showAllAttributes;
           state.autoloadCache = settings.autoloadCache;
+          state.connectionMode = (settings.connectionMode as ConnectionMode) ?? DEFAULT_CONNECTION_MODE;
+          state.storageMode = (settings.storageMode as StorageMode) ?? DEFAULT_STORAGE_MODE;
+          state.tableStorageModes = settings.tableStorageModes
+            ? Object.fromEntries(Object.entries(settings.tableStorageModes).map(([k, v]) => [k, v as StorageMode]))
+            : {};
+          state.fabricLinkEndpoint = settings.fabricLinkEndpoint ?? null;
+          state.fabricLinkDatabase = settings.fabricLinkDatabase ?? null;
         }),
 
       toSettings: (): AppSettings => {
@@ -212,6 +219,11 @@ export const useConfigStore = create<ConfigState & ConfigActions>()(
           dateTableConfig: s.dateTableConfig ? { ...s.dateTableConfig } : undefined,
           useDisplayNameAliasesInSql: s.useDisplayNameAliasesInSql,
           attributeDisplayNameOverrides: { ...s.attributeDisplayNameOverrides },
+          connectionMode: s.connectionMode,
+          storageMode: s.storageMode,
+          tableStorageModes: { ...s.tableStorageModes },
+          fabricLinkEndpoint: s.fabricLinkEndpoint ?? undefined,
+          fabricLinkDatabase: s.fabricLinkDatabase ?? undefined,
         };
       },
 

@@ -109,7 +109,16 @@ export function useRelationshipDetection() {
       return existing ?? newRel;
     });
 
-    setRelationships(merged);
+    // Preserve manually-added relationships not in the detected set
+    const manualRels = relationships.filter(
+      (r) => !newRels.some(
+        (n) => n.sourceTable === r.sourceTable &&
+               n.sourceAttribute === r.sourceAttribute &&
+               n.targetTable === r.targetTable
+      )
+    );
+
+    setRelationships([...merged, ...manualRels]);
   }, [factTable, detectedRelationships, selectedTables, relationships, setRelationships]);
 
   return {

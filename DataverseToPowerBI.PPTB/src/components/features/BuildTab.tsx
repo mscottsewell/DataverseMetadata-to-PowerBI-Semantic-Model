@@ -123,7 +123,7 @@ export function BuildTab() {
         setStatusMessages(result.statusMessages);
         setBuildResult('success');
         // Auto-select first file
-        const firstKey = result.files.keys().next().value;
+        const firstKey = Array.from(result.files.keys())[0];
         if (firstKey) setSelectedFile(firstKey);
         addToast({ type: 'success', title: `Preview generated: ${result.files.size} files` });
       } else {

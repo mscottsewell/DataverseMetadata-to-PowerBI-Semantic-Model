@@ -385,7 +385,6 @@ export class SemanticModelBuilder {
     const partitionName = displayName;
     lines.push(`\tpartition ${quoteTmdlName(partitionName)} = m`);
     lines.push(`\t\tmode: ${partitionMode}`);
-    lines.push(`\t\tmode: ${partitionMode}`);
     lines.push('\t\tsource =');
     lines.push('\t\t\t\tlet');
 
@@ -718,7 +717,7 @@ export class SemanticModelBuilder {
   ): void {
     const isDateTime = attrType.toLowerCase() === 'datetime';
     const shouldWrapDateTime = isDateTime && dateTableConfig != null &&
-      dateTableConfig.wrappedFields.some(f =>
+      dateTableConfig.wrappedFields?.some(f =>
         f.tableName.toLowerCase() === table.logicalName.toLowerCase() &&
         f.fieldName.toLowerCase() === attr.logicalName.toLowerCase(),
       );

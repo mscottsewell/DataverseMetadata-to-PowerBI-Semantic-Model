@@ -197,6 +197,31 @@ describe('useConfigStore', () => {
       expect(state.factTable).toBe('account');
       expect(state.isDirty).toBe(false);
     });
+
+    it('round-trips connection mode, storage mode, and FabricLink settings', () => {
+      useConfigStore.getState().setConnectionMode('FabricLink' as any);
+      useConfigStore.getState().setStorageMode('Import' as any);
+      useConfigStore.getState().setTableStorageMode('account', 'DirectQuery' as any);
+      useConfigStore.getState().setFabricLinkEndpoint('https://sql.fabric.microsoft.com');
+      useConfigStore.getState().setFabricLinkDatabase('MyLakehouse');
+
+      const settings = useConfigStore.getState().toSettings();
+      expect(settings.connectionMode).toBe('FabricLink');
+      expect(settings.storageMode).toBe('Import');
+      expect(settings.tableStorageModes?.['account']).toBe('DirectQuery');
+      expect(settings.fabricLinkEndpoint).toBe('https://sql.fabric.microsoft.com');
+      expect(settings.fabricLinkDatabase).toBe('MyLakehouse');
+
+      // Reset and reload
+      useConfigStore.getState().reset();
+      useConfigStore.getState().loadFromSettings('Fabric Config', settings);
+      const state = useConfigStore.getState();
+      expect(state.connectionMode).toBe('FabricLink');
+      expect(state.storageMode).toBe('Import');
+      expect(state.tableStorageModes['account']).toBe('DirectQuery');
+      expect(state.fabricLinkEndpoint).toBe('https://sql.fabric.microsoft.com');
+      expect(state.fabricLinkDatabase).toBe('MyLakehouse');
+    });
   });
 });
 

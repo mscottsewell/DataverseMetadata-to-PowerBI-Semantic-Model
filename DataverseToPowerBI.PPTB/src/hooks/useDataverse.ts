@@ -123,11 +123,12 @@ export function useFetchAllTableMetadata() {
   const fetchAttributes = useFetchAttributes();
   const fetchForms = useFetchForms();
   const fetchViews = useFetchViews();
-  const metaAttributes = useMetadataStore((s) => s.tableAttributes);
 
   return useCallback(async (tableNames: string[]) => {
+    // Read current state at call time to avoid stale closure
+    const currentAttributes = useMetadataStore.getState().tableAttributes;
     const promises = tableNames
-      .filter((name) => !metaAttributes[name]) // Skip already loaded
+      .filter((name) => !currentAttributes[name]) // Skip already loaded
       .map(async (name) => {
         await Promise.all([
           fetchAttributes(name),
@@ -136,5 +137,5 @@ export function useFetchAllTableMetadata() {
         ]);
       });
     await Promise.all(promises);
-  }, [fetchAttributes, fetchForms, fetchViews, metaAttributes]);
+  }, [fetchAttributes, fetchForms, fetchViews]);
 }

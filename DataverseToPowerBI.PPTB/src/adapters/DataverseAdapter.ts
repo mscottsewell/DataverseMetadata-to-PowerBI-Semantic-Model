@@ -18,6 +18,18 @@ import {
 } from '../types/DataModels';
 
 /**
+ * Escapes XML special characters to prevent injection in FetchXML queries.
+ */
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+/**
  * Dataverse connection adapter for PowerPlatformToolBox.
  * Wraps window.dataverseAPI to implement IDataverseConnection interface.
  */
@@ -125,7 +137,7 @@ export class DataverseAdapter implements IDataverseConnection {
           <entity name="solutioncomponent">
             <attribute name="objectid" />
             <filter>
-              <condition attribute="solutionid" operator="eq" value="${solutionId}" />
+              <condition attribute="solutionid" operator="eq" value="${escapeXml(solutionId)}" />
               <condition attribute="componenttype" operator="eq" value="1" />
             </filter>
           </entity>
@@ -246,7 +258,7 @@ export class DataverseAdapter implements IDataverseConnection {
             <attribute name="name" />
             ${includeXml ? '<attribute name="formxml" />' : ''}
             <filter>
-              <condition attribute="objecttypecode" operator="eq" value="${entityLogicalName}" />
+              <condition attribute="objecttypecode" operator="eq" value="${escapeXml(entityLogicalName)}" />
               <condition attribute="type" operator="eq" value="2" />
               <condition attribute="iscustomizable" operator="eq" value="true" />
             </filter>
@@ -292,7 +304,7 @@ export class DataverseAdapter implements IDataverseConnection {
           <entity name="systemform">
             <attribute name="formxml" />
             <filter>
-              <condition attribute="formid" operator="eq" value="${formId}" />
+              <condition attribute="formid" operator="eq" value="${escapeXml(formId)}" />
             </filter>
           </entity>
         </fetch>
@@ -325,7 +337,7 @@ export class DataverseAdapter implements IDataverseConnection {
             <attribute name="layoutxml" />
             ${includeFetchXml ? '<attribute name="fetchxml" />' : ''}
             <filter>
-              <condition attribute="returnedtypecode" operator="eq" value="${entityLogicalName}" />
+              <condition attribute="returnedtypecode" operator="eq" value="${escapeXml(entityLogicalName)}" />
               <condition attribute="querytype" operator="eq" value="0" />
             </filter>
             <order attribute="name" />
@@ -365,7 +377,7 @@ export class DataverseAdapter implements IDataverseConnection {
           <entity name="savedquery">
             <attribute name="fetchxml" />
             <filter>
-              <condition attribute="savedqueryid" operator="eq" value="${viewId}" />
+              <condition attribute="savedqueryid" operator="eq" value="${escapeXml(viewId)}" />
             </filter>
           </entity>
         </fetch>

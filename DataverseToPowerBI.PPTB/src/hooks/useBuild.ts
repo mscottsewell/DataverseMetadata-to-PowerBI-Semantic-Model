@@ -34,10 +34,30 @@ export function useBuild() {
       });
 
       // Build ExportTable array from config + metadata
+      // Fall back to config store attribute selections when metadata is not yet hydrated
       const tables: ExportTable[] = config.selectedTables.map((logicalName) => {
         const tableInfo = metadata.tables.find((t) => t.logicalName === logicalName);
-        const attrs = metadata.tableAttributes[logicalName] ?? [];
-        const selectedAttrs = config.tableAttributes[logicalName] ?? attrs.map((a) => a.logicalName);
+        const metaAttrs = metadata.tableAttributes[logicalName] ?? [];
+        const configAttrNames = config.tableAttributes[logicalName];
+
+        // Use metadata attrs when available; otherwise synthesize from config's attributeDisplayInfo
+        let attrs = metaAttrs;
+        if (attrs.length === 0 && config.attributeDisplayInfo[logicalName]) {
+          attrs = Object.entries(config.attributeDisplayInfo[logicalName]).map(([name, info]) => ({
+            logicalName: name,
+            displayName: info.displayName,
+            schemaName: info.schemaName,
+            attributeType: info.attributeType,
+            isCustomAttribute: false,
+            isRequired: false,
+            targets: info.targets,
+            virtualAttributeName: info.virtualAttributeName,
+            isGlobal: info.isGlobal,
+            optionSetName: info.optionSetName,
+          }));
+        }
+
+        const selectedAttrs = configAttrNames ?? attrs.map((a) => a.logicalName);
         const view = metadata.tableViews[logicalName]?.find(
           (v) => v.viewId === config.tableViews[logicalName]
         );

@@ -122,6 +122,21 @@ export interface AppSettings {
   
   /** Map of table logical name to map of attribute logical name to display name override */
   attributeDisplayNameOverrides: Record<string, Record<string, string>>;
+
+  /** Connection mode (DataverseTDS or FabricLink) */
+  connectionMode?: string;
+
+  /** Global storage mode (DirectQuery or Import) */
+  storageMode?: string;
+
+  /** Per-table storage mode overrides */
+  tableStorageModes?: Record<string, string>;
+
+  /** FabricLink SQL endpoint URL */
+  fabricLinkEndpoint?: string;
+
+  /** FabricLink database/lakehouse name */
+  fabricLinkDatabase?: string;
 }
 
 // ============================================================================
