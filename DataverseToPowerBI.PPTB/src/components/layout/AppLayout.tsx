@@ -12,7 +12,7 @@ import { TablesTab } from '../features/TablesTab';
 import { SchemaTab } from '../features/SchemaTab';
 import { AttributesTab } from '../features/AttributesTab';
 import { BuildTab } from '../features/BuildTab';
-import { FormPickerDialog, ViewPickerDialog, CalendarTableDialog, ChangePreviewDialog } from '../dialogs';
+import { FormPickerDialog, ViewPickerDialog, CalendarTableDialog, ChangePreviewDialog, ConfigManagerDialog } from '../dialogs';
 
 const useStyles = makeStyles({
   root: {
@@ -58,6 +58,7 @@ export function AppLayout() {
       <ViewPickerDialog />
       <CalendarTableDialog />
       <ChangePreviewDialog />
+      <ConfigManagerDialog />
     </div>
   );
 }

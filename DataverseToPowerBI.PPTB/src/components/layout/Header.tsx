@@ -7,10 +7,11 @@ import {
   Text,
   tokens,
   Badge,
+  Button,
 } from '@fluentui/react-components';
-import { Database24Regular } from '@fluentui/react-icons';
+import { Database24Regular, FolderOpen24Regular } from '@fluentui/react-icons';
 import { ConnectionStatusBar } from '../shared';
-import { useConfigStore } from '../../stores';
+import { useConfigStore, useUIStore } from '../../stores';
 
 const useStyles = makeStyles({
   header: {
@@ -42,6 +43,7 @@ export function Header() {
   const styles = useStyles();
   const configName = useConfigStore((s) => s.configName);
   const isDirty = useConfigStore((s) => s.isDirty);
+  const openDialog = useUIStore((s) => s.openDialog);
 
   return (
     <header className={styles.header}>
@@ -51,9 +53,14 @@ export function Header() {
           Dataverse → Power BI
         </Text>
         <div className={styles.configName}>
-          <Text size={300} italic>
+          <Button
+            size="small"
+            appearance="subtle"
+            icon={<FolderOpen24Regular />}
+            onClick={() => openDialog('configManager')}
+          >
             {configName}{isDirty ? ' •' : ''}
-          </Text>
+          </Button>
           {isDirty && (
             <Badge appearance="tint" color="warning" size="tiny">
               unsaved
