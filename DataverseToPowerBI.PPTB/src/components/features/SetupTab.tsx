@@ -15,8 +15,8 @@ import {
   Button,
   Divider,
 } from '@fluentui/react-components';
-import { FolderOpen24Regular } from '@fluentui/react-icons';
-import { useConfigStore, useConnectionStore, useMetadataStore } from '../../stores';
+import { FolderOpen24Regular, CalendarLtr24Regular } from '@fluentui/react-icons';
+import { useConfigStore, useConnectionStore, useMetadataStore, useUIStore } from '../../stores';
 import { ConnectionMode, StorageMode } from '../../types/Constants';
 import { useFetchSolutions, useFetchTables } from '../../hooks';
 
@@ -67,6 +67,8 @@ export function SetupTab() {
   const loadingSolutions = useMetadataStore((s) => s.loading.solutions);
   const fetchSolutions = useFetchSolutions();
   const fetchTables = useFetchTables();
+  const dateTableConfig = useConfigStore((s) => s.dateTableConfig);
+  const openDialog = useUIStore((s) => s.openDialog);
 
   // Auto-fetch solutions when connected
   useEffect(() => {
@@ -185,6 +187,24 @@ export function SetupTab() {
               </div>
             </>
           )}
+        </div>
+      </Card>
+
+      <Card className={styles.card}>
+        <CardHeader header={<Text weight="semibold" size={400}>Calendar Table</Text>} />
+        <div className={styles.fieldGroup}>
+          <Text size={300}>
+            {dateTableConfig
+              ? `Enabled: ${dateTableConfig.startYear}–${dateTableConfig.endYear}, UTC${dateTableConfig.utcOffsetHours >= 0 ? '+' : ''}${dateTableConfig.utcOffsetHours}`
+              : 'No calendar table configured.'}
+          </Text>
+          <Button
+            appearance="secondary"
+            icon={<CalendarLtr24Regular />}
+            onClick={() => openDialog('calendarTable')}
+          >
+            {dateTableConfig ? 'Edit Calendar Table' : 'Add Calendar Table'}
+          </Button>
         </div>
       </Card>
     </div>

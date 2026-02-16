@@ -1,2 +1,3 @@
 export { FormPickerDialog } from './FormPickerDialog';
 export { ViewPickerDialog } from './ViewPickerDialog';
+export { CalendarTableDialog } from './CalendarTableDialog';
