@@ -71,12 +71,10 @@ export class FileSystemAdapter {
    */
   async saveFile(options: SaveFileOptions): Promise<string | null> {
     try {
-      const result = await this.api.saveFile({
-        suggestedName: options.suggestedName,
-        extensions: options.extensions,
-        content: options.content,
-        mimeType: options.mimeType,
-      });
+      const result = await this.api.saveFile(
+        options.suggestedName || 'file',
+        options.content,
+      );
 
       return result?.path || null;
     } catch (error) {
@@ -93,20 +91,27 @@ export class FileSystemAdapter {
    */
   async readFile(options: ReadFileOptions = {}): Promise<ReadFileResult | null> {
     try {
-      const result = await this.api.readFile({
-        extensions: options.extensions,
-        binary: options.binary || false,
+      // Use selectPath to pick a file, then read it
+      const filePath = await this.api.selectPath({
+        type: 'file',
+        title: 'Select File',
+        filters: options.extensions?.length
+          ? [{ name: 'Files', extensions: options.extensions }]
+          : undefined,
       });
 
-      if (!result) {
+      if (!filePath) {
         return null;
       }
 
-      return {
-        name: result.name,
-        content: result.content,
-        path: result.path,
-      };
+      const content = options.binary
+        ? await this.api.readBinary(filePath)
+        : await this.api.readText(filePath);
+
+      // Extract file name from path
+      const name = filePath.split(/[\\/]/).pop() || filePath;
+
+      return { name, content, path: filePath };
     } catch (error) {
       console.error('Failed to read file:', error);
       throw new Error(`Failed to read file: ${error}`);
@@ -116,12 +121,12 @@ export class FileSystemAdapter {
   /**
    * Selects a folder with a folder picker dialog.
    * 
+   * @param title Optional dialog title
    * @returns Promise that resolves with the folder path, or null if canceled
    */
-  async selectFolder(): Promise<string | null> {
+  async selectFolder(title?: string): Promise<string | null> {
     try {
-      const result = await this.api.selectFolder();
-      return result?.path || null;
+      return await this.api.selectPath({ type: 'folder', title: title ?? 'Select Folder' });
     } catch (error) {
       console.error('Failed to select folder:', error);
       throw new Error(`Failed to select folder: ${error}`);
@@ -152,11 +157,12 @@ export class FileSystemAdapter {
       const promises = Array.from(files.entries()).map(async ([relativePath, content]) => {
         const fullPath = `${targetFolder}/${relativePath}`;
         
-        // Use saveFile with explicit path
-        await this.api.writeFile({
-          path: fullPath,
-          content,
-        });
+        if (typeof content === 'string') {
+          await this.api.writeText(fullPath, content);
+        } else {
+          // For binary content, convert to string as fallback
+          await this.api.writeText(fullPath, new TextDecoder().decode(content));
+        }
       });
 
       await Promise.all(promises);
@@ -176,7 +182,7 @@ export class FileSystemAdapter {
    */
   async fileExists(path: string): Promise<boolean> {
     try {
-      const result = await this.api.fileExists(path);
+      const result = await this.api.exists(path);
       return result === true;
     } catch (error) {
       console.error('Failed to check file existence:', error);

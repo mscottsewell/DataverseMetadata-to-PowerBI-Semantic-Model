@@ -90,7 +90,7 @@ export function SetupTab() {
   const handleBrowseOutput = async () => {
     try {
       const fs = new FileSystemAdapter();
-      const folder = await fs.selectFolder();
+      const folder = await fs.selectFolder('Select Output Folder');
       if (folder) setOutputFolder(folder);
     } catch { /* user cancelled */ }
   };
@@ -98,7 +98,7 @@ export function SetupTab() {
   const handleBrowseTemplate = async () => {
     try {
       const fs = new FileSystemAdapter();
-      const folder = await fs.selectFolder();
+      const folder = await fs.selectFolder('Select PBIP Template Folder');
       if (folder) setTemplatePath(folder);
     } catch { /* user cancelled */ }
   };
