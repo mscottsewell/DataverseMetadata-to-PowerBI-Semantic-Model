@@ -68,7 +68,7 @@ export interface BuildResult {
 }
 
 /** Common parameters for build operations */
-interface BuildParams {
+export interface BuildParams {
   semanticModelName: string;
   dataverseUrl: string;
   tables: ExportTable[];

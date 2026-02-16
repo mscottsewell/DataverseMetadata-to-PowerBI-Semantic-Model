@@ -2,6 +2,7 @@
  * SetupTab - Configuration setup: project name, connection mode, solution selector, output folder
  */
 
+import { useEffect } from 'react';
 import {
   makeStyles,
   Card,
@@ -17,6 +18,7 @@ import {
 import { FolderOpen24Regular } from '@fluentui/react-icons';
 import { useConfigStore, useConnectionStore, useMetadataStore } from '../../stores';
 import { ConnectionMode, StorageMode } from '../../types/Constants';
+import { useFetchSolutions, useFetchTables } from '../../hooks';
 
 const useStyles = makeStyles({
   container: {
@@ -62,6 +64,22 @@ export function SetupTab() {
     fabricLinkDatabase, setFabricLinkDatabase,
   } = useConfigStore();
   const solutions = useMetadataStore((s) => s.solutions);
+  const loadingSolutions = useMetadataStore((s) => s.loading.solutions);
+  const fetchSolutions = useFetchSolutions();
+  const fetchTables = useFetchTables();
+
+  // Auto-fetch solutions when connected
+  useEffect(() => {
+    if (status === 'connected' && solutions.length === 0) {
+      fetchSolutions();
+    }
+  }, [status, solutions.length, fetchSolutions]);
+
+  // Fetch tables when solution changes
+  const handleSolutionChange = (value: string | null) => {
+    setSelectedSolution(value);
+    if (value) fetchTables(value);
+  };
 
   return (
     <div className={styles.container}>
@@ -85,8 +103,8 @@ export function SetupTab() {
             <Select
               id="solution"
               value={selectedSolution ?? ''}
-              onChange={(_, d) => setSelectedSolution(d.value || null)}
-              disabled={status !== 'connected' && solutions.length === 0}
+              onChange={(_, d) => handleSolutionChange(d.value || null)}
+              disabled={loadingSolutions}
             >
               <option value="">-- Select Solution --</option>
               {solutions.map((s) => (
