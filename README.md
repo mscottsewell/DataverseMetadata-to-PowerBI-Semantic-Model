@@ -1,4 +1,4 @@
-<img width="1248" height="307" alt="image" src="https://github.com/user-attachments/assets/6a8832aa-5445-4842-8445-abf618a227ba" />
+<img width="1248" height="307" alt="image" src="https://github.com/user-attachments/assets/e5061c91-c7d8-4dba-bd84-72ed2825bd39" />
 
 # Dataverse to Power BI Semantic Model Generator
 
