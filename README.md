@@ -327,6 +327,8 @@ Uses **Microsoft Fabric Link for Dataverse** — data is synced to a Fabric Lake
 | **Requirements** | Fabric workspace with Dataverse Link configured |
 
 > **FabricLink queries** automatically JOIN to `OptionsetMetadata` / `GlobalOptionsetMetadata` and `StatusMetadata` tables for human-readable choice labels and status values. TDS mode uses virtual "name" attributes for the same purpose.
+>
+> **Multi-select choice fix (v1.2026.5.57):** FabricLink multi-select label resolution now splits values on semicolons (`;`) and uses the attribute logical name for `OptionSetName` in metadata joins.
 
 ---
 
@@ -516,6 +518,10 @@ When you rebuild an existing model, the tool performs an **incremental update** 
 ### Q: Why are some of my columns missing?
 
 **A:** Columns are pre-selected by default from your selected form. If a field isn't on the form, it won't pre-selected to be in the model by default. You can add columns that aren't on the form by switching to view "All" attributes and checking the selection box beside any additional ones you need.
+
+### Q: Multi-select choice labels look wrong in FabricLink mode. What should I check?
+
+**A:** First, update to **v1.2026.5.57** or later. That release fixes FabricLink multi-select label joins to split values on semicolons (`;`) and use the attribute logical name for `OptionSetName` in metadata joins.
 
 ### Q: How do I handle many-to-many relationships?
 

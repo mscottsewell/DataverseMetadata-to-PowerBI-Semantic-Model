@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2026.5.57] - 2026-02-19
+
+### Fixed
+
+- **FabricLink Multi-Select Choice Resolution** — Fixed metadata join behavior for multi-select choice fields in FabricLink SQL generation
+  - Uses semicolon delimiter (`;`) in `STRING_SPLIT` for Dataverse multi-select values (instead of comma)
+  - Uses the attribute logical name for `OptionSetName` in metadata joins (instead of the choice definition name)
+  - Applied consistently to both generated SQL and query-comparison logic to prevent false change detection
+
+---
+
 ## [1.2026.5.37] - 2026-02-16
 
 ### Fixed

@@ -2054,10 +2054,10 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             var applyAlias = $"mspl_{attr.LogicalName}";
                             var joinAlias2 = $"meta_{attr.LogicalName}";
                             var isGlobal = attr.IsGlobal ?? attrDisplayInfo2?.IsGlobal ?? false;
-                            var optionSetName = attr.OptionSetName ?? attrDisplayInfo2?.OptionSetName ?? attr.LogicalName;
+                            var optionSetName = attr.LogicalName;
                             var metadataTable = isGlobal ? "GlobalOptionsetMetadata" : "OptionsetMetadata";
 
-                            joinClauses.Add($"OUTER APPLY (SELECT STRING_AGG({joinAlias2}.[LocalizedLabel], ', ') AS {nameColumn} FROM STRING_SPLIT(CAST(Base.{attr.LogicalName} AS VARCHAR(4000)), ',') AS split JOIN [{metadataTable}] AS {joinAlias2} ON {joinAlias2}.[OptionSetName]='{optionSetName}' AND {joinAlias2}.[EntityName]='{table.LogicalName}' AND {joinAlias2}.[LocalizedLabelLanguageCode]={_languageCode} AND {joinAlias2}.[Option]=CAST(LTRIM(RTRIM(split.value)) AS INT) WHERE Base.{attr.LogicalName} IS NOT NULL) {applyAlias}");
+                            joinClauses.Add($"OUTER APPLY (SELECT STRING_AGG({joinAlias2}.[LocalizedLabel], ', ') AS {nameColumn} FROM STRING_SPLIT(CAST(Base.{attr.LogicalName} AS VARCHAR(4000)), ';') AS split JOIN [{metadataTable}] AS {joinAlias2} ON {joinAlias2}.[OptionSetName]='{optionSetName}' AND {joinAlias2}.[EntityName]='{table.LogicalName}' AND {joinAlias2}.[LocalizedLabelLanguageCode]={_languageCode} AND {joinAlias2}.[Option]=CAST(LTRIM(RTRIM(split.value)) AS INT) WHERE Base.{attr.LogicalName} IS NOT NULL) {applyAlias}");
                             if (!processedColumns.Contains(nameColumn))
                             {
                                 sqlFields.Add(ApplySqlAlias($"{applyAlias}.{nameColumn}", effectiveName, nameColumn, false));
@@ -3711,7 +3711,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 }
                 else if (isMultiSelectChoice)
                 {
-                    // Multi-select choice fields store comma-separated integer values
+                    // Multi-select choice fields store semicolon-separated integer values
                     // FabricLink: uses {attributename}name pattern; TDS: uses actual VirtualAttributeName
                     string nameColumn;
                     
@@ -3723,14 +3723,14 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         var applyAlias = $"mspl_{attr.LogicalName}";
                         var joinAlias = $"meta_{attr.LogicalName}";
                         var isGlobal = attr.IsGlobal ?? attrDisplayInfo?.IsGlobal ?? false;
-                        var optionSetName = attr.OptionSetName ?? attrDisplayInfo?.OptionSetName ?? attr.LogicalName;
+                        var optionSetName = attr.LogicalName;
                         var metadataTable = isGlobal ? "GlobalOptionsetMetadata" : "OptionsetMetadata";
 
                         // Use OUTER APPLY with a correlated subquery
                         joinClauses.Add(
                             $"OUTER APPLY (\r\n" +
                             $"\t\t\t\t        SELECT STRING_AGG({joinAlias}.[LocalizedLabel], ', ') AS {nameColumn}\r\n" +
-                            $"\t\t\t\t        FROM STRING_SPLIT(CAST(Base.{attr.LogicalName} AS VARCHAR(4000)), ',') AS split\r\n" +
+                            $"\t\t\t\t        FROM STRING_SPLIT(CAST(Base.{attr.LogicalName} AS VARCHAR(4000)), ';') AS split\r\n" +
                             $"\t\t\t\t        JOIN [{metadataTable}] AS {joinAlias}\r\n" +
                             $"\t\t\t\t            ON  {joinAlias}.[OptionSetName] = '{optionSetName}'\r\n" +
                             $"\t\t\t\t            AND {joinAlias}.[EntityName] = '{table.LogicalName}'\r\n" +

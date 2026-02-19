@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\DataverseToPowerBI.Core\DataverseToPowerBI.Core.csproj" />
     <ProjectReference Include="..\DataverseToPowerBI.XrmToolBox\DataverseToPowerBI.XrmToolBox.csproj" />
   </ItemGroup>
 

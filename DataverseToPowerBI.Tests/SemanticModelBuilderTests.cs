@@ -531,6 +531,67 @@ namespace DataverseToPowerBI.Tests
 
         #endregion
 
+        #region FabricLink Multi-Select SQL Tests
+
+        [Fact]
+        public void GenerateTableTmdl_FabricLinkMultiSelect_UsesSemicolonSplitAndAttributeOptionSetName()
+        {
+            var fabricBuilder = new SemanticModelBuilder(
+                _tempDir,
+                connectionType: "FabricLink",
+                fabricLinkEndpoint: "test-endpoint",
+                fabricLinkDatabase: "test-db",
+                languageCode: 1033,
+                useDisplayNameAliasesInSql: false);
+
+            var table = new ExportTable
+            {
+                LogicalName = "incident",
+                DisplayName = "Incident",
+                PrimaryIdAttribute = "incidentid",
+                PrimaryNameAttribute = "title",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "pbi_categories",
+                        DisplayName = "Categories",
+                        SchemaName = "pbi_categories",
+                        AttributeType = "MultiSelectPicklist",
+                        IsGlobal = true,
+                        OptionSetName = "connectionrole_category"
+                    }
+                }
+            };
+
+            var attributeDisplayInfo = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["incident"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["pbi_categories"] = new AttributeDisplayInfo
+                    {
+                        LogicalName = "pbi_categories",
+                        DisplayName = "Categories",
+                        AttributeType = "MultiSelectPicklist",
+                        IsGlobal = true,
+                        OptionSetName = "connectionrole_category"
+                    }
+                }
+            };
+
+            var tmdl = fabricBuilder.GenerateTableTmdl(
+                table,
+                attributeDisplayInfo,
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+
+            Assert.Contains("STRING_SPLIT(CAST(Base.pbi_categories AS VARCHAR(4000)), ';') AS split", tmdl);
+            Assert.DoesNotContain("STRING_SPLIT(CAST(Base.pbi_categories AS VARCHAR(4000)), ',') AS split", tmdl);
+            Assert.Contains("meta_pbi_categories.[OptionSetName] = 'pbi_categories'", tmdl);
+            Assert.DoesNotContain("meta_pbi_categories.[OptionSetName] = 'connectionrole_category'", tmdl);
+        }
+
+        #endregion
+
         #region Auto-Measure Cleanup Tests
 
         [Fact]

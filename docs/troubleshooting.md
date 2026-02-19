@@ -58,3 +58,6 @@ Without SSO enabled, the report uses a shared service account instead of each us
 View filters using `eq-userid`, `ne-userid`, `eq-userteams`, or `ne-userteams` cannot be used with FabricLink connections. These filters are automatically skipped and logged in the FetchXML debug output.
 
 **Solution:** Use DataverseTDS connection mode instead if you need row-level security based on current user context.
+
+### "Multi-select choice labels missing or incorrect (FabricLink mode)"
+If multi-select choice labels don’t resolve correctly in FabricLink, update to v1.2026.5.57 or later. This release fixes multi-select metadata joins to split values on semicolons (`;`) and use the attribute logical name for `OptionSetName`.
