@@ -61,3 +61,32 @@ View filters using `eq-userid`, `ne-userid`, `eq-userteams`, or `ne-userteams` c
 
 ### "Multi-select choice labels missing or incorrect (FabricLink mode)"
 If multi-select choice labels don’t resolve correctly in FabricLink, update to v1.2026.5.57 or later. This release fixes multi-select metadata joins to split values on semicolons (`;`) and use the attribute logical name for `OptionSetName`.
+
+### "Quick Select changed my filter from Selected to All"
+Quick Select now preserves your current attribute filter mode.
+
+- If you were in **Selected**, it remains **Selected** after applying pasted attributes.
+- If you were in **All**, it remains **All**.
+- Newly selected attributes are refreshed immediately in the current view.
+
+If you still see mode switching, make sure you are on v1.2026.5.83 or later.
+
+### "Quick-selected attributes are missing after reopening"
+Selected attributes are saved in the semantic model configuration (`PluginSettings.SelectedAttributes`) and should reload on open.
+
+Expected behavior:
+- Manual selections (including Quick Select) persist across close/reopen.
+- Metadata revalidation should not reset selected values to defaults.
+
+Note:
+- Attributes that no longer exist in Dataverse are removed during revalidation.
+- Required locked fields (primary key/name and relationship-required lookup keys) are always included.
+
+If selections appear to drop, update to v1.2026.5.83 or later, which includes a case-insensitive restore fix for saved selected attributes.
+
+### "What does the Default checkmark mean for expanded child rows?"
+In View mode, expanded child rows in the **Default** column are now marked only when they come from the currently selected view's linked columns.
+
+This means:
+- Child rows added manually in Expand Lookup are still selected, but are not shown as **Default** unless they exactly match the selected view's linked column definition.
+- Previously saved placeholder names for expanded fields are auto-normalized from metadata on load/revalidation.

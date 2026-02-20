@@ -927,6 +927,57 @@ namespace DataverseToPowerBI.Core.Models
         /// Extracted from the FetchXML attribute list.
         /// </summary>
         public List<string> Columns { get; set; } = new();
+
+        /// <summary>
+        /// Whether this is a personal (user) view vs. a system (public) view.
+        /// </summary>
+        public bool IsPersonal { get; set; }
+
+        /// <summary>
+        /// Columns from related entities referenced via link-entity in the view's FetchXML.
+        /// Each entry describes the lookup field on the current entity and the attribute from the related entity.
+        /// </summary>
+        public List<ViewLinkedColumn> LinkedColumns { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Represents a column from a related entity referenced via link-entity in a view's FetchXML.
+    /// </summary>
+    public class ViewLinkedColumn
+    {
+        /// <summary>
+        /// The lookup attribute on the current (source) entity that the link-entity joins through.
+        /// This is the "to" attribute in the FetchXML link-entity element.
+        /// </summary>
+        public string LookupAttribute { get; set; } = "";
+
+        /// <summary>
+        /// Logical name of the related entity being joined.
+        /// </summary>
+        public string LinkedEntityName { get; set; } = "";
+
+        /// <summary>
+        /// Logical name of the attribute on the related entity.
+        /// </summary>
+        public string AttributeName { get; set; } = "";
+
+        /// <summary>
+        /// Alias prefix for the linked entity (from the FetchXML alias attribute).
+        /// </summary>
+        public string? Alias { get; set; }
+    }
+
+    /// <summary>
+    /// Determines how the default field selection is derived for a table.
+    /// </summary>
+    public enum FieldSelectionMode
+    {
+        /// <summary>Use fields from the selected Dataverse form.</summary>
+        Form,
+        /// <summary>Use columns from the selected Dataverse view.</summary>
+        View,
+        /// <summary>User manually selects fields (no automatic source).</summary>
+        Custom
     }
 
     #endregion

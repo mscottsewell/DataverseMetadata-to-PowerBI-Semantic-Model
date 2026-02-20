@@ -79,6 +79,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private Dictionary<string, HashSet<string>> _selectedAttributes = new Dictionary<string, HashSet<string>>();
         private Dictionary<string, string> _selectedFormIds = new Dictionary<string, string>();
         private Dictionary<string, string> _selectedViewIds = new Dictionary<string, string>();
+        private Dictionary<string, FieldSelectionMode> _fieldSelectionModes = new Dictionary<string, FieldSelectionMode>();
         private Dictionary<string, string> _tableStorageModes = new Dictionary<string, string>();
         private Dictionary<string, bool> _loadingStates = new Dictionary<string, bool>();
         
@@ -91,6 +92,8 @@ namespace DataverseToPowerBI.XrmToolBox
         
         // Expanded lookup state: key = table logical name, value = list of expanded lookup configs
         private Dictionary<string, List<ExpandedLookupConfig>> _expandedLookups = new Dictionary<string, List<ExpandedLookupConfig>>();
+        private readonly Dictionary<string, List<AttributeMetadata>> _relatedTableAttributesCache = new Dictionary<string, List<AttributeMetadata>>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string> _relatedTableDisplayNameCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         
         // Sorting state
         private int _selectedTablesSortColumn = -1;
@@ -231,6 +234,9 @@ namespace DataverseToPowerBI.XrmToolBox
                 $"ProductVersion: {versionInfo.ProductVersion}");
             UpdateVersionLabelLayout();
             panelStatus.Resize += (s, ev) => UpdateVersionLabelLayout();
+            
+            // Paste attributes button tooltip
+            _versionToolTip.SetToolTip(btnPasteAttributes, "Paste attribute names from clipboard");
             
             // Initialize toolbar icons
             btnRefreshMetadata.Image = RibbonIcons.RefreshIcon;
@@ -573,7 +579,10 @@ namespace DataverseToPowerBI.XrmToolBox
             _selectedAttributes.Clear();
             _selectedFormIds.Clear();
             _selectedViewIds.Clear();
+            _fieldSelectionModes.Clear();
             _loadingStates.Clear();
+            _relatedTableAttributesCache.Clear();
+            _relatedTableDisplayNameCache.Clear();
             _factTable = null;
             _relationships.Clear();
             _expandedLookups.Clear();
@@ -612,13 +621,24 @@ namespace DataverseToPowerBI.XrmToolBox
             if (settings.SelectedAttributes != null)
             {
                 foreach (var kvp in settings.SelectedAttributes)
-                    _selectedAttributes[kvp.Key] = new HashSet<string>(kvp.Value);
+                    _selectedAttributes[kvp.Key] = new HashSet<string>(kvp.Value, StringComparer.OrdinalIgnoreCase);
             }
             
             // Restore form/view selections
             _selectedFormIds = settings.SelectedFormIds ?? new Dictionary<string, string>();
             _selectedViewIds = settings.SelectedViewIds ?? new Dictionary<string, string>();
             _tableStorageModes = settings.TableStorageModes ?? new Dictionary<string, string>();
+
+            // Restore field selection modes
+            _fieldSelectionModes.Clear();
+            if (settings.FieldSelectionModes != null)
+            {
+                foreach (var kvp in settings.FieldSelectionModes)
+                {
+                    if (Enum.TryParse<FieldSelectionMode>(kvp.Value, out var mode))
+                        _fieldSelectionModes[kvp.Key] = mode;
+                }
+            }
             
             // Restore display name overrides
             _attributeDisplayNameOverrides.Clear();
@@ -779,6 +799,11 @@ namespace DataverseToPowerBI.XrmToolBox
 
                 // Save per-table storage mode overrides
                 settings.TableStorageModes = new Dictionary<string, string>(_tableStorageModes);
+
+                // Save field selection modes
+                settings.FieldSelectionModes = new Dictionary<string, string>();
+                foreach (var kvp in _fieldSelectionModes)
+                    settings.FieldSelectionModes[kvp.Key] = kvp.Value.ToString();
                 
                 // Save expanded lookups
                 settings.ExpandedLookups = new Dictionary<string, List<SerializedExpandedLookup>>();
@@ -1036,7 +1061,7 @@ namespace DataverseToPowerBI.XrmToolBox
                         
                         // Initialize attribute selection if not exists
                         if (!_selectedAttributes.ContainsKey(table.LogicalName))
-                            _selectedAttributes[table.LogicalName] = new HashSet<string>();
+                            _selectedAttributes[table.LogicalName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     }
                     
                     RefreshTableListDisplay();
@@ -1193,7 +1218,7 @@ namespace DataverseToPowerBI.XrmToolBox
                                 
                                 // Ensure primary key and name attributes are selected (critical for relationships)
                                 if (!_selectedAttributes.ContainsKey(tableName))
-                                    _selectedAttributes[tableName] = new HashSet<string>();
+                                    _selectedAttributes[tableName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                                 
                                 var primaryIdAttr = table.PrimaryIdAttribute;
                                 if (!string.IsNullOrEmpty(primaryIdAttr))
@@ -1230,7 +1255,7 @@ namespace DataverseToPowerBI.XrmToolBox
                                 if (!hasUserSelectedAttributes)
                                 {
                                     if (!_selectedAttributes.ContainsKey(tableName))
-                                        _selectedAttributes[tableName] = new HashSet<string>();
+                                        _selectedAttributes[tableName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                                     
                                     var selectedAttrs = _selectedAttributes[tableName];
                                     var attributes = _tableAttributes.ContainsKey(tableName) ? _tableAttributes[tableName] : new List<AttributeMetadata>();
@@ -1268,6 +1293,8 @@ namespace DataverseToPowerBI.XrmToolBox
                     }
                     
                     SetStatus($"Loaded metadata for {tablesToLoad.Count} tables");
+                    
+                    NormalizeExpandedLookupsFromMetadata();
                     
                     // Auto-create display name overrides for primary name attributes
                     AutoOverridePrimaryNameAttributes();
@@ -1359,6 +1386,12 @@ namespace DataverseToPowerBI.XrmToolBox
                         foreach (var tableName in _selectedTables.Keys.ToList())
                         {
                             RevalidateTableMetadata(tableName);
+                        }
+                        
+                        var normalizedExpandedLookupSettings = NormalizeExpandedLookupsFromMetadata();
+                        if (normalizedExpandedLookupSettings)
+                        {
+                            SaveSettings();
                         }
                     }
                     
@@ -1634,19 +1667,36 @@ namespace DataverseToPowerBI.XrmToolBox
         
         private string GetFormDisplayText(string logicalName)
         {
-            if (!_tableForms.ContainsKey(logicalName))
-                return "(not loaded)";
-            
-            var forms = _tableForms[logicalName];
-            if (!forms.Any())
-                return "(no forms)";
-            
-            var selectedFormId = _selectedFormIds.ContainsKey(logicalName)
-                ? _selectedFormIds[logicalName]
-                : forms.First().FormId;
-            
-            var form = forms.FirstOrDefault(f => f.FormId == selectedFormId) ?? forms.First();
-            return form.Name;
+            var mode = _fieldSelectionModes.TryGetValue(logicalName, out var m) ? m : FieldSelectionMode.Form;
+
+            switch (mode)
+            {
+                case FieldSelectionMode.View:
+                    if (_tableViews.ContainsKey(logicalName))
+                    {
+                        var vid = _selectedViewIds.TryGetValue(logicalName, out var v) ? v : null;
+                        var view = !string.IsNullOrEmpty(vid)
+                            ? _tableViews[logicalName].FirstOrDefault(vw => vw.ViewId == vid)
+                            : null;
+                        return view != null ? $"View: {view.Name}" : "View: (none)";
+                    }
+                    return "View: (not loaded)";
+
+                case FieldSelectionMode.Custom:
+                    return "Custom";
+
+                default: // Form
+                    if (!_tableForms.ContainsKey(logicalName))
+                        return "(not loaded)";
+                    var forms = _tableForms[logicalName];
+                    if (!forms.Any())
+                        return "(no forms)";
+                    var selectedFormId = _selectedFormIds.ContainsKey(logicalName)
+                        ? _selectedFormIds[logicalName]
+                        : forms.First().FormId;
+                    var form = forms.FirstOrDefault(f => f.FormId == selectedFormId) ?? forms.First();
+                    return $"Form: {form.Name}";
+            }
         }
         
         private string GetViewDisplayText(string logicalName)
@@ -1844,7 +1894,11 @@ namespace DataverseToPowerBI.XrmToolBox
             }
             
             var attributes = _tableAttributes[logicalName];
-            var selected = _selectedAttributes.ContainsKey(logicalName) ? _selectedAttributes[logicalName] : new HashSet<string>();
+            var selected = _selectedAttributes.ContainsKey(logicalName) ? _selectedAttributes[logicalName] : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var fieldSelectionMode = _fieldSelectionModes.TryGetValue(logicalName, out var mode)
+                ? mode
+                : FieldSelectionMode.Form;
+            var selectedViewLinkedKeys = GetSelectedViewLinkedColumnKeys(logicalName);
             var searchText = txtAttrSearch.Text.ToLower();
             var showSelected = radioShowSelected.Checked;
             
@@ -1876,15 +1930,8 @@ namespace DataverseToPowerBI.XrmToolBox
                 // Lock lookup columns required by relationships to dimension tables
                 requiredAttrs.UnionWith(GetRelationshipRequiredColumns(logicalName));
             
-            // Get form fields if form is selected
-            HashSet<string> formFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            if (_selectedFormIds.ContainsKey(logicalName) && _tableForms.ContainsKey(logicalName))
-            {
-                var formId = _selectedFormIds[logicalName];
-                var form = _tableForms[logicalName].FirstOrDefault(f => f.FormId == formId);
-                if (form?.Fields != null)
-                    formFields = new HashSet<string>(form.Fields, StringComparer.OrdinalIgnoreCase);
-            }
+            // Get default fields based on field selection mode
+            HashSet<string> formFields = GetDefaultFieldsForTable(logicalName);
             
             // Use pre-sorted cache if sort parameters match, otherwise rebuild
             var sortedList = GetSortedAttributes(logicalName, attributes, formFields, primaryIdAttr, primaryNameAttr);
@@ -2029,7 +2076,11 @@ namespace DataverseToPowerBI.XrmToolBox
                         childItem.Text = "";
                         childItem.Checked = true; // Expanded attributes are always included
                         childItem.Name = $"__expanded__{attr.LogicalName}__{expAttr.LogicalName}";
-                        childItem.SubItems.Add(""); // Form column
+                        var isFromSelectedView = selectedViewLinkedKeys.Contains(BuildViewLinkedColumnKey(
+                            attr.LogicalName,
+                            expandConfig.TargetTableLogicalName,
+                            expAttr.LogicalName));
+                        childItem.SubItems.Add(fieldSelectionMode == FieldSelectionMode.View && isFromSelectedView ? "✓" : ""); // Default column
                         var targetDisplayPrefix = expandConfig.TargetTableDisplayName ?? expandConfig.TargetTableLogicalName;
                         childItem.SubItems.Add($"    ↳ {targetDisplayPrefix} : {expAttr.DisplayName ?? expAttr.LogicalName}");
                         childItem.SubItems.Add($"{expandConfig.TargetTableLogicalName}.{expAttr.LogicalName}");
@@ -2139,14 +2190,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 var table = _selectedTables[tableName];
                 var attributes = _tableAttributes[tableName];
 
-                HashSet<string> formFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                if (_selectedFormIds.ContainsKey(tableName) && _tableForms.ContainsKey(tableName))
-                {
-                    var formId = _selectedFormIds[tableName];
-                    var form = _tableForms[tableName].FirstOrDefault(f => f.FormId == formId);
-                    if (form?.Fields != null)
-                        formFields = new HashSet<string>(form.Fields, StringComparer.OrdinalIgnoreCase);
-                }
+                HashSet<string> formFields = GetDefaultFieldsForTable(tableName);
 
                 GetSortedAttributes(tableName, attributes, formFields,
                     table.PrimaryIdAttribute, table.PrimaryNameAttribute);
@@ -2195,7 +2239,7 @@ namespace DataverseToPowerBI.XrmToolBox
             }
             
             if (!_selectedAttributes.ContainsKey(logicalName))
-                _selectedAttributes[logicalName] = new HashSet<string>();
+                _selectedAttributes[logicalName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             
             if (e.Item.Checked)
                 _selectedAttributes[logicalName].Add(attrName);
@@ -2245,7 +2289,7 @@ namespace DataverseToPowerBI.XrmToolBox
             {
                 var logicalName = listViewSelectedTables.SelectedItems[0].Name;
                 if (!_selectedAttributes.ContainsKey(logicalName))
-                    _selectedAttributes[logicalName] = new HashSet<string>();
+                    _selectedAttributes[logicalName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 
                 foreach (ListViewItem item in listViewAttributes.Items)
                 {
@@ -2291,7 +2335,7 @@ namespace DataverseToPowerBI.XrmToolBox
             
             // Update state - clear all but keep required attributes
             if (!_selectedAttributes.ContainsKey(logicalName))
-                _selectedAttributes[logicalName] = new HashSet<string>();
+                _selectedAttributes[logicalName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             
             _selectedAttributes[logicalName].Clear();
             foreach (var req in requiredAttrs)
@@ -2307,44 +2351,152 @@ namespace DataverseToPowerBI.XrmToolBox
         {
             if (listViewSelectedTables.SelectedItems.Count == 0) return;
             var logicalName = listViewSelectedTables.SelectedItems[0].Name;
-            
-            if (!_selectedFormIds.ContainsKey(logicalName) || !_tableForms.ContainsKey(logicalName))
+
+            var mode = _fieldSelectionModes.TryGetValue(logicalName, out var m) ? m : FieldSelectionMode.Form;
+
+            if (mode == FieldSelectionMode.Custom)
             {
-                MessageBox.Show("Please select a form first by double-clicking the table row.", "No Form Selected", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(
+                    "This table is set to Custom field selection.\n" +
+                    "Select fields manually from the list, or change the mode by double-clicking the table row.",
+                    "Custom Mode", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-            
-            var formId = _selectedFormIds[logicalName];
-            var form = _tableForms[logicalName].FirstOrDefault(f => f.FormId == formId);
-            if (form?.Fields == null || form.Fields.Count == 0)
+
+            // Collect the target field names based on mode
+            HashSet<string>? targetFields = null;
+
+            if (mode == FieldSelectionMode.Form)
             {
-                MessageBox.Show("The selected form has no fields.", "No Fields", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
+                if (!_selectedFormIds.ContainsKey(logicalName) || !_tableForms.ContainsKey(logicalName))
+                {
+                    MessageBox.Show("Please select a form first by double-clicking the table row.", "No Form Selected",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                var formId = _selectedFormIds[logicalName];
+                var form = _tableForms[logicalName].FirstOrDefault(f => f.FormId == formId);
+                if (form?.Fields == null || form.Fields.Count == 0)
+                {
+                    MessageBox.Show("The selected form has no fields.", "No Fields", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                targetFields = new HashSet<string>(form.Fields, StringComparer.OrdinalIgnoreCase);
             }
-            
-            var formFields = new HashSet<string>(form.Fields, StringComparer.OrdinalIgnoreCase);
-            
+            else // View
+            {
+                if (!_selectedViewIds.ContainsKey(logicalName) || !_tableViews.ContainsKey(logicalName))
+                {
+                    MessageBox.Show("Please select a view first by double-clicking the table row.", "No View Selected",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                var vid = _selectedViewIds[logicalName];
+                var view = _tableViews[logicalName].FirstOrDefault(vw => vw.ViewId == vid);
+                if (view == null || view.Columns.Count == 0)
+                {
+                    MessageBox.Show("The selected view has no columns.", "No Columns", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                targetFields = new HashSet<string>(view.Columns, StringComparer.OrdinalIgnoreCase);
+            }
+
+            // Check the matching items in the listview
             _isLoading = true;
             foreach (ListViewItem item in listViewAttributes.Items)
             {
                 var attrName = item.Tag as string;
-                if (attrName != null && formFields.Contains(attrName))
+                if (attrName != null && targetFields.Contains(attrName))
                     item.Checked = true;
             }
             _isLoading = false;
-            
+
             // Update state
             if (!_selectedAttributes.ContainsKey(logicalName))
-                _selectedAttributes[logicalName] = new HashSet<string>();
-            
-            foreach (var field in formFields)
+                _selectedAttributes[logicalName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var field in targetFields)
             {
                 _selectedAttributes[logicalName].Add(field);
             }
+
+            UpdateSelectedTableRow(logicalName);
+            SaveSettings();
+        }
+        
+        private void BtnPasteAttributes_Click(object sender, EventArgs e)
+        {
+            if (listViewSelectedTables.SelectedItems.Count == 0)
+            {
+                MessageBox.Show("Please select a table first.", "No Table Selected",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            
+            var logicalName = listViewSelectedTables.SelectedItems[0].Name;
+            
+            if (!_tableAttributes.ContainsKey(logicalName))
+            {
+                MessageBox.Show("No attributes loaded for this table.", "No Attributes",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            
+            using var dialog = new PasteAttributesDialog();
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+            
+            var requestedNames = dialog.ParsedAttributeNames;
+            if (requestedNames.Count == 0) return;
+            
+            // Build a lookup of all attributes on this table by logical name
+            var tableAttrs = new HashSet<string>(
+                _tableAttributes[logicalName].Select(a => a.LogicalName),
+                StringComparer.OrdinalIgnoreCase);
+            
+            // Partition into found and not-found
+            var found = new List<string>();
+            var notFound = new List<string>();
+            foreach (var name in requestedNames)
+            {
+                if (tableAttrs.Contains(name))
+                    found.Add(name);
+                else
+                    notFound.Add(name);
+            }
+            
+            if (found.Count == 0)
+            {
+                MessageBox.Show(
+                    $"None of the {requestedNames.Count} attribute name(s) were found on this table.\n\n" +
+                    $"Not found:\n{string.Join("\n", notFound)}",
+                    "No Matches", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            
+            // Select the matching attributes in the UI
+            var foundSet = new HashSet<string>(found, StringComparer.OrdinalIgnoreCase);
+            
+            if (!_selectedAttributes.ContainsKey(logicalName))
+                _selectedAttributes[logicalName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            
+            foreach (var name in found)
+                _selectedAttributes[logicalName].Add(name);
+
+            // Refresh list in the user's current mode (All/Selected) so newly selected
+            // attributes appear immediately without changing filter mode.
+            UpdateAttributesDisplay(logicalName);
             
             UpdateSelectedTableRow(logicalName);
             SaveSettings();
+            
+            // Show summary
+            var message = $"{found.Count} attribute(s) selected.";
+            if (notFound.Count > 0)
+            {
+                message += $"\n\n{notFound.Count} attribute name(s) not found on this table:\n{string.Join("\n", notFound)}";
+            }
+            MessageBox.Show(message, "Paste Attributes Result", MessageBoxButtons.OK,
+                notFound.Count > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
         }
         
         private void ListViewAttributes_ColumnClick(object sender, ColumnClickEventArgs e)
@@ -2654,7 +2806,7 @@ namespace DataverseToPowerBI.XrmToolBox
             // Fixed-width columns
             const int editWidth = 30;
             const int roleWidth = 55;
-            const int attrsWidth = 30;
+            const int attrsWidth = 50;
             const int scrollBarWidth = 20;
             
             var modeWidth = colMode.Width; // 0 when hidden, 90 when visible
@@ -2662,9 +2814,9 @@ namespace DataverseToPowerBI.XrmToolBox
             var availableWidth = listViewSelectedTables.Width - editWidth - roleWidth - modeWidth - attrsWidth - scrollBarWidth;
             if (availableWidth <= 0) return;
             
-            // Distribute remaining: Table (30%), Form (30%), Filter (40%)
-            var tableWidth = (int)(availableWidth * 0.30);
-            var formWidth = (int)(availableWidth * 0.30);
+            // Distribute remaining: Table (20%), Default Fields (40%), Filter (40%)
+            var tableWidth = (int)(availableWidth * 0.20);
+            var formWidth = (int)(availableWidth * 0.40);
             var filterWidth = availableWidth - tableWidth - formWidth;
             
             listViewSelectedTables.BeginUpdate();
@@ -2817,63 +2969,39 @@ namespace DataverseToPowerBI.XrmToolBox
             
             var currentFormId = _selectedFormIds.TryGetValue(logicalName, out var formId) ? formId : null;
             var currentViewId = _selectedViewIds.TryGetValue(logicalName, out var viewId) ? viewId : null;
+            var currentMode = _fieldSelectionModes.TryGetValue(logicalName, out var mode) ? mode : FieldSelectionMode.Form;
+
             using (var dialog = new FormViewSelectorForm(
                 logicalName,
                 _tableForms[logicalName],
                 _tableViews[logicalName],
                 currentFormId,
-                currentViewId))
+                currentViewId,
+                currentMode))
             {
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
-                    // Check if form changed
                     var previousFormId = currentFormId;
+                    var previousViewId = currentViewId;
+                    var previousMode = currentMode;
                     var selectedFormId = dialog.SelectedFormId;
-                    bool formChanged = selectedFormId != previousFormId;
-                    
+                    var selectedViewId = dialog.SelectedViewId;
+                    var selectedMode = dialog.FieldSelectionMode;
+
                     if (!string.IsNullOrEmpty(selectedFormId))
                         _selectedFormIds[logicalName] = selectedFormId;
-                    var selectedViewId = dialog.SelectedViewId;
                     if (!string.IsNullOrEmpty(selectedViewId))
                         _selectedViewIds[logicalName] = selectedViewId;
-                    
-                    // If form changed, clear and re-select form fields
-                    if (formChanged && !string.IsNullOrEmpty(selectedFormId))
+                    _fieldSelectionModes[logicalName] = selectedMode;
+
+                    bool modeChanged = selectedMode != previousMode;
+                    bool formChanged = selectedFormId != previousFormId;
+                    bool viewChanged = selectedViewId != previousViewId;
+
+                    // Apply default field selection when mode changed, form/view changed in respective mode
+                    if (modeChanged || (selectedMode == FieldSelectionMode.Form && formChanged) || (selectedMode == FieldSelectionMode.View && viewChanged))
                     {
-                        var form = _tableForms[logicalName].FirstOrDefault(f => f.FormId == selectedFormId);
-                        if (form != null)
-                        {
-                            // Clear current selections
-                            if (!_selectedAttributes.ContainsKey(logicalName))
-                                _selectedAttributes[logicalName] = new HashSet<string>();
-                            
-                            var selectedAttrs = _selectedAttributes[logicalName];
-                            selectedAttrs.Clear();
-                            
-                            var table = _selectedTables[logicalName];
-                            var attributes = _tableAttributes.ContainsKey(logicalName) ? _tableAttributes[logicalName] : new List<AttributeMetadata>();
-                            
-                            // Always include primary ID and name attributes
-                            var primaryId = table.PrimaryIdAttribute;
-                            if (!string.IsNullOrEmpty(primaryId))
-                                selectedAttrs.Add(primaryId);
-                            var primaryName = table.PrimaryNameAttribute;
-                            if (!string.IsNullOrEmpty(primaryName))
-                                selectedAttrs.Add(primaryName);
-                            
-                            // Add all fields from the newly selected form
-                            if (form.Fields != null)
-                            {
-                                foreach (var field in form.Fields)
-                                {
-                                    if (!string.IsNullOrEmpty(field) &&
-                                        attributes.Any(a => a.LogicalName.Equals(field, StringComparison.OrdinalIgnoreCase)))
-                                    {
-                                        selectedAttrs.Add(field);
-                                    }
-                                }
-                            }
-                        }
+                        ApplyFieldSelectionForTable(logicalName, selectedMode);
                     }
                     
                     UpdateSelectedTableRow(logicalName);
@@ -2881,6 +3009,356 @@ namespace DataverseToPowerBI.XrmToolBox
                     SaveSettings();
                 }
             }
+        }
+
+        /// <summary>
+        /// Applies the default field selection for a table based on the chosen mode.
+        /// </summary>
+        private void ApplyFieldSelectionForTable(string logicalName, FieldSelectionMode mode)
+        {
+            if (!_selectedAttributes.ContainsKey(logicalName))
+                _selectedAttributes[logicalName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            var selectedAttrs = _selectedAttributes[logicalName];
+            var attributes = _tableAttributes.ContainsKey(logicalName) ? _tableAttributes[logicalName] : new List<AttributeMetadata>();
+            var table = _selectedTables.ContainsKey(logicalName) ? _selectedTables[logicalName] : null;
+
+            switch (mode)
+            {
+                case FieldSelectionMode.Form:
+                    var formId = _selectedFormIds.TryGetValue(logicalName, out var fid) ? fid : null;
+                    var form = !string.IsNullOrEmpty(formId)
+                        ? _tableForms[logicalName].FirstOrDefault(f => f.FormId == formId)
+                        : null;
+                    if (form != null)
+                    {
+                        selectedAttrs.Clear();
+                        AddPrimaryAttributes(selectedAttrs, table);
+                        if (form.Fields != null)
+                        {
+                            foreach (var field in form.Fields)
+                            {
+                                if (!string.IsNullOrEmpty(field) &&
+                                    attributes.Any(a => a.LogicalName.Equals(field, StringComparison.OrdinalIgnoreCase)))
+                                {
+                                    selectedAttrs.Add(field);
+                                }
+                            }
+                        }
+                    }
+                    break;
+
+                case FieldSelectionMode.View:
+                    var vid = _selectedViewIds.TryGetValue(logicalName, out var v) ? v : null;
+                    var view = !string.IsNullOrEmpty(vid)
+                        ? _tableViews[logicalName].FirstOrDefault(vw => vw.ViewId == vid)
+                        : null;
+                    if (view != null)
+                    {
+                        selectedAttrs.Clear();
+                        AddPrimaryAttributes(selectedAttrs, table);
+                        foreach (var col in view.Columns)
+                        {
+                            if (!string.IsNullOrEmpty(col) &&
+                                !col.Equals("entityimage_url", StringComparison.OrdinalIgnoreCase) &&
+                                attributes.Any(a => a.LogicalName.Equals(col, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                selectedAttrs.Add(col);
+                            }
+                        }
+
+                        // Wire up link-entity columns as expanded lookups
+                        if (view.LinkedColumns.Any())
+                        {
+                            ApplyViewLinkedColumnsAsExpandedLookups(logicalName, view.LinkedColumns, attributes);
+
+                            // Auto-select the lookup attributes that the linked columns join through
+                            foreach (var lookupName in view.LinkedColumns
+                                .Select(lc => lc.LookupAttribute)
+                                .Distinct(StringComparer.OrdinalIgnoreCase))
+                            {
+                                if (attributes.Any(a => a.LogicalName.Equals(lookupName, StringComparison.OrdinalIgnoreCase)))
+                                {
+                                    selectedAttrs.Add(lookupName);
+                                }
+                            }
+                        }
+                    }
+                    break;
+
+                case FieldSelectionMode.Custom:
+                    // No automatic selection — leave current selections as-is
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Returns the set of "default" field names for a table based on the current field selection mode.
+        /// Form mode → form fields, View mode → view columns, Custom → empty.
+        /// </summary>
+        private HashSet<string> GetDefaultFieldsForTable(string logicalName)
+        {
+            var mode = _fieldSelectionModes.TryGetValue(logicalName, out var m) ? m : FieldSelectionMode.Form;
+
+            switch (mode)
+            {
+                case FieldSelectionMode.Form:
+                    if (_selectedFormIds.ContainsKey(logicalName) && _tableForms.ContainsKey(logicalName))
+                    {
+                        var formId = _selectedFormIds[logicalName];
+                        var form = _tableForms[logicalName].FirstOrDefault(f => f.FormId == formId);
+                        if (form?.Fields != null)
+                            return new HashSet<string>(form.Fields, StringComparer.OrdinalIgnoreCase);
+                    }
+                    break;
+
+                case FieldSelectionMode.View:
+                    if (_selectedViewIds.ContainsKey(logicalName) && _tableViews.ContainsKey(logicalName))
+                    {
+                        var vid = _selectedViewIds[logicalName];
+                        var view = _tableViews[logicalName].FirstOrDefault(v => v.ViewId == vid);
+                        if (view?.Columns != null)
+                        {
+                            var viewFields = new HashSet<string>(view.Columns, StringComparer.OrdinalIgnoreCase);
+                            viewFields.Remove("entityimage_url");
+                            return viewFields;
+                        }
+                    }
+                    break;
+
+                case FieldSelectionMode.Custom:
+                    // No default fields — column stays blank
+                    break;
+            }
+
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Adds the primary ID and name attributes to the attribute set.
+        /// </summary>
+        private static void AddPrimaryAttributes(HashSet<string> attrs, TableInfo? table)
+        {
+            if (table == null) return;
+            if (!string.IsNullOrEmpty(table.PrimaryIdAttribute))
+                attrs.Add(table.PrimaryIdAttribute);
+            if (!string.IsNullOrEmpty(table.PrimaryNameAttribute))
+                attrs.Add(table.PrimaryNameAttribute);
+        }
+
+        /// <summary>
+        /// Converts view link-entity columns into ExpandedLookupConfig entries,
+        /// so that related-entity fields from the view appear as expanded lookups.
+        /// </summary>
+        private void ApplyViewLinkedColumnsAsExpandedLookups(
+            string sourceTable,
+            List<ViewLinkedColumn> linkedColumns,
+            List<AttributeMetadata> sourceAttributes)
+        {
+            if (!_expandedLookups.ContainsKey(sourceTable))
+                _expandedLookups[sourceTable] = new List<ExpandedLookupConfig>();
+
+            // Group linked columns by lookup attribute (each lookup = one expanded config)
+            var grouped = linkedColumns.GroupBy(lc => lc.LookupAttribute, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var group in grouped)
+            {
+                var lookupAttrName = group.Key;
+                var first = group.First();
+                var targetTableLogicalName = first.LinkedEntityName;
+                var targetTableDisplayName = ResolveRelatedTableDisplayName(targetTableLogicalName);
+                var targetAttributes = GetRelatedTableAttributes(targetTableLogicalName);
+
+                // Ensure the lookup attribute actually exists on the source table
+                var lookupAttr = sourceAttributes.FirstOrDefault(a =>
+                    a.LogicalName.Equals(lookupAttrName, StringComparison.OrdinalIgnoreCase));
+                if (lookupAttr == null) continue;
+
+                // Remove any existing config for this lookup so we replace it
+                _expandedLookups[sourceTable].RemoveAll(e =>
+                    e.LookupAttributeName.Equals(lookupAttrName, StringComparison.OrdinalIgnoreCase));
+
+                var expandedAttrs = group.Select(lc =>
+                {
+                    var targetAttr = targetAttributes.FirstOrDefault(a =>
+                        a.LogicalName.Equals(lc.AttributeName, StringComparison.OrdinalIgnoreCase));
+
+                    return new ExpandedLookupAttribute
+                    {
+                        LogicalName = lc.AttributeName,
+                        DisplayName = targetAttr?.DisplayName ?? lc.AttributeName,
+                        AttributeType = targetAttr?.AttributeType,
+                        SchemaName = targetAttr?.SchemaName,
+                        Targets = targetAttr?.Targets?.ToList(),
+                        VirtualAttributeName = targetAttr?.VirtualAttributeName
+                    };
+                }).ToList();
+
+                _expandedLookups[sourceTable].Add(new ExpandedLookupConfig
+                {
+                    LookupAttributeName = lookupAttrName,
+                    LookupDisplayName = lookupAttr.DisplayName,
+                    TargetTableLogicalName = targetTableLogicalName,
+                    TargetTableDisplayName = targetTableDisplayName,
+                    TargetTablePrimaryKey = targetTableLogicalName + "id",
+                    Attributes = expandedAttrs
+                });
+            }
+
+            // Clean up empty entries
+            if (_expandedLookups[sourceTable].Count == 0)
+                _expandedLookups.Remove(sourceTable);
+        }
+
+        private HashSet<string> GetSelectedViewLinkedColumnKeys(string logicalName)
+        {
+            if (!_tableViews.TryGetValue(logicalName, out var views) ||
+                !_selectedViewIds.TryGetValue(logicalName, out var selectedViewId) ||
+                string.IsNullOrEmpty(selectedViewId))
+            {
+                return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            var selectedView = views.FirstOrDefault(v =>
+                v.ViewId.Equals(selectedViewId, StringComparison.OrdinalIgnoreCase));
+            if (selectedView?.LinkedColumns == null || selectedView.LinkedColumns.Count == 0)
+                return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            return new HashSet<string>(
+                selectedView.LinkedColumns.Select(link => BuildViewLinkedColumnKey(
+                    link.LookupAttribute,
+                    link.LinkedEntityName,
+                    link.AttributeName)),
+                StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static string BuildViewLinkedColumnKey(string lookupAttribute, string targetTableLogicalName, string attributeName)
+        {
+            return $"{lookupAttribute}|{targetTableLogicalName}|{attributeName}";
+        }
+
+        private bool NormalizeExpandedLookupsFromMetadata()
+        {
+            bool changed = false;
+
+            foreach (var tableEntry in _expandedLookups)
+            {
+                foreach (var expand in tableEntry.Value)
+                {
+                    var targetTable = expand.TargetTableLogicalName;
+                    if (string.IsNullOrEmpty(targetTable))
+                        continue;
+
+                    var resolvedTargetDisplayName = ResolveRelatedTableDisplayName(targetTable);
+                    if (!string.Equals(expand.TargetTableDisplayName, resolvedTargetDisplayName, StringComparison.Ordinal))
+                    {
+                        expand.TargetTableDisplayName = resolvedTargetDisplayName;
+                        changed = true;
+                    }
+
+                    var targetAttributes = GetRelatedTableAttributes(targetTable);
+                    foreach (var expandedAttr in expand.Attributes)
+                    {
+                        var targetAttr = targetAttributes.FirstOrDefault(a =>
+                            a.LogicalName.Equals(expandedAttr.LogicalName, StringComparison.OrdinalIgnoreCase));
+                        if (targetAttr == null)
+                            continue;
+
+                        var resolvedDisplayName = targetAttr.DisplayName ?? targetAttr.LogicalName;
+                        var shouldUpgradeDisplayName = string.IsNullOrWhiteSpace(expandedAttr.DisplayName)
+                            || expandedAttr.DisplayName.Equals(expandedAttr.LogicalName, StringComparison.OrdinalIgnoreCase)
+                            || (!string.IsNullOrEmpty(expandedAttr.SchemaName) && expandedAttr.DisplayName.Equals(expandedAttr.SchemaName, StringComparison.OrdinalIgnoreCase));
+
+                        if (shouldUpgradeDisplayName && !string.Equals(expandedAttr.DisplayName, resolvedDisplayName, StringComparison.Ordinal))
+                        {
+                            expandedAttr.DisplayName = resolvedDisplayName;
+                            changed = true;
+                        }
+
+                        if (!string.Equals(expandedAttr.AttributeType, targetAttr.AttributeType, StringComparison.Ordinal))
+                        {
+                            expandedAttr.AttributeType = targetAttr.AttributeType;
+                            changed = true;
+                        }
+
+                        if (!string.Equals(expandedAttr.SchemaName, targetAttr.SchemaName, StringComparison.Ordinal))
+                        {
+                            expandedAttr.SchemaName = targetAttr.SchemaName;
+                            changed = true;
+                        }
+
+                        if (!string.Equals(expandedAttr.VirtualAttributeName, targetAttr.VirtualAttributeName, StringComparison.Ordinal))
+                        {
+                            expandedAttr.VirtualAttributeName = targetAttr.VirtualAttributeName;
+                            changed = true;
+                        }
+
+                        var targetTargets = targetAttr.Targets ?? new List<string>();
+                        var currentTargets = expandedAttr.Targets ?? new List<string>();
+                        if (!currentTargets.SequenceEqual(targetTargets, StringComparer.OrdinalIgnoreCase))
+                        {
+                            expandedAttr.Targets = targetTargets.ToList();
+                            changed = true;
+                        }
+                    }
+                }
+            }
+
+            return changed;
+        }
+
+        private List<AttributeMetadata> GetRelatedTableAttributes(string tableLogicalName)
+        {
+            if (_tableAttributes.TryGetValue(tableLogicalName, out var selectedTableAttrs) && selectedTableAttrs.Count > 0)
+                return selectedTableAttrs;
+
+            if (_relatedTableAttributesCache.TryGetValue(tableLogicalName, out var cachedAttrs) && cachedAttrs.Count > 0)
+                return cachedAttrs;
+
+            if (_xrmAdapter != null && Service != null)
+            {
+                try
+                {
+                    var fetchedAttrs = _xrmAdapter.GetAttributesSync(Service, tableLogicalName);
+                    _relatedTableAttributesCache[tableLogicalName] = fetchedAttrs;
+                    return fetchedAttrs;
+                }
+                catch (Exception ex)
+                {
+                    DebugLogger.Log($"Error loading related table attributes for '{tableLogicalName}': {ex.Message}");
+                }
+            }
+
+            return new List<AttributeMetadata>();
+        }
+
+        private string ResolveRelatedTableDisplayName(string tableLogicalName)
+        {
+            if (_selectedTables.TryGetValue(tableLogicalName, out var tableInfo) && !string.IsNullOrEmpty(tableInfo.DisplayName))
+                return tableInfo.DisplayName ?? tableLogicalName;
+
+            if (_relatedTableDisplayNameCache.TryGetValue(tableLogicalName, out var cachedDisplayName) && !string.IsNullOrEmpty(cachedDisplayName))
+                return cachedDisplayName ?? tableLogicalName;
+
+            if (_xrmAdapter != null && Service != null)
+            {
+                try
+                {
+                    var meta = _xrmAdapter.GetTableMetadataSync(Service, tableLogicalName);
+                    var displayName = meta?.DisplayName;
+                    if (!string.IsNullOrEmpty(displayName))
+                    {
+                        _relatedTableDisplayNameCache[tableLogicalName] = displayName;
+                        return displayName ?? tableLogicalName;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DebugLogger.Log($"Error loading related table display name for '{tableLogicalName}': {ex.Message}");
+                }
+            }
+
+            return tableLogicalName;
         }
         
         private void ListViewSelectedTables_ColumnClick(object sender, ColumnClickEventArgs e)
@@ -3083,7 +3561,7 @@ namespace DataverseToPowerBI.XrmToolBox
             foreach (var tableName in _selectedTables.Keys)
             {
                 if (!_tableAttributes.ContainsKey(tableName)) continue;
-                var selected = _selectedAttributes.ContainsKey(tableName) ? _selectedAttributes[tableName] : new HashSet<string>();
+                var selected = _selectedAttributes.ContainsKey(tableName) ? _selectedAttributes[tableName] : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 
                 // Include required attributes
                 var requiredAttrs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -3655,6 +4133,12 @@ namespace DataverseToPowerBI.XrmToolBox
         /// </summary>
         [System.Runtime.Serialization.DataMember]
         public Dictionary<string, List<SerializedExpandedLookup>> ExpandedLookups { get; set; } = new Dictionary<string, List<SerializedExpandedLookup>>();
+        /// <summary>
+        /// Per-table field selection mode (Form, View, or Custom).
+        /// Key = table logical name, Value = mode string.
+        /// </summary>
+        [System.Runtime.Serialization.DataMember]
+        public Dictionary<string, string> FieldSelectionModes { get; set; } = new Dictionary<string, string>();
     }
     
     [System.Runtime.Serialization.DataContract]

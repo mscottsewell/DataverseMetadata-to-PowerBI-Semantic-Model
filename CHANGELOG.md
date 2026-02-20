@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2026.5.83] - 2026-02-20
+
+### Added
+
+- **View-Based Expanded Field Defaults (Strict Matching)** — The `Default` checkmark for expanded child rows now appears only when a child field matches the currently selected view's linked columns (lookup + target table + attribute). Manually edited expanded rows are no longer treated as view-defaults unless they exactly match the selected view definition.
+
+- **Expanded Lookup Metadata Normalization on Load** — Existing saved expanded lookup settings are auto-upgraded during metadata load/revalidation:
+  - Replaces legacy placeholder display names with resolved Dataverse display names
+  - Refreshes target table display names
+  - Refreshes attribute metadata (type/schema/targets/virtual attribute)
+  - Persists upgraded values automatically so users do not need to reselect views
+
+### Changed
+
+- **Quick Select UX (Paste Attributes Dialog)** — Applying Quick Select now preserves the current attribute filter mode (`All` or `Selected`) instead of switching users to `All`.
+
+- **Quick Select Refresh Behavior** — After applying quick-selected attributes, the attribute list refreshes in-place so newly selected attributes are immediately visible in the current mode.
+
+- **Selection Persistence Reliability** — Selected attribute sets are now handled with case-insensitive comparison when restored/initialized, preventing saved selections from appearing unchecked after close/reopen due to casing differences.
+
+### Fixed
+
+- **Saved Selections Lost on Reopen (View Mode)** — Removed load/revalidation behavior that reapplied default field selection and could overwrite user-selected attributes. Revalidation now updates metadata/default indicators without resetting saved `Selected` values (except for valid cleanup of attributes that no longer exist and required locked fields).
+
+---
+
 ## [1.2026.5.62] - 2026-02-19
 
 ### Fixed

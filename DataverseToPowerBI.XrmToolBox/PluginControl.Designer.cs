@@ -61,6 +61,7 @@ namespace DataverseToPowerBI.XrmToolBox
             this.lblShow = new System.Windows.Forms.Label();
             this.radioShowAll = new System.Windows.Forms.RadioButton();
             this.radioShowSelected = new System.Windows.Forms.RadioButton();
+            this.btnPasteAttributes = new System.Windows.Forms.Button();
             this.listViewAttributes = new System.Windows.Forms.ListView();
             this.colAttrSelected = new System.Windows.Forms.ColumnHeader();
             this.colAttrOnForm = new System.Windows.Forms.ColumnHeader();
@@ -280,8 +281,8 @@ namespace DataverseToPowerBI.XrmToolBox
             this.colMode.Width = 0;
 
             // colForm
-            this.colForm.Text = "Form";
-            this.colForm.Width = 90;
+            this.colForm.Text = "Default Fields";
+            this.colForm.Width = 120;
 
             // colView
             this.colView.Text = "Filter";
@@ -351,6 +352,7 @@ namespace DataverseToPowerBI.XrmToolBox
             this.panelAttrFilter.Controls.Add(this.lblShow);
             this.panelAttrFilter.Controls.Add(this.radioShowAll);
             this.panelAttrFilter.Controls.Add(this.radioShowSelected);
+            this.panelAttrFilter.Controls.Add(this.btnPasteAttributes);
             this.panelAttrFilter.Dock = System.Windows.Forms.DockStyle.Top;
             this.panelAttrFilter.Location = new System.Drawing.Point(5, 21);
             this.panelAttrFilter.Name = "panelAttrFilter";
@@ -404,6 +406,18 @@ namespace DataverseToPowerBI.XrmToolBox
             this.radioShowSelected.UseVisualStyleBackColor = true;
             this.radioShowSelected.CheckedChanged += new System.EventHandler(this.RadioShowMode_CheckedChanged);
 
+            // btnPasteAttributes
+            this.btnPasteAttributes.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnPasteAttributes.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnPasteAttributes.FlatAppearance.BorderSize = 0;
+            this.btnPasteAttributes.Location = new System.Drawing.Point(549, 4);
+            this.btnPasteAttributes.Name = "btnPasteAttributes";
+            this.btnPasteAttributes.Size = new System.Drawing.Size(26, 26);
+            this.btnPasteAttributes.TabIndex = 5;
+            this.btnPasteAttributes.Text = "\ud83d\udccb";
+            this.btnPasteAttributes.UseVisualStyleBackColor = true;
+            this.btnPasteAttributes.Click += new System.EventHandler(this.BtnPasteAttributes_Click);
+
             // listViewAttributes
             this.listViewAttributes.CheckBoxes = true;
             this.listViewAttributes.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
@@ -434,8 +448,8 @@ namespace DataverseToPowerBI.XrmToolBox
             this.colAttrSelected.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
 
             // colAttrOnForm
-            this.colAttrOnForm.Text = "Form";
-            this.colAttrOnForm.Width = 40;
+            this.colAttrOnForm.Text = "Default";
+            this.colAttrOnForm.Width = 50;
             this.colAttrOnForm.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
 
             // colAttrDisplay
@@ -487,7 +501,7 @@ namespace DataverseToPowerBI.XrmToolBox
             this.btnSelectFromForm.Name = "btnSelectFromForm";
             this.btnSelectFromForm.Size = new System.Drawing.Size(155, 28);
             this.btnSelectFromForm.TabIndex = 2;
-            this.btnSelectFromForm.Text = "Match Selected Form";
+            this.btnSelectFromForm.Text = "Match Default Selection";
             this.btnSelectFromForm.UseVisualStyleBackColor = true;
             this.btnSelectFromForm.Click += new System.EventHandler(this.BtnSelectFromForm_Click);
 
@@ -604,6 +618,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private System.Windows.Forms.Label lblShow;
         private System.Windows.Forms.RadioButton radioShowAll;
         private System.Windows.Forms.RadioButton radioShowSelected;
+        private System.Windows.Forms.Button btnPasteAttributes;
         private System.Windows.Forms.ListView listViewAttributes;
         private System.Windows.Forms.ColumnHeader colAttrSelected;
         private System.Windows.Forms.ColumnHeader colAttrOnForm;

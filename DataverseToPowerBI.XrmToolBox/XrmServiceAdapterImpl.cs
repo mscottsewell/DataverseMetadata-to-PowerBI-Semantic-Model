@@ -625,7 +625,10 @@ namespace DataverseToPowerBI.XrmToolBox
 
         public List<ViewMetadata> GetViewsSync(IOrganizationService service, string entityLogicalName, bool includeFetchXml = false)
         {
-            var query = new QueryExpression("savedquery")
+            var views = new List<ViewMetadata>();
+
+            // System (public) views from savedquery
+            var systemQuery = new QueryExpression("savedquery")
             {
                 ColumnSet = new ColumnSet("savedqueryid", "name", "querytype", "fetchxml", "returnedtypecode", "isdefault"),
                 Criteria = new FilterExpression
@@ -639,14 +642,14 @@ namespace DataverseToPowerBI.XrmToolBox
                 Orders = { new OrderExpression("name", OrderType.Ascending) }
             };
 
-            var results = service.RetrieveMultiple(query);
+            var systemResults = service.RetrieveMultiple(systemQuery);
             
-            return results.Entities.Select(e => 
+            views.AddRange(systemResults.Entities.Select(e => 
             {
                 var fetchXml = e.GetAttributeValue<string>("fetchxml");
-                var columns = includeFetchXml && !string.IsNullOrEmpty(fetchXml) 
-                    ? ExtractColumnsFromFetchXml(fetchXml) 
-                    : new List<string>();
+                var extractResult = includeFetchXml && !string.IsNullOrEmpty(fetchXml) 
+                    ? ExtractViewColumnsFromFetchXml(fetchXml) 
+                    : (new List<string>(), new List<ViewLinkedColumn>());
                 
                 return new ViewMetadata
                 {
@@ -654,9 +657,58 @@ namespace DataverseToPowerBI.XrmToolBox
                     Name = e.GetAttributeValue<string>("name") ?? "",
                     IsDefault = e.GetAttributeValue<bool>("isdefault"),
                     FetchXml = includeFetchXml ? fetchXml : null,
-                    Columns = columns
+                    Columns = extractResult.Item1,
+                    LinkedColumns = extractResult.Item2,
+                    IsPersonal = false
                 };
-            }).ToList();
+            }));
+
+            // Personal (user) views from userquery
+            try
+            {
+                var personalQuery = new QueryExpression("userquery")
+                {
+                    ColumnSet = new ColumnSet("userqueryid", "name", "querytype", "fetchxml", "returnedtypecode"),
+                    Criteria = new FilterExpression
+                    {
+                        Conditions =
+                        {
+                            new ConditionExpression("returnedtypecode", ConditionOperator.Equal, entityLogicalName),
+                            new ConditionExpression("querytype", ConditionOperator.Equal, 0),
+                            new ConditionExpression("statecode", ConditionOperator.Equal, 0) // Active only
+                        }
+                    },
+                    Orders = { new OrderExpression("name", OrderType.Ascending) }
+                };
+
+                var personalResults = service.RetrieveMultiple(personalQuery);
+                
+                views.AddRange(personalResults.Entities.Select(e => 
+                {
+                    var fetchXml = e.GetAttributeValue<string>("fetchxml");
+                    var extractResult = includeFetchXml && !string.IsNullOrEmpty(fetchXml) 
+                        ? ExtractViewColumnsFromFetchXml(fetchXml) 
+                        : (new List<string>(), new List<ViewLinkedColumn>());
+                    
+                    return new ViewMetadata
+                    {
+                        ViewId = e.GetAttributeValue<Guid>("userqueryid").ToString(),
+                        Name = e.GetAttributeValue<string>("name") ?? "",
+                        IsDefault = false,
+                        FetchXml = includeFetchXml ? fetchXml : null,
+                        Columns = extractResult.Item1,
+                        LinkedColumns = extractResult.Item2,
+                        IsPersonal = true
+                    };
+                }));
+            }
+            catch (Exception ex)
+            {
+                // Personal views may not be accessible - log and continue with system views only
+                Services.DebugLogger.Log($"Unable to retrieve personal views: {ex.Message}");
+            }
+
+            return views;
         }
 
         public Task<string?> GetViewFetchXmlAsync(string viewId)
@@ -698,23 +750,65 @@ namespace DataverseToPowerBI.XrmToolBox
 
         private static List<string> ExtractColumnsFromFetchXml(string? fetchXml)
         {
+            return ExtractViewColumnsFromFetchXml(fetchXml).Item1;
+        }
+
+        /// <summary>
+        /// Extracts both direct columns and link-entity columns from FetchXML.
+        /// Direct columns are attributes on the primary entity.
+        /// Linked columns are attributes from link-entity elements (related entities via lookups).
+        /// </summary>
+        private static (List<string>, List<ViewLinkedColumn>) ExtractViewColumnsFromFetchXml(string? fetchXml)
+        {
             var columns = new List<string>();
+            var linkedColumns = new List<ViewLinkedColumn>();
             try
             {
                 if (string.IsNullOrWhiteSpace(fetchXml))
                 {
-                    return columns;
+                    return (columns, linkedColumns);
                 }
 
                 var doc = ParseXmlSecurely(fetchXml!);
-                foreach (var attr in doc.Descendants("attribute"))
+
+                // Get the primary entity element
+                var entityElement = doc.Descendants("entity").FirstOrDefault();
+                if (entityElement == null)
+                    return (columns, linkedColumns);
+
+                // Direct attributes: only those directly under <entity>, not inside <link-entity>
+                foreach (var attr in entityElement.Elements("attribute"))
                 {
                     var name = attr.Attribute("name")?.Value;
-                    if (name == null)
-                        continue;
                     if (!string.IsNullOrEmpty(name))
                     {
                         columns.Add(name.ToLower());
+                    }
+                }
+
+                // Link-entity attributes: attributes inside <link-entity> elements
+                foreach (var linkEntity in entityElement.Elements("link-entity"))
+                {
+                    var linkedEntityName = linkEntity.Attribute("name")?.Value;
+                    var toAttribute = linkEntity.Attribute("to")?.Value; // lookup field on current entity
+                    var alias = linkEntity.Attribute("alias")?.Value;
+
+                    if (string.IsNullOrEmpty(linkedEntityName) || string.IsNullOrEmpty(toAttribute))
+                        continue;
+
+                    foreach (var attr in linkEntity.Elements("attribute"))
+                    {
+                        var attrName = attr.Attribute("name")?.Value;
+                        if (!string.IsNullOrEmpty(attrName))
+                        {
+                            linkedColumns.Add(new ViewLinkedColumn
+                            {
+                                LookupAttribute = toAttribute!.ToLower(),
+                                LinkedEntityName = linkedEntityName!.ToLower(),
+                                AttributeName = attrName.ToLower(),
+                                Alias = alias
+                            });
+                        }
                     }
                 }
             }
@@ -724,7 +818,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 Services.DebugLogger.Log($"XML parsing error in FetchXml: {ex.Message}");
             }
 
-            return columns;
+            return (columns, linkedColumns);
         }
 
         /// <summary>

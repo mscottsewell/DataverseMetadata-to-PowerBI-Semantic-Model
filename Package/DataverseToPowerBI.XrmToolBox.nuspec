@@ -2,7 +2,7 @@
 <package>
 	<metadata>
     <id>DataverseToPowerBI.XrmToolBox</id>
-    <version>1.2026.5.63</version>
+    <version>1.2026.5.83</version>
     <title>Dataverse to Power BI Semantic Model</title>
     <authors>Scott Sewell</authors>
     <owners>mScottSewell</owners>
@@ -11,6 +11,7 @@
     <description>Extract Dataverse metadata and generate Power BI TMDL/PBIP semantic models with automatic table relationships, calendar tables, and incremental change detection.</description>
     <summary>XrmToolBox plugin for generating Power BI semantic models from Dataverse metadata</summary>
     <releaseNotes>
+  v1.2026.5.83 — Quick Select now preserves current All/Selected filter mode and refreshes selections in-place. Fixed selected-attribute persistence after reopen by using case-insensitive selection sets and removing view-mode default reapply during metadata load/revalidation. Expanded child row Default checkmarks now require strict selected-view linked-column matches. Added automatic normalization/upgrade of saved expanded lookup display metadata on load.
 v1.2026.5.62 — Fixed FabricLink expanded multi-select label resolution: uses OUTER APPLY + STRING_SPLIT + STRING_AGG with metadata JOINs (matching regular multi-select behavior).
 v1.2026.5.61 — Expand Lookups: denormalize related table fields via LEFT OUTER JOIN. CSV documentation export for model review/audit. Export flow redesign (JSON or CSV format selection).
 v1.2026.5.60 — Fixed FabricLink multi-select choice label joins (semicolon split + OptionSetName uses attribute logical name).

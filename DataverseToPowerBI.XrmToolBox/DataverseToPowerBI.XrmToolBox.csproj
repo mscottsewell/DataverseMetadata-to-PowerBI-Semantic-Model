@@ -126,6 +126,9 @@
     <Compile Include="ExpandLookupForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="PasteAttributesDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="FeatureFlags.cs" />
 
     <Compile Include="Properties\AssemblyInfo.cs" />
