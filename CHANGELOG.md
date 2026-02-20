@@ -6,6 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2026.5.61] - 2026-02-19
+
+### Added
+
+- **Expand Lookups (Denormalization)** — Pull attributes from related tables directly into a parent table's query via LEFT OUTER JOIN, without adding a full dimension table
+  - Click ⊚ on any lookup attribute to open the Expand Lookup dialog
+  - Select attributes from the related table's form; checked attributes appear as child rows under the lookup field
+  - Type-aware SQL generation: lookups select the name column, choices/booleans use virtual name columns (TDS) or metadata JOINs (FabricLink), multi-select choices handled with the same pattern
+  - Display names use "{TargetTable} : {AttributeDisplayName}" convention
+  - Expanded lookup configurations are persisted per semantic model and restored on load
+  - Allow zero selections to remove an expansion
+  - Marked as experimental — LEFT OUTER JOINs may affect DirectQuery performance on large tables
+
+- **CSV Documentation Export** — Export semantic model configuration as human-readable CSV files for review and audit
+  - Generates Summary.csv, Tables.csv, Attributes.csv, Relationships.csv, and ExpandedLookups.csv
+  - Per-table selection dialog — choose which tables to include in the documentation
+  - RFC 4180 compliant CSV formatting
+  - Export-only (not importable); JSON export/import remains for full round-trip configuration sharing
+
+### Changed
+
+- **Export Flow Redesign** — Export button now prompts for format (JSON or CSV) before proceeding
+  - JSON: exports the complete model configuration directly (full schema, importable)
+  - CSV: opens a table selection dialog, then exports filtered CSV documentation to a named subfolder
+  - Replaces the previous single-format JSON-only export
+
+---
+
 ## [1.2026.5.60] - 2026-02-19
 
 ### Fixed

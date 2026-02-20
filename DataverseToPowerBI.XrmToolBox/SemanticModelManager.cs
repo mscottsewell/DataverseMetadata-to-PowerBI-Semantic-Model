@@ -426,7 +426,29 @@ namespace DataverseToPowerBI.XrmToolBox
                 ) ?? new Dictionary<string, TableDisplayInfo>(),
                 ShowAllAttributes = source.ShowAllAttributes,
                 TableStorageModes = source.TableStorageModes?.ToDictionary(k => k.Key, v => v.Value)
-                    ?? new Dictionary<string, string>()
+                    ?? new Dictionary<string, string>(),
+                ExpandedLookups = source.ExpandedLookups?.ToDictionary(
+                    k => k.Key,
+                    v => v.Value?.Select(e => new SerializedExpandedLookup
+                    {
+                        LookupAttributeName = e.LookupAttributeName,
+                        TargetTableLogicalName = e.TargetTableLogicalName,
+                        TargetTableDisplayName = e.TargetTableDisplayName,
+                        TargetTablePrimaryKey = e.TargetTablePrimaryKey,
+                        FormId = e.FormId,
+                        Attributes = e.Attributes?.Select(a => new SerializedExpandedLookupAttribute
+                        {
+                            LogicalName = a.LogicalName,
+                            DisplayName = a.DisplayName,
+                            AttributeType = a.AttributeType,
+                            SchemaName = a.SchemaName,
+                            Targets = a.Targets?.ToList(),
+                            VirtualAttributeName = a.VirtualAttributeName,
+                            IsGlobal = a.IsGlobal,
+                            OptionSetName = a.OptionSetName
+                        }).ToList() ?? new List<SerializedExpandedLookupAttribute>()
+                    }).ToList() ?? new List<SerializedExpandedLookup>()
+                ) ?? new Dictionary<string, List<SerializedExpandedLookup>>()
             };
         }
     }

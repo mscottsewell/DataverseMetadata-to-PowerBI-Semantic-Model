@@ -67,6 +67,7 @@ namespace DataverseToPowerBI.XrmToolBox
             this.colAttrDisplay = new System.Windows.Forms.ColumnHeader();
             this.colAttrLogical = new System.Windows.Forms.ColumnHeader();
             this.colAttrType = new System.Windows.Forms.ColumnHeader();
+            this.colAttrExpand = new System.Windows.Forms.ColumnHeader();
             this.panelAttrButtons = new System.Windows.Forms.Panel();
             this.btnSelectAll = new System.Windows.Forms.Button();
             this.btnDeselectAll = new System.Windows.Forms.Button();
@@ -410,7 +411,8 @@ namespace DataverseToPowerBI.XrmToolBox
                 this.colAttrOnForm,
                 this.colAttrDisplay,
                 this.colAttrLogical,
-                this.colAttrType});
+                this.colAttrType,
+                this.colAttrExpand});
             this.listViewAttributes.Dock = System.Windows.Forms.DockStyle.Fill;
             this.listViewAttributes.FullRowSelect = true;
             this.listViewAttributes.HideSelection = false;
@@ -423,6 +425,7 @@ namespace DataverseToPowerBI.XrmToolBox
             this.listViewAttributes.ItemChecked += new System.Windows.Forms.ItemCheckedEventHandler(this.ListViewAttributes_ItemChecked);
             this.listViewAttributes.ColumnClick += new System.Windows.Forms.ColumnClickEventHandler(this.ListViewAttributes_ColumnClick);
             this.listViewAttributes.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.ListViewAttributes_MouseDoubleClick);
+            this.listViewAttributes.MouseClick += new System.Windows.Forms.MouseEventHandler(this.ListViewAttributes_MouseClick);
             this.listViewAttributes.Resize += new System.EventHandler(this.ListViewAttributes_Resize);
 
             // colAttrSelected
@@ -446,6 +449,10 @@ namespace DataverseToPowerBI.XrmToolBox
             // colAttrType
             this.colAttrType.Text = "Type";
             this.colAttrType.Width = 120;
+
+            // colAttrExpand
+            this.colAttrExpand.Text = "";
+            this.colAttrExpand.Width = 0;
 
             // panelAttrButtons
             this.panelAttrButtons.Controls.Add(this.btnSelectAll);
@@ -603,6 +610,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private System.Windows.Forms.ColumnHeader colAttrDisplay;
         private System.Windows.Forms.ColumnHeader colAttrLogical;
         private System.Windows.Forms.ColumnHeader colAttrType;
+        private System.Windows.Forms.ColumnHeader colAttrExpand;
         private System.Windows.Forms.Panel panelAttrButtons;
         private System.Windows.Forms.Button btnSelectAll;
         private System.Windows.Forms.Button btnDeselectAll;

@@ -39,6 +39,7 @@ This tool eliminates all of that complexity:
 - [Understanding Your Generated Project](docs/understanding-the-project.md)
 - [Connection Modes: TDS vs FabricLink](#-connection-modes-tds-vs-fabriclink)
 - [Direct Query vs. Import Mode](docs/direct-query-vs-import.md)
+- [Expand Lookups (Denormalization)](#-expand-lookups-denormalization)
 - [Model Configuration Management](#-model-configuration-management)
 - [Change Preview & Impact Analysis](#-change-preview--impact-analysis)
 - [Incremental Updates: What's Preserved](#-incremental-updates-whats-preserved)
@@ -70,7 +71,8 @@ This tool eliminates all of that complexity:
 | **Auto-Generated Measures** | Creates a record count and a clickable URL link measure on your fact table |
 | **Incremental Updates** | Safely update your model while preserving custom measures, descriptions, formatting, and relationships |
 | **Change Preview** | TreeView-based change preview with impact analysis (Safe/Additive/Moderate/Destructive) before applying any changes |
-| **Configuration Management** | Save, load, export, and import model configurations — share configs across machines or team members |
+| **Expand Lookups** | Denormalize fields from related tables directly into a parent table's query — no extra dimension needed |
+| **Configuration Management** | Save, load, export, and import model configurations; CSV documentation export for review |
 
 ---
 
@@ -401,6 +403,43 @@ If you've switched any tables to Import or Dual mode:
 
 ---
 
+## ✳️ Expand Lookups (Denormalization)
+
+Sometimes you need a few fields from a related table without adding it as a full dimension. **Expand Lookups** lets you pull attributes from a related table directly into the parent table's query via a LEFT OUTER JOIN — denormalizing the data at the query level.
+
+### How It Works
+
+1. In the attribute list, click the **▶️** button on any lookup field
+2. The **Expand Lookup** dialog opens, showing attributes from the related table (filtered by its form)
+3. Check the attributes you want to include
+4. Click **OK** — the selected attributes appear as child rows under the lookup field, prefixed with the target table name (e.g., "Employee : Badge Number")
+
+### What Gets Generated
+
+The builder adds a `LEFT OUTER JOIN` to the related table and selects the chosen attributes:
+
+- **Regular attributes** — Selected directly from the joined table
+- **Lookup attributes** — Selects the name column (e.g., `manageridname`) for human-readable values
+- **Choice/Boolean attributes** — In TDS mode, uses the virtual name column; in FabricLink mode, adds metadata JOINs for display labels
+- **Multi-select choices** — In TDS mode, uses the virtual name column. In FabricLink mode, uses `OUTER APPLY` with `STRING_SPLIT` / `STRING_AGG` and metadata JOINs, matching the same label resolution pattern used by regular multi-select fields - **Note, this is a complex query pattern that can impact performance, so use multi-select expansions sparingly.**
+
+Expanded attributes use the naming convention `"{TargetTable} : {AttributeDisplayName}"` in the generated TMDL. You can override these display names just like any other attribute.
+
+### Managing Expanded Lookups
+
+- **Add/modify**: Click ▶️ on a lookup to open the dialog and change selections
+- **Remove**: Click ▶️ and uncheck all attributes, then click OK (the dialog allows zero selections)
+- **Persistence**: Expanded lookup configurations are saved with your semantic model and restored when you reload
+
+> **When to use Expand Lookups vs. Dimensions:**
+> - Use **Expand Lookups** when you need 1–3 fields from a related table mostly for display purposes (e.g., showing a manager's name on an employee record)
+> - Use a **Dimension table** when you need to filter, group, or slice by the related table's attributes across multiple measures or when you need to analyze the related table as its own entity (e.g., analyzing sales by product category) - or when adding attributes from multiple related table, as each additional join is additional performance overhead.
+
+**⚠️ Performance Impact:** The expand relationships generate an additional LEFT OUTER JOIN. This adds additional overhead to the SQL query, which will affect DirectQuery performance on large tables. - Use this feature sparingly, especially on large fact tables or when expanding multiple attributes from the same related table.
+
+
+---
+
 ## 📦 Model Configuration Management
 
 The tool saves your complete model configuration — tables, columns, relationships, forms, views, storage mode, and display name overrides — so you can pick up right where you left off.
@@ -415,13 +454,34 @@ The tool saves your complete model configuration — tables, columns, relationsh
 
 Share configurations across machines or team members:
 
-- **Export** — Saves the selected configuration as a standalone JSON file
-- **Import** — Loads a configuration from a JSON file, adding it to your configuration list
+- **JSON Export** — Saves the complete model configuration as a standalone JSON file (full schema, importable)
+- **CSV Export** — Generates human-readable CSV documentation files for review purposes (export only, not importable)
+- **Import** — Loads a JSON configuration file, adding it to your configuration list with automatic name conflict resolution
 
-This is useful for:
-- Setting up the same model on a colleague's machine
-- Backing up configurations before major changes
-- Standardizing model definitions across a team
+#### JSON Export
+
+Exports the entire semantic model configuration including all table selections, attributes, relationships, display name overrides, expanded lookups, storage modes, and connection settings. The JSON file can be imported on another machine to recreate the exact same configuration.
+
+#### CSV Documentation Export
+
+Generates a folder of CSV files for documentation and review:
+
+| File | Contents |
+|------|----------|
+| **Summary.csv** | Model name, environment URL, connection type, storage mode, language code, table/relationship counts |
+| **Tables.csv** | Each table's logical name, display name, schema name, role (Fact/Dimension), storage mode, form ID, view ID |
+| **Attributes.csv** | Per-table attribute selections with display name overrides |
+| **Relationships.csv** | All relationships: source table, source attribute, target table, active/inactive, snowflake, referential integrity |
+| **ExpandedLookups.csv** | Expanded lookup configurations: source table, lookup field, target table, expanded attributes with types |
+
+The CSV export includes a per-table selection dialog — you can choose which tables to include in the documentation. This is useful for:
+- Reviewing model structure with stakeholders who don't use the tool
+- Creating audit documentation of your semantic model design
+- Comparing configurations side-by-side in a spreadsheet
+
+#### Import
+
+Loads a previously exported JSON file and creates a new model configuration. If a model with the same name already exists, a numeric suffix is appended (e.g., "Sales Analytics (2)"). After import, you may need to update the Working Folder and Template Path for the current machine.
 
 ---
 
@@ -552,7 +612,7 @@ See [Managing Multiple Relationships](#-managing-multiple-relationships) for mor
 
 ### Q: Can I share my model configuration with my team?
 
-**A:** Yes! Use the **Export** button in the Semantic Model Manager to save your configuration as a JSON file. Team members can **Import** it on their machine. The configuration includes all table selections, column choices, display name overrides, relationship settings, and storage mode preferences.
+**A:** Yes! Use the **Export** button in the Semantic Model Manager. Choose **JSON** to save the full configuration as a file that team members can **Import** on their machine. Choose **CSV** to generate human-readable documentation files for review in a spreadsheet. The JSON export includes all table selections, column choices, display name overrides, expanded lookups, relationship settings, and storage mode preferences.
 
 ### Q: What storage mode should I use?
 

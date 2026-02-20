@@ -1080,6 +1080,13 @@ namespace DataverseToPowerBI.Core.Models
         /// Selected attributes/columns for this table.
         /// </summary>
         public List<AttributeMetadata> Attributes { get; set; } = new();
+
+        /// <summary>
+        /// Expanded lookup configurations for this table.
+        /// Each entry represents a lookup field whose related table attributes
+        /// are flattened into this table via LEFT OUTER JOIN.
+        /// </summary>
+        public List<ExpandedLookupConfig> ExpandedLookups { get; set; } = new();
     }
 
     /// <summary>
@@ -1123,6 +1130,110 @@ namespace DataverseToPowerBI.Core.Models
         /// Converted to SQL WHERE clause for the semantic model partition.
         /// </summary>
         public string? FetchXml { get; set; }
+    }
+
+    #endregion
+
+    #region Expanded Lookup Configuration
+
+    /// <summary>
+    /// Configuration for expanding a lookup field to include attributes from the related table.
+    /// This flattens related table columns into the parent table via a LEFT OUTER JOIN,
+    /// avoiding the need for a separate dimension table.
+    /// </summary>
+    /// <remarks>
+    /// <para>Use cases:</para>
+    /// <list type="bullet">
+    ///   <item>Pull 1-2 fields from a related table without creating a full dimension</item>
+    ///   <item>Flatten lookup references for simpler reporting</item>
+    ///   <item>Avoid star-schema complexity for infrequently used dimensions</item>
+    /// </list>
+    /// <para>Performance note: expanding 3+ related tables or selecting 10+ fields
+    /// from a single join may impact DirectQuery performance.</para>
+    /// </remarks>
+    public class ExpandedLookupConfig
+    {
+        /// <summary>
+        /// Logical name of the lookup attribute on the source table.
+        /// This is the foreign key column used for the JOIN.
+        /// </summary>
+        public string LookupAttributeName { get; set; } = "";
+
+        /// <summary>
+        /// Display name of the lookup attribute (for UI display).
+        /// </summary>
+        public string? LookupDisplayName { get; set; }
+
+        /// <summary>
+        /// Logical name of the related/target table being expanded.
+        /// </summary>
+        public string TargetTableLogicalName { get; set; } = "";
+
+        /// <summary>
+        /// Display name of the related/target table (for UI display).
+        /// </summary>
+        public string? TargetTableDisplayName { get; set; }
+
+        /// <summary>
+        /// Primary key attribute of the target table (for JOIN condition).
+        /// </summary>
+        public string TargetTablePrimaryKey { get; set; } = "";
+
+        /// <summary>
+        /// The form ID used to select attributes from the related table.
+        /// </summary>
+        public string? FormId { get; set; }
+
+        /// <summary>
+        /// Selected attributes from the related table to include in the parent table.
+        /// </summary>
+        public List<ExpandedLookupAttribute> Attributes { get; set; } = new();
+    }
+
+    /// <summary>
+    /// An attribute from a related table that is included via lookup expansion.
+    /// </summary>
+    public class ExpandedLookupAttribute
+    {
+        /// <summary>
+        /// Logical name of the attribute in the related table.
+        /// </summary>
+        public string LogicalName { get; set; } = "";
+
+        /// <summary>
+        /// Display name of the attribute.
+        /// </summary>
+        public string? DisplayName { get; set; }
+
+        /// <summary>
+        /// The attribute type (String, Integer, Lookup, etc.).
+        /// </summary>
+        public string? AttributeType { get; set; }
+
+        /// <summary>
+        /// Schema name of the attribute.
+        /// </summary>
+        public string? SchemaName { get; set; }
+
+        /// <summary>
+        /// For Lookup attributes, the target table logical names.
+        /// </summary>
+        public List<string>? Targets { get; set; }
+
+        /// <summary>
+        /// For Choice/Boolean attributes (TDS mode), the virtual attribute name containing the label text.
+        /// </summary>
+        public string? VirtualAttributeName { get; set; }
+
+        /// <summary>
+        /// For Choice attributes (FabricLink mode), whether the optionset is global.
+        /// </summary>
+        public bool? IsGlobal { get; set; }
+
+        /// <summary>
+        /// For Choice attributes (FabricLink mode), the optionset logical name.
+        /// </summary>
+        public string? OptionSetName { get; set; }
     }
 
     #endregion

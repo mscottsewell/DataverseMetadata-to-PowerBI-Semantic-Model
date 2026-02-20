@@ -2285,6 +2285,106 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 }
             }
 
+            // Process expanded lookups - must match GenerateTableTmdl logic exactly
+            if (table.ExpandedLookups != null)
+            {
+                foreach (var expand in table.ExpandedLookups)
+                {
+                    if (expand.Attributes == null || expand.Attributes.Count == 0) continue;
+                    
+                    var joinAlias = $"exp_{expand.LookupAttributeName}";
+                    var targetTable = IsFabricLink ? expand.TargetTableLogicalName : (expand.TargetTableDisplayName ?? expand.TargetTableLogicalName);
+                    
+                    joinClauses.Add($"LEFT OUTER JOIN {targetTable} {joinAlias} ON {joinAlias}.{expand.TargetTablePrimaryKey} = Base.{expand.LookupAttributeName}");
+                    
+                    foreach (var expAttr in expand.Attributes)
+                    {
+                        var colKey = $"{expand.LookupAttributeName}_{expAttr.LogicalName}";
+                        if (processedColumns.Contains(colKey)) continue;
+                        
+                        var expDisplayName = expAttr.DisplayName ?? expAttr.LogicalName;
+                        var targetPrefix = expand.TargetTableDisplayName ?? expand.TargetTableLogicalName;
+                        var prefixedDisplayName = $"{targetPrefix} : {expDisplayName}";
+                        
+                        var expAttrType = expAttr.AttributeType ?? "";
+                        var isExpLookup = expAttrType.Equals("Lookup", StringComparison.OrdinalIgnoreCase) ||
+                                          expAttrType.Equals("Owner", StringComparison.OrdinalIgnoreCase) ||
+                                          expAttrType.Equals("Customer", StringComparison.OrdinalIgnoreCase);
+                        var isExpChoice = expAttrType.Equals("Picklist", StringComparison.OrdinalIgnoreCase) ||
+                                          expAttrType.Equals("State", StringComparison.OrdinalIgnoreCase) ||
+                                          expAttrType.Equals("Status", StringComparison.OrdinalIgnoreCase);
+                        var isExpBoolean = expAttrType.Equals("Boolean", StringComparison.OrdinalIgnoreCase);
+                        var isExpMultiSelect = expAttrType.Equals("MultiSelectPicklist", StringComparison.OrdinalIgnoreCase);
+                        
+                        if (isExpLookup)
+                        {
+                            // Lookup: select the name column (available in both TDS and FabricLink)
+                            var nameColumn = expAttr.LogicalName + "name";
+                            sqlFields.Add(ApplySqlAlias($"{joinAlias}.{nameColumn}", prefixedDisplayName, colKey, false));
+                        }
+                        else if (isExpChoice || isExpBoolean)
+                        {
+                            if (IsFabricLink)
+                            {
+                                // FabricLink: JOIN to metadata table for the target entity
+                                var metadataJoinAlias = $"{joinAlias}_{expAttr.LogicalName}";
+                                var optionSetName = expAttr.OptionSetName ?? expAttr.LogicalName;
+                                
+                                if (isExpBoolean)
+                                {
+                                    joinClauses.Add($"LEFT JOIN [GlobalOptionsetMetadata] {metadataJoinAlias} ON {metadataJoinAlias}.[OptionSetName]='{optionSetName}' AND {metadataJoinAlias}.[EntityName]='{expand.TargetTableLogicalName}' AND {metadataJoinAlias}.[LocalizedLabelLanguageCode]={_languageCode} AND {metadataJoinAlias}.[Option]={joinAlias}.{expAttr.LogicalName}");
+                                }
+                                else
+                                {
+                                    var isGlobal = expAttr.IsGlobal ?? false;
+                                    var metadataTable = isGlobal ? "GlobalOptionsetMetadata" : "OptionsetMetadata";
+                                    joinClauses.Add($"LEFT JOIN [{metadataTable}] {metadataJoinAlias} ON {metadataJoinAlias}.[OptionSetName]='{optionSetName}' AND {metadataJoinAlias}.[EntityName]='{expand.TargetTableLogicalName}' AND {metadataJoinAlias}.[LocalizedLabelLanguageCode]={_languageCode} AND {metadataJoinAlias}.[Option]={joinAlias}.{expAttr.LogicalName}");
+                                }
+                                
+                                var fabricAlias = _useDisplayNameAliasesInSql && !prefixedDisplayName.Equals(colKey, StringComparison.OrdinalIgnoreCase)
+                                    ? $"{metadataJoinAlias}.[LocalizedLabel] AS [{prefixedDisplayName}]"
+                                    : $"{metadataJoinAlias}.[LocalizedLabel] {colKey}";
+                                sqlFields.Add(fabricAlias);
+                            }
+                            else
+                            {
+                                // TDS: use the virtual name column
+                                var nameColumn = expAttr.VirtualAttributeName ?? (expAttr.LogicalName + "name");
+                                sqlFields.Add(ApplySqlAlias($"{joinAlias}.{nameColumn}", prefixedDisplayName, colKey, false));
+                            }
+                        }
+                        else if (isExpMultiSelect)
+                        {
+                            if (IsFabricLink)
+                            {
+                                // FabricLink: use OUTER APPLY with STRING_SPLIT + STRING_AGG for proper label resolution
+                                var nameColumn = expAttr.LogicalName + "name";
+                                var applyAlias = $"mspl_{joinAlias}_{expAttr.LogicalName}";
+                                var metaAlias = $"meta_{joinAlias}_{expAttr.LogicalName}";
+                                var isGlobal = expAttr.IsGlobal ?? false;
+                                var optionSetName = expAttr.OptionSetName ?? expAttr.LogicalName;
+                                var metadataTable = isGlobal ? "GlobalOptionsetMetadata" : "OptionsetMetadata";
+
+                                joinClauses.Add($"OUTER APPLY (SELECT STRING_AGG({metaAlias}.[LocalizedLabel], ', ') AS {nameColumn} FROM STRING_SPLIT(CAST({joinAlias}.{expAttr.LogicalName} AS VARCHAR(4000)), ';') AS split JOIN [{metadataTable}] AS {metaAlias} ON {metaAlias}.[OptionSetName]='{optionSetName}' AND {metaAlias}.[EntityName]='{expand.TargetTableLogicalName}' AND {metaAlias}.[LocalizedLabelLanguageCode]={_languageCode} AND {metaAlias}.[Option]=CAST(LTRIM(RTRIM(split.value)) AS INT) WHERE {joinAlias}.{expAttr.LogicalName} IS NOT NULL) {applyAlias}");
+                                sqlFields.Add(ApplySqlAlias($"{applyAlias}.{nameColumn}", prefixedDisplayName, colKey, false));
+                            }
+                            else
+                            {
+                                // TDS: use the virtual name column
+                                var nameColumn = expAttr.VirtualAttributeName ?? (expAttr.LogicalName + "name");
+                                sqlFields.Add(ApplySqlAlias($"{joinAlias}.{nameColumn}", prefixedDisplayName, colKey, false));
+                            }
+                        }
+                        else
+                        {
+                            // Regular column - keep as-is
+                            sqlFields.Add(ApplySqlAlias($"{joinAlias}.{expAttr.LogicalName}", prefixedDisplayName, colKey, false));
+                        }
+                        processedColumns.Add(colKey);
+                    }
+                }
+            }
+
             var selectList = string.Join(", ", sqlFields);
             
             // Build WHERE clause - use view filter if present, otherwise default statecode filter
@@ -3999,6 +4099,169 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         sqlFields.Add(ApplySqlAlias($"Base.{attr.LogicalName}", effectiveName, attr.LogicalName, isPrimaryKey));
                     }
                     processedColumns.Add(attr.LogicalName);
+                }
+            }
+
+            // Process expanded lookups - LEFT OUTER JOIN for flattened related table columns
+            if (table.ExpandedLookups != null)
+            {
+                foreach (var expand in table.ExpandedLookups)
+                {
+                    if (expand.Attributes == null || expand.Attributes.Count == 0) continue;
+                    
+                    // Build a unique join alias for this expanded table
+                    var joinAlias = $"exp_{expand.LookupAttributeName}";
+                    var targetTable = IsFabricLink ? expand.TargetTableLogicalName : (expand.TargetTableDisplayName ?? expand.TargetTableLogicalName);
+                    
+                    // Add LEFT OUTER JOIN
+                    joinClauses.Add($"LEFT OUTER JOIN {targetTable} {joinAlias} ON {joinAlias}.{expand.TargetTablePrimaryKey} = Base.{expand.LookupAttributeName}");
+                    
+                    foreach (var expAttr in expand.Attributes)
+                    {
+                        var colKey = $"{expand.LookupAttributeName}_{expAttr.LogicalName}";
+                        if (processedColumns.Contains(colKey)) continue;
+                        
+                        var expDisplayName = expAttr.DisplayName ?? expAttr.LogicalName;
+                        var targetPrefix = expand.TargetTableDisplayName ?? expand.TargetTableLogicalName;
+                        var prefixedDisplayName = $"{targetPrefix} : {expDisplayName}";
+                        var description = $"Source: {expand.TargetTableLogicalName}.{expAttr.LogicalName} (via {expand.LookupAttributeName})";
+                        
+                        var expAttrType = expAttr.AttributeType ?? "";
+                        var isExpLookup = expAttrType.Equals("Lookup", StringComparison.OrdinalIgnoreCase) ||
+                                          expAttrType.Equals("Owner", StringComparison.OrdinalIgnoreCase) ||
+                                          expAttrType.Equals("Customer", StringComparison.OrdinalIgnoreCase);
+                        var isExpChoice = expAttrType.Equals("Picklist", StringComparison.OrdinalIgnoreCase) ||
+                                          expAttrType.Equals("State", StringComparison.OrdinalIgnoreCase) ||
+                                          expAttrType.Equals("Status", StringComparison.OrdinalIgnoreCase);
+                        var isExpBoolean = expAttrType.Equals("Boolean", StringComparison.OrdinalIgnoreCase);
+                        var isExpMultiSelect = expAttrType.Equals("MultiSelectPicklist", StringComparison.OrdinalIgnoreCase);
+                        
+                        var sourceCol = _useDisplayNameAliasesInSql ? prefixedDisplayName : colKey;
+                        
+                        if (isExpLookup)
+                        {
+                            // Lookup: select the name column (available in both TDS and FabricLink)
+                            var nameColumn = expAttr.LogicalName + "name";
+                            columns.Add(new ColumnInfo
+                            {
+                                LogicalName = colKey,
+                                DisplayName = prefixedDisplayName,
+                                SourceColumn = sourceCol,
+                                IsHidden = false,
+                                Description = description,
+                                AttributeType = "string"
+                            });
+                            sqlFields.Add(ApplySqlAlias($"{joinAlias}.{nameColumn}", prefixedDisplayName, colKey, false));
+                        }
+                        else if (isExpChoice || isExpBoolean)
+                        {
+                            if (IsFabricLink)
+                            {
+                                // FabricLink: JOIN to metadata table for the target entity
+                                var metadataJoinAlias = $"{joinAlias}_{expAttr.LogicalName}";
+                                var optionSetName = expAttr.OptionSetName ?? expAttr.LogicalName;
+                                
+                                if (isExpBoolean)
+                                {
+                                    joinClauses.Add(
+                                        $"LEFT JOIN [GlobalOptionsetMetadata] {metadataJoinAlias}\r\n" +
+                                        $"\t\t\t\t            ON  {metadataJoinAlias}.[OptionSetName] = '{optionSetName}'\r\n" +
+                                        $"\t\t\t\t            AND {metadataJoinAlias}.[EntityName] = '{expand.TargetTableLogicalName}'\r\n" +
+                                        $"\t\t\t\t            AND {metadataJoinAlias}.[LocalizedLabelLanguageCode] = {_languageCode}\r\n" +
+                                        $"\t\t\t\t            AND {metadataJoinAlias}.[Option] = {joinAlias}.{expAttr.LogicalName}");
+                                }
+                                else
+                                {
+                                    var isGlobal = expAttr.IsGlobal ?? false;
+                                    var metadataTable = isGlobal ? "GlobalOptionsetMetadata" : "OptionsetMetadata";
+                                    joinClauses.Add(
+                                        $"LEFT JOIN [{metadataTable}] {metadataJoinAlias}\r\n" +
+                                        $"\t\t\t\t            ON  {metadataJoinAlias}.[OptionSetName] = '{optionSetName}'\r\n" +
+                                        $"\t\t\t\t            AND {metadataJoinAlias}.[EntityName] = '{expand.TargetTableLogicalName}'\r\n" +
+                                        $"\t\t\t\t            AND {metadataJoinAlias}.[LocalizedLabelLanguageCode] = {_languageCode}\r\n" +
+                                        $"\t\t\t\t            AND {metadataJoinAlias}.[Option] = {joinAlias}.{expAttr.LogicalName}");
+                                }
+                                
+                                var fabricAlias = _useDisplayNameAliasesInSql && !prefixedDisplayName.Equals(colKey, StringComparison.OrdinalIgnoreCase)
+                                    ? $"{metadataJoinAlias}.[LocalizedLabel] AS [{prefixedDisplayName}]"
+                                    : $"{metadataJoinAlias}.[LocalizedLabel] {colKey}";
+                                sqlFields.Add(fabricAlias);
+                            }
+                            else
+                            {
+                                // TDS: use the virtual name column
+                                var nameColumn = expAttr.VirtualAttributeName ?? (expAttr.LogicalName + "name");
+                                sqlFields.Add(ApplySqlAlias($"{joinAlias}.{nameColumn}", prefixedDisplayName, colKey, false));
+                            }
+                            
+                            columns.Add(new ColumnInfo
+                            {
+                                LogicalName = colKey,
+                                DisplayName = prefixedDisplayName,
+                                SourceColumn = sourceCol,
+                                IsHidden = false,
+                                Description = description,
+                                AttributeType = "string"
+                            });
+                        }
+                        else if (isExpMultiSelect)
+                        {
+                            if (IsFabricLink)
+                            {
+                                // FabricLink: use OUTER APPLY with STRING_SPLIT + STRING_AGG for proper label resolution
+                                var nameColumn = expAttr.LogicalName + "name";
+                                var applyAlias = $"mspl_{joinAlias}_{expAttr.LogicalName}";
+                                var metaAlias = $"meta_{joinAlias}_{expAttr.LogicalName}";
+                                var isGlobal = expAttr.IsGlobal ?? false;
+                                var optionSetName = expAttr.OptionSetName ?? expAttr.LogicalName;
+                                var metadataTable = isGlobal ? "GlobalOptionsetMetadata" : "OptionsetMetadata";
+
+                                joinClauses.Add(
+                                    $"OUTER APPLY (\r\n" +
+                                    $"\t\t\t\t        SELECT STRING_AGG({metaAlias}.[LocalizedLabel], ', ') AS {nameColumn}\r\n" +
+                                    $"\t\t\t\t        FROM STRING_SPLIT(CAST({joinAlias}.{expAttr.LogicalName} AS VARCHAR(4000)), ';') AS split\r\n" +
+                                    $"\t\t\t\t        JOIN [{metadataTable}] AS {metaAlias}\r\n" +
+                                    $"\t\t\t\t            ON  {metaAlias}.[OptionSetName] = '{optionSetName}'\r\n" +
+                                    $"\t\t\t\t            AND {metaAlias}.[EntityName] = '{expand.TargetTableLogicalName}'\r\n" +
+                                    $"\t\t\t\t            AND {metaAlias}.[LocalizedLabelLanguageCode] = {_languageCode}\r\n" +
+                                    $"\t\t\t\t            AND {metaAlias}.[Option] = CAST(LTRIM(RTRIM(split.value)) AS INT)\r\n" +
+                                    $"\t\t\t\t        WHERE {joinAlias}.{expAttr.LogicalName} IS NOT NULL\r\n" +
+                                    $"\t\t\t\t    ) {applyAlias}");
+                                sqlFields.Add(ApplySqlAlias($"{applyAlias}.{nameColumn}", prefixedDisplayName, colKey, false));
+                            }
+                            else
+                            {
+                                // TDS: use the virtual name column
+                                var nameColumn = expAttr.VirtualAttributeName ?? (expAttr.LogicalName + "name");
+                                sqlFields.Add(ApplySqlAlias($"{joinAlias}.{nameColumn}", prefixedDisplayName, colKey, false));
+                            }
+                            
+                            columns.Add(new ColumnInfo
+                            {
+                                LogicalName = colKey,
+                                DisplayName = prefixedDisplayName,
+                                SourceColumn = sourceCol,
+                                IsHidden = false,
+                                Description = description,
+                                AttributeType = "string"
+                            });
+                        }
+                        else
+                        {
+                            // Regular column - keep as-is
+                            columns.Add(new ColumnInfo
+                            {
+                                LogicalName = colKey,
+                                DisplayName = prefixedDisplayName,
+                                SourceColumn = sourceCol,
+                                IsHidden = false,
+                                Description = description,
+                                AttributeType = expAttr.AttributeType ?? "string"
+                            });
+                            sqlFields.Add(ApplySqlAlias($"{joinAlias}.{expAttr.LogicalName}", prefixedDisplayName, colKey, false));
+                        }
+                        processedColumns.Add(colKey);
+                    }
                 }
             }
 

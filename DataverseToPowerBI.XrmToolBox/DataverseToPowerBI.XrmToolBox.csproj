@@ -104,6 +104,9 @@
     <Compile Include="SemanticModelSelectorDialog.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="ExportOptionsDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="SemanticModelManager.cs" />
     <Compile Include="RibbonIcons.cs" />
     <Compile Include="SemanticModelChangesDialog.cs">
@@ -120,6 +123,10 @@
     <Compile Include="Services\FetchXmlToSqlConverter.cs" />
     <Compile Include="Services\DebugLogger.cs" />
     <Compile Include="VistaFolderPicker.cs" />
+    <Compile Include="ExpandLookupForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FeatureFlags.cs" />
 
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

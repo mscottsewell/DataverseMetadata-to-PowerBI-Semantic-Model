@@ -1079,27 +1079,52 @@ namespace DataverseToPowerBI.XrmToolBox
         {
             if (_selectedModel == null) return;
 
+            var result = MessageBox.Show(
+                "Export as JSON (full configuration, can be re-imported)?\n\n" +
+                "Click Yes for JSON, No for CSV documentation.",
+                $"Export - {_selectedModel.Name}",
+                MessageBoxButtons.YesNoCancel,
+                MessageBoxIcon.Question);
+
+            if (result == DialogResult.Yes)
+            {
+                ExportModelAsJson(_selectedModel);
+            }
+            else if (result == DialogResult.No)
+            {
+                // Show table picker for CSV, then export filtered
+                using (var optionsDialog = new ExportOptionsDialog(_selectedModel))
+                {
+                    if (optionsDialog.ShowDialog(this) != DialogResult.OK) return;
+                    var filtered = ExportOptionsDialog.FilterModelByTables(_selectedModel, optionsDialog.SelectedTables);
+                    ExportModelAsCsv(filtered);
+                }
+            }
+        }
+
+        private void ExportModelAsJson(SemanticModelConfig model)
+        {
             using (var dialog = new SaveFileDialog())
             {
-                dialog.Title = "Export Semantic Model Configuration";
+                dialog.Title = "Export Semantic Model Configuration (JSON)";
                 dialog.Filter = "JSON files (*.json)|*.json";
-                dialog.FileName = $"{_selectedModel.Name}.json";
+                dialog.FileName = $"{model.Name}.json";
 
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
                     try
                     {
-                        var serializer = new System.Runtime.Serialization.Json.DataContractJsonSerializer(
+                        var serializer = new DataContractJsonSerializer(
                             typeof(SemanticModelConfig),
-                            new System.Runtime.Serialization.Json.DataContractJsonSerializerSettings
+                            new DataContractJsonSerializerSettings
                             {
                                 UseSimpleDictionaryFormat = true
                             });
-                        using (var ms = new System.IO.MemoryStream())
+                        using (var ms = new MemoryStream())
                         {
-                            serializer.WriteObject(ms, _selectedModel);
-                            System.IO.File.WriteAllText(dialog.FileName,
-                                System.Text.Encoding.UTF8.GetString(ms.ToArray()));
+                            serializer.WriteObject(ms, model);
+                            File.WriteAllText(dialog.FileName,
+                                Encoding.UTF8.GetString(ms.ToArray()));
                         }
                         MessageBox.Show($"Configuration exported to:\n{dialog.FileName}",
                             "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -1110,6 +1135,33 @@ namespace DataverseToPowerBI.XrmToolBox
                             "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
+            }
+        }
+
+        private void ExportModelAsCsv(SemanticModelConfig model)
+        {
+            var selectedPath = VistaFolderPicker.ShowDialog(this,
+                "Select Folder for CSV Export",
+                model.WorkingFolder);
+
+            if (selectedPath == null) return;
+
+            // Use a subfolder named after the model
+            var exportFolder = Path.Combine(selectedPath, $"{model.Name} - CSV Export");
+
+            try
+            {
+                ExportOptionsDialog.ExportAsCsv(model, exportFolder);
+
+                var fileCount = Directory.GetFiles(exportFolder, "*.csv").Length;
+                MessageBox.Show(
+                    $"CSV documentation exported ({fileCount} files) to:\n{exportFolder}",
+                    "CSV Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error exporting CSV documentation:\n{ex.Message}",
+                    "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
