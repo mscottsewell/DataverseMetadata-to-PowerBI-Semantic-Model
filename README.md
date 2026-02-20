@@ -51,8 +51,7 @@ This tool eliminates all of that complexity:
 - [For Developers](#-for-developers)
 
 ---
-<img width="1600" alt="Screenshot of application" src="https://github.com/user-attachments/assets/812e27f3-d89f-46d8-bc8e-4887f19fcbb5" />
-
+<img width="1677" height="859" alt="image" src="https://github.com/user-attachments/assets/0742ee11-65a6-4c90-ae8a-83536ebd1c23" />
 
 ## ✨ Key Features
 
