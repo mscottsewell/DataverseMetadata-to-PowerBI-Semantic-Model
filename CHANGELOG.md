@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2026.5.62] - 2026-02-19
+
+### Fixed
+
+- **FabricLink Expanded Multi-Select Label Resolution** — Expanded multi-select choice fields in FabricLink mode now use `OUTER APPLY` with `STRING_SPLIT` / `STRING_AGG` and metadata JOINs, matching the label resolution pattern used by regular multi-select fields. Previously, expanded multi-select fields referenced a non-existent `name` column from the joined table, which could return raw integer values instead of localized labels.
+
+---
+
 ## [1.2026.5.61] - 2026-02-19
 
 ### Added
