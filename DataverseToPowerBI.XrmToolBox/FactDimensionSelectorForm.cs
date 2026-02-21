@@ -260,12 +260,12 @@ namespace DataverseToPowerBI.XrmToolBox
             };
             listViewRelationships.Columns.Add("Include", 55);
             listViewRelationships.Columns.Add("Cardinality", 70);
-            listViewRelationships.Columns.Add("Lookup Field", 160);
-            listViewRelationships.Columns.Add("Lookup Logical Name", 140);
-            listViewRelationships.Columns.Add("Target Table", 160);
-            listViewRelationships.Columns.Add("Target Logical Name", 140);
+            listViewRelationships.Columns.Add("Lookup Field", 150);
+            listViewRelationships.Columns.Add("Lookup Logical Name", 120);
+            listViewRelationships.Columns.Add("Target Table", 145);
+            listViewRelationships.Columns.Add("Target Logical Name", 120);
             listViewRelationships.Columns.Add("Status", 65);
-            listViewRelationships.Columns.Add("Type", 55);
+            listViewRelationships.Columns.Add("Type", 130);
             listViewRelationships.ItemChecked += ListViewRelationships_ItemChecked;
             listViewRelationships.DoubleClick += ListViewRelationships_DoubleClick;
             listViewRelationships.SelectedIndexChanged += ListViewRelationships_SelectedIndexChanged;
@@ -526,7 +526,7 @@ namespace DataverseToPowerBI.XrmToolBox
                     LoadOneToManyRelationships();
                 }
 
-                // Restore snowflake relationships
+                // Restore snowflake relationships (level 1: dimension → parent)
                 var factLookupTargets = lookups
                     .Where(l => l.Targets != null)
                     .SelectMany(l => l.Targets)
@@ -537,17 +537,29 @@ namespace DataverseToPowerBI.XrmToolBox
                     .Where(r => r.IsSnowflake && factLookupTargets.Contains(r.SourceTable))
                     .ToList();
 
-                if (snowflakeRels.Any())
+                foreach (var snowflakeRel in snowflakeRels)
                 {
-                    foreach (var snowflakeRel in snowflakeRels)
-                    {
-                        AddSnowflakeRelationshipToList(snowflakeRel);
-                    }
+                    AddSnowflakeRelationshipToList(snowflakeRel, 1);
                 }
 
-                var totalLookups = lookups.Count + snowflakeRels.Count;
-                lblStatus.Text = snowflakeRels.Any()
-                    ? $"Found {lookups.Count} lookup fields on {SelectedFactTable.DisplayName} + {snowflakeRels.Count} snowflake relationship(s)."
+                // Restore double-snowflake relationships (level 2: parent → grandparent)
+                var level1Targets = snowflakeRels
+                    .Select(r => r.TargetTable)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                var doubleSnowflakeRels = _currentRelationships
+                    .Where(r => r.IsSnowflake && level1Targets.Contains(r.SourceTable))
+                    .ToList();
+
+                foreach (var doubleSnowflakeRel in doubleSnowflakeRels)
+                {
+                    AddSnowflakeRelationshipToList(doubleSnowflakeRel, 2);
+                }
+
+                var totalSnowflake = snowflakeRels.Count + doubleSnowflakeRels.Count;
+                var totalLookups = lookups.Count + totalSnowflake;
+                lblStatus.Text = totalSnowflake > 0
+                    ? $"Found {lookups.Count} lookup fields on {SelectedFactTable.DisplayName} + {totalSnowflake} snowflake relationship(s)."
                     : $"Found {lookups.Count} lookup fields on {SelectedFactTable.DisplayName}.";
             }
             catch (Exception ex)
@@ -1050,13 +1062,23 @@ namespace DataverseToPowerBI.XrmToolBox
             if (targetCount > 1) statusText += " ⚠";
             item.SubItems[6].Text = statusText;
             
-            // Update Type column to include (Inactive) suffix
-            var baseType = config.IsSnowflake ? "Snowflake" : "Direct";
+            // Update Type column with snowflake level indicators
+            string baseType;
+            if (config.SnowflakeLevel >= 2)
+                baseType = "\u2744\u2744 Snowflake";
+            else if (config.SnowflakeLevel == 1)
+                baseType = "\u2744 Snowflake";
+            else
+                baseType = "Direct";
             var typeText = config.IsActive ? baseType : $"{baseType} (Inactive)";
             item.SubItems[7].Text = typeText;
-            
+
             // Update background color - only highlight if multiple ACTIVE relationships exist
-            if (config.IsSnowflake)
+            if (config.SnowflakeLevel >= 2)
+            {
+                item.BackColor = Color.FromArgb(200, 225, 255); // Deeper blue for double snowflake
+            }
+            else if (config.IsSnowflake)
             {
                 item.BackColor = Color.LightCyan;
             }
@@ -1094,7 +1116,7 @@ namespace DataverseToPowerBI.XrmToolBox
             var config = (RelationshipTag)item.Tag;
 
             var targetExists = _tables.Any(t => t.LogicalName == config.TargetTable);
-            btnAddSnowflake.Enabled = config.IsChecked && !config.IsSnowflake && targetExists;
+            btnAddSnowflake.Enabled = config.IsChecked && !config.IsOneToMany && config.SnowflakeLevel < 2 && targetExists;
         }
 
         private void BtnAddSnowflake_Click(object sender, EventArgs e)
@@ -1103,6 +1125,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
             var item = listViewRelationships.SelectedItems[0];
             var config = (RelationshipTag)item.Tag;
+            var newSnowflakeLevel = config.SnowflakeLevel + 1;
             var dimensionTable = _tables.FirstOrDefault(t => t.LogicalName == config.TargetTable);
 
             if (dimensionTable == null) return;
@@ -1129,6 +1152,12 @@ namespace DataverseToPowerBI.XrmToolBox
                 var existingTargets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 existingTargets.Add(SelectedFactTable.LogicalName);
                 existingTargets.Add(dimensionTable.LogicalName);
+
+                // For snowflake items, also exclude the source table to prevent circular chains
+                if (config.IsSnowflake)
+                {
+                    existingTargets.Add(config.SourceTable);
+                }
 
                 var existingParents = _allRelationshipItems.Cast<ListViewItem>()
                     .Where(i => i != null && i.Tag != null)
@@ -1162,7 +1191,7 @@ namespace DataverseToPowerBI.XrmToolBox
                         foreach (var rel in snowflakeDialog.SelectedRelationships)
                         {
                             rel.IsSnowflake = true;
-                            AddSnowflakeRelationshipToList(rel);
+                            AddSnowflakeRelationshipToList(rel, newSnowflakeLevel);
                         }
                     }
                 }
@@ -1181,21 +1210,24 @@ namespace DataverseToPowerBI.XrmToolBox
             }
         }
 
-        private void AddSnowflakeRelationshipToList(ExportRelationship rel)
+        private void AddSnowflakeRelationshipToList(ExportRelationship rel, int snowflakeLevel = 1)
         {
-            // Check if already exists
+            // Check if already exists (must match SourceTable to distinguish direct vs snowflake relationships,
+            // since different tables can have lookup fields with the same logical name targeting the same table)
             if (_allRelationshipItems.Cast<ListViewItem>()
-                .Any(i => i != null && i.Tag != null && 
+                .Any(i => i != null && i.Tag != null &&
+                          ((RelationshipTag)i.Tag).SourceTable == rel.SourceTable &&
                           ((RelationshipTag)i.Tag).SourceAttribute == rel.SourceAttribute &&
                           ((RelationshipTag)i.Tag).TargetTable == rel.TargetTable))
                 return;
 
             var targetTable = _tables.FirstOrDefault(t => t.LogicalName == rel.TargetTable);
-            var targetDisplayName = targetTable?.DisplayName 
+            var targetDisplayName = targetTable?.DisplayName
                 ?? (_allEntityDisplayNames.TryGetValue(rel.TargetTable, out var entityDisplayName) ? entityDisplayName : rel.TargetTable);
 
             var relationshipDisplayName = rel.DisplayName ?? rel.SourceAttribute ?? "";
 
+            var snowflakeTypeText = snowflakeLevel >= 2 ? "\u2744\u2744 Snowflake" : "\u2744 Snowflake";
             var item = new ListViewItem("");
             item.Checked = true;
             item.SubItems.Add("Many:1");
@@ -1204,7 +1236,7 @@ namespace DataverseToPowerBI.XrmToolBox
             item.SubItems.Add(targetDisplayName);
             item.SubItems.Add(rel.TargetTable);
             item.SubItems.Add(rel.IsActive ? "Active" : "Inactive");
-            item.SubItems.Add("Snowflake");
+            item.SubItems.Add(rel.IsActive ? snowflakeTypeText : $"{snowflakeTypeText} (Inactive)");
             item.Tag = new RelationshipTag
             {
                 SourceTable = rel.SourceTable,
@@ -1214,12 +1246,13 @@ namespace DataverseToPowerBI.XrmToolBox
                 IsActive = rel.IsActive,
                 IsSnowflake = true,
                 AssumeReferentialIntegrity = rel.AssumeReferentialIntegrity,
-                IsChecked = true
+                IsChecked = true,
+                SnowflakeLevel = snowflakeLevel
             };
-            item.BackColor = Color.LightCyan;
+            item.BackColor = snowflakeLevel >= 2 ? Color.FromArgb(200, 225, 255) : Color.LightCyan;
 
             _allRelationshipItems.Add(item);
-            
+
             // Apply current search filter if any
             FilterRelationships();
             UpdateFinishButtonState();
@@ -1450,6 +1483,8 @@ namespace DataverseToPowerBI.XrmToolBox
             public bool IsOneToMany { get; set; }
             public bool AssumeReferentialIntegrity { get; set; }
             public bool IsChecked { get; set; }
+            /// <summary>0 = Direct, 1 = Snowflake, 2 = Double Snowflake.</summary>
+            public int SnowflakeLevel { get; set; }
         }
     }
 

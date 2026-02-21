@@ -2293,7 +2293,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     if (expand.Attributes == null || expand.Attributes.Count == 0) continue;
                     
                     var joinAlias = $"exp_{expand.LookupAttributeName}";
-                    var targetTable = IsFabricLink ? expand.TargetTableLogicalName : (expand.TargetTableDisplayName ?? expand.TargetTableLogicalName);
+                    var targetTable = expand.TargetTableLogicalName;
                     
                     joinClauses.Add($"LEFT OUTER JOIN {targetTable} {joinAlias} ON {joinAlias}.{expand.TargetTablePrimaryKey} = Base.{expand.LookupAttributeName}");
                     
@@ -4111,7 +4111,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     
                     // Build a unique join alias for this expanded table
                     var joinAlias = $"exp_{expand.LookupAttributeName}";
-                    var targetTable = IsFabricLink ? expand.TargetTableLogicalName : (expand.TargetTableDisplayName ?? expand.TargetTableLogicalName);
+                    var targetTable = expand.TargetTableLogicalName;
                     
                     // Add LEFT OUTER JOIN
                     joinClauses.Add($"LEFT OUTER JOIN {targetTable} {joinAlias} ON {joinAlias}.{expand.TargetTablePrimaryKey} = Base.{expand.LookupAttributeName}");

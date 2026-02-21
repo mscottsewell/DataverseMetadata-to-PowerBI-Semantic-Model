@@ -3418,30 +3418,54 @@ namespace DataverseToPowerBI.XrmToolBox
                 _factTable,
                 existingConfig))
             {
-                if (dialog.ShowDialog(this) == DialogResult.OK && dialog.Config != null)
+                if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
-                    // Save the configuration
-                    if (_currentModel != null)
+                    if (dialog.RemoveRequested)
                     {
-                        if (_currentModel.PluginSettings == null)
-                            _currentModel.PluginSettings = new PluginSettings();
+                        // Remove the date table configuration
+                        if (_currentModel != null)
+                        {
+                            if (_currentModel.PluginSettings == null)
+                                _currentModel.PluginSettings = new PluginSettings();
 
-                        _currentModel.PluginSettings.DateTableConfig = dialog.Config;
-                        _modelManager.SaveModel(_currentModel);
+                            _currentModel.PluginSettings.DateTableConfig = null;
+                            _modelManager.SaveModel(_currentModel);
 
-                        // Update UI to show the Date table and relationship
-                        AddDateTableToDisplay();
-                        UpdateRelationshipsDisplay();
+                            AddDateTableToDisplay();
+                            UpdateRelationshipsDisplay();
 
-                        MessageBox.Show(
-                            $"Calendar table configured:\n\n" +
-                            $"Primary Date Field: {dialog.Config.PrimaryDateTable}.{dialog.Config.PrimaryDateField}\n" +
-                            $"Time Zone: {dialog.Config.TimeZoneId} (UTC {dialog.Config.UtcOffsetHours:+0.0;-0.0})\n" +
-                            $"Year Range: {dialog.Config.StartYear}-{dialog.Config.EndYear}\n" +
-                            $"Additional Fields: {dialog.Config.WrappedFields.Count}",
-                            "Calendar Table Configured",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Information);
+                            MessageBox.Show(
+                                "Date table has been removed from the model.",
+                                "Date Table Removed",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Information);
+                        }
+                    }
+                    else if (dialog.Config != null)
+                    {
+                        // Save the configuration
+                        if (_currentModel != null)
+                        {
+                            if (_currentModel.PluginSettings == null)
+                                _currentModel.PluginSettings = new PluginSettings();
+
+                            _currentModel.PluginSettings.DateTableConfig = dialog.Config;
+                            _modelManager.SaveModel(_currentModel);
+
+                            // Update UI to show the Date table and relationship
+                            AddDateTableToDisplay();
+                            UpdateRelationshipsDisplay();
+
+                            MessageBox.Show(
+                                $"Calendar table configured:\n\n" +
+                                $"Primary Date Field: {dialog.Config.PrimaryDateTable}.{dialog.Config.PrimaryDateField}\n" +
+                                $"Time Zone: {dialog.Config.TimeZoneId} (UTC {dialog.Config.UtcOffsetHours:+0.0;-0.0})\n" +
+                                $"Year Range: {dialog.Config.StartYear}-{dialog.Config.EndYear}\n" +
+                                $"Additional Fields: {dialog.Config.WrappedFields.Count}",
+                                "Calendar Table Configured",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Information);
+                        }
                     }
                 }
             }

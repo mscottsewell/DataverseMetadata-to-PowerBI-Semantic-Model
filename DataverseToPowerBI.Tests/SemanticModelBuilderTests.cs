@@ -667,6 +667,68 @@ namespace DataverseToPowerBI.Tests
             Assert.DoesNotContain("meta_pbi_categories.[OptionSetName] = 'connectionrole_category'", tmdl);
         }
 
+        [Fact]
+        public void GenerateTableTmdl_ExpandedLookupJoin_UsesTargetLogicalNameNotDisplayName()
+        {
+            var table = new ExportTable
+            {
+                LogicalName = "incident",
+                DisplayName = "Incident",
+                PrimaryIdAttribute = "incidentid",
+                PrimaryNameAttribute = "title",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "customerid",
+                        DisplayName = "Customer",
+                        SchemaName = "customerid",
+                        AttributeType = "Lookup"
+                    }
+                },
+                ExpandedLookups = new List<DataverseToPowerBI.Core.Models.ExpandedLookupConfig>
+                {
+                    new DataverseToPowerBI.Core.Models.ExpandedLookupConfig
+                    {
+                        LookupAttributeName = "customerid",
+                        TargetTableLogicalName = "account",
+                        TargetTableDisplayName = "Account Display Name",
+                        TargetTablePrimaryKey = "accountid",
+                        Attributes = new List<DataverseToPowerBI.Core.Models.ExpandedLookupAttribute>
+                        {
+                            new DataverseToPowerBI.Core.Models.ExpandedLookupAttribute
+                            {
+                                LogicalName = "name",
+                                DisplayName = "Name",
+                                AttributeType = "String"
+                            }
+                        }
+                    }
+                }
+            };
+
+            var attributeDisplayInfo = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["incident"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["customerid"] = new AttributeDisplayInfo
+                    {
+                        LogicalName = "customerid",
+                        DisplayName = "Customer",
+                        AttributeType = "Lookup"
+                    }
+                }
+            };
+
+            var tmdl = _builder.GenerateTableTmdl(
+                table,
+                attributeDisplayInfo,
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+
+            Assert.Contains("LEFT OUTER JOIN account exp_customerid ON exp_customerid.accountid = Base.customerid", tmdl);
+            Assert.DoesNotContain("LEFT OUTER JOIN Account Display Name exp_customerid", tmdl);
+        }
+
         #endregion
 
         #region Auto-Measure Cleanup Tests

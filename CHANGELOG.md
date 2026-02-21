@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2026.5.84] - 2026-02-20
+
+### Fixed
+
+- **Expanded Lookup SQL JOIN Table Name Resolution** — Expanded-lookup JOINs now always use the related table logical/schema name instead of display name, preventing invalid SQL when a selected view includes related-table columns.
+
+---
+
 ## [1.2026.5.83] - 2026-02-20
 
 ### Added

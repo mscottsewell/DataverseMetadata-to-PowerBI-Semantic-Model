@@ -58,6 +58,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private Button btnClearAll = null!;
         private Button btnOk = null!;
         private Button btnCancel = null!;
+        private Button? btnRemove;
         private Label lblTableHelp = null!;
         private Label lblTimezoneHelp = null!;
 
@@ -73,6 +74,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
         // Output
         public DateTableConfig? Config { get; private set; }
+        public bool RemoveRequested { get; private set; }
 
         public CalendarTableDialog(
             Dictionary<string, TableInfo> selectedTables,
@@ -303,7 +305,20 @@ namespace DataverseToPowerBI.XrmToolBox
             this.Controls.Add(lblAdditionalHelp);
             y += 40;
 
-            // OK / Cancel buttons
+            // OK / Cancel / Remove buttons
+            if (_existingConfig != null)
+            {
+                btnRemove = new Button
+                {
+                    Text = "Remove Date Table",
+                    Location = new Point(20, y),
+                    Size = new Size(130, 28),
+                    ForeColor = Color.DarkRed
+                };
+                btnRemove.Click += BtnRemove_Click;
+                this.Controls.Add(btnRemove);
+            }
+
             btnOk = new Button
             {
                 Text = "OK",
@@ -325,6 +340,24 @@ namespace DataverseToPowerBI.XrmToolBox
 
             this.AcceptButton = btnOk;
             this.CancelButton = btnCancel;
+        }
+
+        private void BtnRemove_Click(object? sender, EventArgs e)
+        {
+            var result = MessageBox.Show(
+                "Remove the Date table from this model?\n\nDateTime fields will revert to their original types.",
+                "Remove Date Table",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2);
+
+            if (result == DialogResult.Yes)
+            {
+                RemoveRequested = true;
+                Config = null;
+                this.DialogResult = DialogResult.OK;
+                this.Close();
+            }
         }
 
         private void LoadData()

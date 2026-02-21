@@ -235,7 +235,7 @@ namespace DataverseToPowerBI.XrmToolBox
             var entryName = listViewTables.SelectedItems[0].Tag as string;
             if (entryName != null && _entries.TryGetValue(entryName, out var entry))
             {
-                txtTmdl.Text = entry.Content;
+                txtTmdl.Text = WrapWithCreateOrReplace(entry.Content);
             }
         }
 
@@ -273,7 +273,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
-                    File.WriteAllText(dialog.FileName, entry.Content, new System.Text.UTF8Encoding(false));
+                    File.WriteAllText(dialog.FileName, WrapWithCreateOrReplace(entry.Content), new System.Text.UTF8Encoding(false));
                     MessageBox.Show($"Saved: {Path.GetFileName(dialog.FileName)}",
                         "Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
@@ -296,7 +296,7 @@ namespace DataverseToPowerBI.XrmToolBox
                     {
                         var fileName = SanitizeFileName(kvp.Key) + ".tmdl";
                         var filePath = Path.Combine(folder, fileName);
-                        File.WriteAllText(filePath, kvp.Value.Content, encoding);
+                        File.WriteAllText(filePath, WrapWithCreateOrReplace(kvp.Value.Content), encoding);
                         count++;
                     }
 
@@ -304,6 +304,20 @@ namespace DataverseToPowerBI.XrmToolBox
                         "Save All Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
+        }
+
+        /// <summary>
+        /// Wraps TMDL content with a createOrReplace header and indents all lines by one tab,
+        /// producing content that can be pasted directly into the Power BI TMDL editor.
+        /// </summary>
+        private static string WrapWithCreateOrReplace(string content)
+        {
+            if (string.IsNullOrEmpty(content))
+                return content;
+
+            var lines = content.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+            var indented = string.Join("\r\n", lines.Select(l => "\t" + l));
+            return "createOrReplace\r\n" + indented;
         }
 
         private static string SanitizeFileName(string name)
