@@ -59,6 +59,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private readonly XrmServiceAdapterImpl _adapter;
         private readonly IOrganizationService _service;
         private List<TableInfo> _tables;
+        private List<TableInfo> _snowflakeAddedTables = new List<TableInfo>();
         private Dictionary<string, List<CoreAttributeMetadata>> _tableAttributes = new Dictionary<string, List<CoreAttributeMetadata>>();
         private Dictionary<string, string> _allEntityDisplayNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private List<DataverseSolution> _allSolutions = null!;
@@ -136,7 +137,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private void InitializeComponent()
         {
             this.Text = "Select Fact Table and Dimensions";
-            this.Width = 900;
+            this.Width = 980;
             this.Height = 720;
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -235,14 +236,14 @@ namespace DataverseToPowerBI.XrmToolBox
             lblSearch = new WinLabel
             {
                 Text = "Search:",
-                Location = new Point(615, 133),
+                Location = new Point(695, 133),
                 AutoSize = true
             };
             this.Controls.Add(lblSearch);
 
             txtSearch = new TextBox
             {
-                Location = new Point(670, 130),
+                Location = new Point(750, 130),
                 Width = 200
             };
             txtSearch.TextChanged += TxtSearch_TextChanged;
@@ -251,7 +252,7 @@ namespace DataverseToPowerBI.XrmToolBox
             listViewRelationships = new ListView
             {
                 Location = new Point(10, 165),
-                Width = 860,
+                Width = 940,
                 Height = 390,
                 View = View.Details,
                 FullRowSelect = true,
@@ -260,10 +261,11 @@ namespace DataverseToPowerBI.XrmToolBox
             };
             listViewRelationships.Columns.Add("Include", 55);
             listViewRelationships.Columns.Add("Cardinality", 70);
-            listViewRelationships.Columns.Add("Lookup Field", 150);
+            listViewRelationships.Columns.Add("Source Table", 120);
+            listViewRelationships.Columns.Add("Lookup Field", 140);
             listViewRelationships.Columns.Add("Lookup Logical Name", 120);
-            listViewRelationships.Columns.Add("Target Table", 145);
-            listViewRelationships.Columns.Add("Target Logical Name", 120);
+            listViewRelationships.Columns.Add("Target Table", 140);
+            listViewRelationships.Columns.Add("Target Logical Name", 110);
             listViewRelationships.Columns.Add("Status", 65);
             listViewRelationships.Columns.Add("Type", 130);
             listViewRelationships.ItemChecked += ListViewRelationships_ItemChecked;
@@ -305,7 +307,7 @@ namespace DataverseToPowerBI.XrmToolBox
             btnFinish = new Button
             {
                 Text = "Finish Selection",
-                Location = new Point(650, 630),
+                Location = new Point(730, 630),
                 Width = 105,
                 Height = 30,
                 Enabled = false
@@ -316,7 +318,7 @@ namespace DataverseToPowerBI.XrmToolBox
             btnCancel = new Button
             {
                 Text = "Cancel",
-                Location = new Point(765, 630),
+                Location = new Point(845, 630),
                 Width = 80,
                 Height = 30,
                 DialogResult = DialogResult.Cancel
@@ -391,6 +393,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 {
                     // Called when tables are loaded
                     _tables = tables;
+                    _snowflakeAddedTables.Clear();
                     _tableAttributes.Clear();
                     cmbFactTable.Enabled = true;
                     LoadFactTableDropdown();
@@ -402,6 +405,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 try
                 {
                     _tables = _adapter.GetSolutionTablesSync(_service, selectedSolution.SolutionId);
+                    _snowflakeAddedTables.Clear();
                     _tableAttributes.Clear();
                     cmbFactTable.Enabled = true;
                     LoadFactTableDropdown();
@@ -605,6 +609,7 @@ namespace DataverseToPowerBI.XrmToolBox
                     var item = new ListViewItem("");
                     item.Checked = false; // One-to-many not auto-selected
                     item.SubItems.Add("1:Many");
+                    item.SubItems.Add(referencingDisplayName);
                     item.SubItems.Add(rel.LookupDisplayName ?? rel.ReferencingAttribute);
                     item.SubItems.Add(rel.ReferencingAttribute);
                     item.SubItems.Add(referencingDisplayName);
@@ -656,6 +661,13 @@ namespace DataverseToPowerBI.XrmToolBox
                 _suppressItemCheckedEvent = false;
             }
 
+            // Determine if the user has previously configured this fact table.
+            // _currentFactTable is set when the dialog was completed before — even if all
+            // relationships were unchecked. If the same fact table is being edited, absence
+            // of a relationship config means "user explicitly removed it" — don't auto-check.
+            // Only auto-check on first-time setup or when switching to a different fact table.
+            var isEditingExistingFactTable = string.Equals(_currentFactTable, sourceTable, StringComparison.OrdinalIgnoreCase);
+
             // Group by target table to identify multiple lookups to same table
             var targetGroups = lookups
                 .SelectMany(l => (l.Targets ?? new List<string>()).Select(t => new { Lookup = l, Target = t }))
@@ -693,8 +705,8 @@ namespace DataverseToPowerBI.XrmToolBox
                     var isChecked = existingRel != null;
                     var isActive = existingRel?.IsActive ?? true; // Default to Active
 
-                    // Auto-check single lookups to in-solution tables
-                    if (existingRel == null && !multipleLookupsToTarget && targetTable != null && !isSnowflake)
+                    // Auto-check single lookups to in-solution tables (first-time setup only)
+                    if (existingRel == null && !isEditingExistingFactTable && !multipleLookupsToTarget && targetTable != null && !isSnowflake)
                     {
                         isChecked = true;
                         isActive = true;
@@ -709,6 +721,7 @@ namespace DataverseToPowerBI.XrmToolBox
                     var item = new ListViewItem("");
                     item.Checked = isChecked;
                     item.SubItems.Add(cardinalityText);
+                    item.SubItems.Add(GetTableDisplayName(sourceTable));
                     item.SubItems.Add(lookup.DisplayName ?? lookup.LogicalName);
                     item.SubItems.Add(lookup.LogicalName);
                     item.SubItems.Add(targetDisplayName);
@@ -836,8 +849,8 @@ namespace DataverseToPowerBI.XrmToolBox
                 {
                     if (otherItem == e.Item || otherItem.Tag == null) continue;
                     var otherConfig = (RelationshipTag)otherItem.Tag;
-                    if (otherConfig.SourceTable == config.SourceTable &&
-                        otherConfig.TargetTable == config.TargetTable)
+                    // Refresh same-source-target items AND cross-chain items sharing the same target
+                    if (string.Equals(otherConfig.TargetTable, config.TargetTable, StringComparison.OrdinalIgnoreCase))
                     {
                         UpdateItemStatus(otherItem, otherConfig);
                     }
@@ -917,13 +930,12 @@ namespace DataverseToPowerBI.XrmToolBox
                     }
                 }
                 
-                // Refresh display for all relationships to this target
+                // Refresh display for all relationships to this target (including cross-chain)
                 foreach (var otherItem in _allRelationshipItems)
                 {
                     if (otherItem.Tag == null) continue;
                     var otherConfig = (RelationshipTag)otherItem.Tag;
-                    if (otherConfig.SourceTable == config.SourceTable &&
-                        otherConfig.TargetTable == config.TargetTable)
+                    if (string.Equals(otherConfig.TargetTable, config.TargetTable, StringComparison.OrdinalIgnoreCase))
                     {
                         UpdateItemStatus(otherItem, otherConfig);
                     }
@@ -1018,12 +1030,51 @@ namespace DataverseToPowerBI.XrmToolBox
             }
 
             UpdateItemStatus(item, config);
+
+            // Refresh cross-chain items sharing the same target table
+            foreach (var otherItem in _allRelationshipItems)
+            {
+                if (otherItem == item || otherItem.Tag == null) continue;
+                var otherConfig = (RelationshipTag)otherItem.Tag;
+                if (string.Equals(otherConfig.TargetTable, config.TargetTable, StringComparison.OrdinalIgnoreCase))
+                {
+                    UpdateItemStatus(otherItem, otherConfig);
+                }
+            }
         }
 
         private string GetTableDisplayName(string logicalName)
         {
             var table = _tables?.FirstOrDefault(t => t.LogicalName.Equals(logicalName, StringComparison.OrdinalIgnoreCase));
             return table?.DisplayName ?? logicalName;
+        }
+
+        /// <summary>
+        /// Computes the chain group key for a relationship item.
+        /// Direct items key by TargetTable. Snowflake items trace back to their root dimension.
+        /// 1:Many items use a prefixed key to avoid collision with dimension chains.
+        /// </summary>
+        private string GetChainGroupKey(RelationshipTag tag)
+        {
+            if (tag.IsOneToMany)
+                return "1TM:" + tag.SourceTable;
+
+            if (tag.SnowflakeLevel == 0)
+                return tag.TargetTable;
+
+            if (tag.SnowflakeLevel == 1)
+                return tag.SourceTable;
+
+            // L2: find L1 parent whose TargetTable == this item's SourceTable
+            var l1Parent = _allRelationshipItems
+                .Where(i => i.Tag is RelationshipTag rt
+                             && rt.IsSnowflake
+                             && rt.SnowflakeLevel == 1
+                             && string.Equals(rt.TargetTable, tag.SourceTable, StringComparison.OrdinalIgnoreCase))
+                .Select(i => (RelationshipTag)i.Tag)
+                .FirstOrDefault();
+
+            return l1Parent?.SourceTable ?? tag.SourceTable;
         }
 
         private void UpdateItemStatus(ListViewItem item, RelationshipTag config)
@@ -1034,9 +1085,9 @@ namespace DataverseToPowerBI.XrmToolBox
             // Items in _allRelationshipItems might be filtered out and not in the control
             if (item.ListView == null) return;
             
-            if (item.SubItems.Count < 8) return;
+            if (item.SubItems.Count < 9) return;
             
-            // Count total relationships to this target
+            // Count total relationships to this target from the SAME source table
             var allToTarget = _allRelationshipItems.Cast<ListViewItem>()
                 .Where(i => i != null && i.Tag != null)
                 .Where(i =>
@@ -1047,21 +1098,33 @@ namespace DataverseToPowerBI.XrmToolBox
                 .ToList();
 
             var targetCount = allToTarget.Count;
-            
-            // Count ACTIVE relationships to this target (must be CHECKED to count)
-            // Use IsChecked from tag to avoid accessing ListView state
-            // allToTarget already filtered for non-null items and tags
+
+            // Count ACTIVE relationships to this target from same source (must be CHECKED to count)
             var activeCount = allToTarget.Count(i =>
             {
                 var c = (RelationshipTag)i.Tag;
                 return c.IsChecked && c.IsActive;
             });
 
+            // Detect cross-chain ambiguity: same target table reached via active relationships
+            // from DIFFERENT source tables (e.g., Contact as both direct dim and snowflake off Account)
+            var hasCrossChainConflict = false;
+            if (config.IsChecked && config.IsActive)
+            {
+                var crossChainActiveCount = _allRelationshipItems.Cast<ListViewItem>()
+                    .Count(i => i != null && i.Tag is RelationshipTag rt
+                                && rt.IsChecked && rt.IsActive
+                                && string.Equals(rt.TargetTable, config.TargetTable, StringComparison.OrdinalIgnoreCase)
+                                && !string.Equals(rt.SourceTable, config.SourceTable, StringComparison.OrdinalIgnoreCase));
+                hasCrossChainConflict = crossChainActiveCount > 0;
+            }
+
             // Update Status column
             var statusText = config.IsActive ? "Active" : "Inactive";
-            if (targetCount > 1) statusText += " ⚠";
-            item.SubItems[6].Text = statusText;
-            
+            if (targetCount > 1) statusText += " \u26a0";
+            if (hasCrossChainConflict) statusText += " \u26a0\u26a0";
+            item.SubItems[7].Text = statusText;
+
             // Update Type column with snowflake level indicators
             string baseType;
             if (config.SnowflakeLevel >= 2)
@@ -1071,21 +1134,26 @@ namespace DataverseToPowerBI.XrmToolBox
             else
                 baseType = "Direct";
             var typeText = config.IsActive ? baseType : $"{baseType} (Inactive)";
-            item.SubItems[7].Text = typeText;
+            item.SubItems[8].Text = typeText;
 
-            // Update background color - only highlight if multiple ACTIVE relationships exist
-            if (config.SnowflakeLevel >= 2)
+            // Update background color
+            if (hasCrossChainConflict)
+            {
+                // Cross-chain ambiguity: same target reachable via multiple active paths
+                item.BackColor = Color.FromArgb(255, 230, 180); // Light orange/amber
+            }
+            else if (activeCount > 1 && config.IsActive)
+            {
+                // Multiple active relationships to same target from same source - CONFLICT!
+                item.BackColor = Color.FromArgb(255, 200, 200); // Light red/salmon
+            }
+            else if (config.SnowflakeLevel >= 2)
             {
                 item.BackColor = Color.FromArgb(200, 225, 255); // Deeper blue for double snowflake
             }
             else if (config.IsSnowflake)
             {
                 item.BackColor = Color.LightCyan;
-            }
-            else if (activeCount > 1 && config.IsActive)
-            {
-                // Multiple active relationships to same target - CONFLICT!
-                item.BackColor = Color.FromArgb(255, 200, 200); // Light red/salmon
             }
             else
             {
@@ -1096,6 +1164,15 @@ namespace DataverseToPowerBI.XrmToolBox
         private void UpdateFinishButtonState()
         {
             btnFinish.Enabled = SelectedFactTable != null;
+        }
+
+        /// <summary>
+        /// Finds a table by logical name from both solution tables and snowflake-added tables.
+        /// </summary>
+        private TableInfo FindTableByLogicalName(string logicalName)
+        {
+            return _tables.FirstOrDefault(t => string.Equals(t.LogicalName, logicalName, StringComparison.OrdinalIgnoreCase))
+                ?? _snowflakeAddedTables.FirstOrDefault(t => string.Equals(t.LogicalName, logicalName, StringComparison.OrdinalIgnoreCase));
         }
 
         private void UpdateSnowflakeButtonState()
@@ -1112,10 +1189,10 @@ namespace DataverseToPowerBI.XrmToolBox
                 btnAddSnowflake.Enabled = false;
                 return;
             }
-            
+
             var config = (RelationshipTag)item.Tag;
 
-            var targetExists = _tables.Any(t => t.LogicalName == config.TargetTable);
+            var targetExists = FindTableByLogicalName(config.TargetTable) != null;
             btnAddSnowflake.Enabled = config.IsChecked && !config.IsOneToMany && config.SnowflakeLevel < 2 && targetExists;
         }
 
@@ -1126,7 +1203,7 @@ namespace DataverseToPowerBI.XrmToolBox
             var item = listViewRelationships.SelectedItems[0];
             var config = (RelationshipTag)item.Tag;
             var newSnowflakeLevel = config.SnowflakeLevel + 1;
-            var dimensionTable = _tables.FirstOrDefault(t => t.LogicalName == config.TargetTable);
+            var dimensionTable = FindTableByLogicalName(config.TargetTable);
 
             if (dimensionTable == null) return;
 
@@ -1179,11 +1256,12 @@ namespace DataverseToPowerBI.XrmToolBox
                     return;
                 }
 
-                // Show snowflake dialog
+                // Show snowflake dialog — combine solution tables with snowflake-added tables for display
+                var allKnownTables = _tables.Concat(_snowflakeAddedTables).ToList();
                 using (var snowflakeDialog = new SnowflakeDimensionForm(
                     dimensionTable,
                     availableLookups,
-                    _tables,
+                    allKnownTables,
                     _currentRelationships.Where(r => r.IsSnowflake && r.SourceTable == dimensionTable.LogicalName).ToList()))
                 {
                     if (snowflakeDialog.ShowDialog(this) == DialogResult.OK)
@@ -1221,16 +1299,34 @@ namespace DataverseToPowerBI.XrmToolBox
                           ((RelationshipTag)i.Tag).TargetTable == rel.TargetTable))
                 return;
 
-            var targetTable = _tables.FirstOrDefault(t => t.LogicalName == rel.TargetTable);
-            var targetDisplayName = targetTable?.DisplayName
-                ?? (_allEntityDisplayNames.TryGetValue(rel.TargetTable, out var entityDisplayName) ? entityDisplayName : rel.TargetTable);
+            var targetTable = FindTableByLogicalName(rel.TargetTable);
+
+            // Ensure snowflake target table is tracked locally so it can be resolved for further chaining
+            // (Fact → Dim → Snowflake → Snowflake2). Without this, UpdateSnowflakeButtonState
+            // and BtnAddSnowflake_Click cannot find the target table for deeper snowflake levels.
+            // We add to _snowflakeAddedTables (not _tables) to avoid mutating the shared solution tables reference.
+            if (targetTable == null)
+            {
+                var displayName = _allEntityDisplayNames.TryGetValue(rel.TargetTable, out var dn) ? dn : rel.TargetTable;
+                targetTable = new TableInfo
+                {
+                    LogicalName = rel.TargetTable,
+                    DisplayName = displayName,
+                    SchemaName = rel.TargetTable
+                };
+                _snowflakeAddedTables.Add(targetTable);
+            }
+
+            var targetDisplayName = targetTable.DisplayName ?? rel.TargetTable;
 
             var relationshipDisplayName = rel.DisplayName ?? rel.SourceAttribute ?? "";
 
             var snowflakeTypeText = snowflakeLevel >= 2 ? "\u2744\u2744 Snowflake" : "\u2744 Snowflake";
+            var sourceDisplayName = GetTableDisplayName(rel.SourceTable);
             var item = new ListViewItem("");
             item.Checked = true;
             item.SubItems.Add("Many:1");
+            item.SubItems.Add(sourceDisplayName);
             item.SubItems.Add(relationshipDisplayName);
             item.SubItems.Add(rel.SourceAttribute ?? "");
             item.SubItems.Add(targetDisplayName);
@@ -1309,12 +1405,14 @@ namespace DataverseToPowerBI.XrmToolBox
                 // Apply search filter
                 if (!string.IsNullOrEmpty(searchText))
                 {
-                    var lookupField = item.SubItems[2].Text.ToLowerInvariant();
-                    var lookupLogical = item.SubItems[3].Text.ToLowerInvariant();
-                    var targetTable = item.SubItems[4].Text.ToLowerInvariant();
-                    var targetLogical = item.SubItems[5].Text.ToLowerInvariant();
-                    
-                    if (!lookupField.Contains(searchText) &&
+                    var sourceTableText = item.SubItems[2].Text.ToLowerInvariant();
+                    var lookupField = item.SubItems[3].Text.ToLowerInvariant();
+                    var lookupLogical = item.SubItems[4].Text.ToLowerInvariant();
+                    var targetTable = item.SubItems[5].Text.ToLowerInvariant();
+                    var targetLogical = item.SubItems[6].Text.ToLowerInvariant();
+
+                    if (!sourceTableText.Contains(searchText) &&
+                        !lookupField.Contains(searchText) &&
                         !lookupLogical.Contains(searchText) &&
                         !targetTable.Contains(searchText) &&
                         !targetLogical.Contains(searchText))
@@ -1322,49 +1420,84 @@ namespace DataverseToPowerBI.XrmToolBox
                         continue; // Skip items that don't match search
                     }
                 }
-                
+
                 filteredItems.Add(item);
             }
-            
-            // Group by target table - only create groups for tables with multiple relationships
-            var targetGroups = filteredItems
+
+            // Group by dimension chain — direct dims + their snowflake descendants form one group
+            var chainGroups = filteredItems
                 .Where(item => item.Tag != null)
-                .GroupBy(item => ((RelationshipTag)item.Tag).TargetTable)
+                .GroupBy(item => GetChainGroupKey((RelationshipTag)item.Tag))
                 .ToDictionary(g => g.Key, g => g.ToList());
-            
-            // Create ListView groups for tables with multiple relationships
-            var groupsByTarget = new Dictionary<string, ListViewGroup>();
-            foreach (var kvp in targetGroups.Where(g => g.Value.Count > 1))
+
+            // Sort items within each chain group by lineage order
+            filteredItems.Sort((a, b) =>
             {
-                var targetTable = kvp.Key;
+                var tagA = (RelationshipTag)a.Tag;
+                var tagB = (RelationshipTag)b.Tag;
+                var keyA = GetChainGroupKey(tagA);
+                var keyB = GetChainGroupKey(tagB);
+
+                int cmp = string.Compare(keyA, keyB, StringComparison.OrdinalIgnoreCase);
+                if (cmp != 0) return cmp;
+
+                cmp = tagA.SnowflakeLevel.CompareTo(tagB.SnowflakeLevel);
+                if (cmp != 0) return cmp;
+
+                return string.Compare(tagA.DisplayName, tagB.DisplayName, StringComparison.OrdinalIgnoreCase);
+            });
+
+            // Create ListView groups for chains with 2+ items
+            var groupsByKey = new Dictionary<string, ListViewGroup>(StringComparer.OrdinalIgnoreCase);
+            foreach (var kvp in chainGroups.Where(g => g.Value.Count > 1))
+            {
+                var key = kvp.Key;
                 var items = kvp.Value;
-                var displayName = items.First().SubItems[4].Text; // Target Table display name
-                
-                var group = new ListViewGroup(
-                    displayName,
-                    $"{displayName} (Multiple Relationships)")
+
+                string headerText;
+                if (key.StartsWith("1TM:", StringComparison.Ordinal))
+                {
+                    var logicalName = key.Substring(4);
+                    headerText = $"{GetTableDisplayName(logicalName)} (Reverse Relationships)";
+                }
+                else
+                {
+                    var displayName = GetTableDisplayName(key);
+                    var directCount = items.Count(i =>
+                    {
+                        var rt = (RelationshipTag)i.Tag;
+                        return rt.SnowflakeLevel == 0 && !rt.IsOneToMany
+                               && string.Equals(rt.TargetTable, key, StringComparison.OrdinalIgnoreCase);
+                    });
+
+                    headerText = directCount > 1
+                        ? $"{displayName} (Multiple Relationships)"
+                        : displayName;
+                }
+
+                var group = new ListViewGroup(key, headerText)
                 {
                     HeaderAlignment = HorizontalAlignment.Left
                 };
-                
                 listViewRelationships.Groups.Add(group);
-                groupsByTarget[targetTable] = group;
+                groupsByKey[key] = group;
             }
-            
+
             // Add items to the ListView, assigning to groups where applicable
             foreach (var item in filteredItems)
             {
                 var config = (RelationshipTag)item.Tag;
-                
-                if (groupsByTarget.TryGetValue(config.TargetTable, out var group))
+                var chainKey = GetChainGroupKey(config);
+
+                if (groupsByKey.TryGetValue(chainKey, out var group))
                 {
                     item.Group = group;
                 }
                 else
                 {
-                    item.Group = null; // No group for single relationships
+                    item.Group = null; // No group for standalone dimensions
                 }
-                
+
                 listViewRelationships.Items.Add(item);
             }
             
@@ -1395,7 +1528,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 var activeCount = group.Count(c => c.IsActive);
                 var parts = group.Key.Split('|');
                 var targetName = parts[1];
-                var targetDisplay = _tables.FirstOrDefault(t => t.LogicalName == targetName)?.DisplayName ?? targetName;
+                var targetDisplay = FindTableByLogicalName(targetName)?.DisplayName ?? targetName;
 
                 if (activeCount == 0)
                 {
@@ -1413,6 +1546,41 @@ namespace DataverseToPowerBI.XrmToolBox
                 }
             }
 
+            // Warn about cross-chain ambiguity: a table reachable via multiple active paths
+            // (e.g., Contact as both a direct dimension AND a snowflake off Account)
+            var activeConfigs = configs.Where(c => c.IsActive).ToList();
+            var crossChainConflicts = activeConfigs
+                .GroupBy(c => c.TargetTable, StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1)
+                .ToList();
+
+            if (crossChainConflicts.Any())
+            {
+                var lines = new List<string>();
+                foreach (var conflict in crossChainConflicts)
+                {
+                    var targetDisplay = FindTableByLogicalName(conflict.Key)?.DisplayName ?? conflict.Key;
+                    var paths = conflict.Select(c =>
+                    {
+                        var sourceDisplay = GetTableDisplayName(c.SourceTable);
+                        return $"  \u2022 {sourceDisplay} \u2192 {targetDisplay}  ({c.DisplayName})";
+                    });
+                    lines.Add($"{targetDisplay}:\n{string.Join("\n", paths)}");
+                }
+
+                var result = MessageBox.Show(
+                    $"The following tables are reachable through multiple active relationship paths. " +
+                    $"This can create ambiguous filter behavior in Power BI.\n\n" +
+                    $"{string.Join("\n\n", lines)}\n\n" +
+                    $"Consider making one path Inactive (double-click to toggle).\n\n" +
+                    $"Continue anyway?",
+                    "Ambiguous Relationship Paths",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+
+                if (result != DialogResult.Yes)
+                    return;
+            }
+
             // Build results
             SelectedRelationships = configs.Select(c => new ExportRelationship
             {
@@ -1422,6 +1590,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 DisplayName = c.DisplayName,
                 IsActive = c.IsActive,
                 IsSnowflake = c.IsSnowflake,
+                SnowflakeLevel = c.SnowflakeLevel,
                 AssumeReferentialIntegrity = c.AssumeReferentialIntegrity
             }).ToList();
 
@@ -1445,7 +1614,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 if (AllSelectedTables.Any(t => t.LogicalName.Equals(tableName, StringComparison.OrdinalIgnoreCase)))
                     continue;
 
-                var table = _tables.FirstOrDefault(t => t.LogicalName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
+                var table = FindTableByLogicalName(tableName);
                 
                 // If table not in current solution, create a minimal TableInfo from known metadata
                 if (table == null)

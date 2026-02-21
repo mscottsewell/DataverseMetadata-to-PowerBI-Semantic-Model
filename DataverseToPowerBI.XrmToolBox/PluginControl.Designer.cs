@@ -68,6 +68,8 @@ namespace DataverseToPowerBI.XrmToolBox
             this.colAttrDisplay = new System.Windows.Forms.ColumnHeader();
             this.colAttrLogical = new System.Windows.Forms.ColumnHeader();
             this.colAttrType = new System.Windows.Forms.ColumnHeader();
+            this.colAttrInclude = new System.Windows.Forms.ColumnHeader();
+            this.colAttrHidden = new System.Windows.Forms.ColumnHeader();
             this.colAttrExpand = new System.Windows.Forms.ColumnHeader();
             this.panelAttrButtons = new System.Windows.Forms.Panel();
             this.btnSelectAll = new System.Windows.Forms.Button();
@@ -426,6 +428,8 @@ namespace DataverseToPowerBI.XrmToolBox
                 this.colAttrDisplay,
                 this.colAttrLogical,
                 this.colAttrType,
+                this.colAttrInclude,
+                this.colAttrHidden,
                 this.colAttrExpand});
             this.listViewAttributes.Dock = System.Windows.Forms.DockStyle.Fill;
             this.listViewAttributes.FullRowSelect = true;
@@ -449,7 +453,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
             // colAttrOnForm
             this.colAttrOnForm.Text = "Default";
-            this.colAttrOnForm.Width = 50;
+            this.colAttrOnForm.Width = 45;
             this.colAttrOnForm.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
 
             // colAttrDisplay
@@ -462,11 +466,21 @@ namespace DataverseToPowerBI.XrmToolBox
 
             // colAttrType
             this.colAttrType.Text = "Type";
-            this.colAttrType.Width = 120;
+            this.colAttrType.Width = 90;
+
+            // colAttrInclude
+            this.colAttrInclude.Text = "Include";
+            this.colAttrInclude.Width = 50;
+            this.colAttrInclude.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+
+            // colAttrHidden
+            this.colAttrHidden.Text = "Hidden";
+            this.colAttrHidden.Width = 50;
+            this.colAttrHidden.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
 
             // colAttrExpand
             this.colAttrExpand.Text = "";
-            this.colAttrExpand.Width = 0;
+            this.colAttrExpand.Width = 72;
 
             // panelAttrButtons
             this.panelAttrButtons.Controls.Add(this.btnSelectAll);
@@ -625,6 +639,8 @@ namespace DataverseToPowerBI.XrmToolBox
         private System.Windows.Forms.ColumnHeader colAttrDisplay;
         private System.Windows.Forms.ColumnHeader colAttrLogical;
         private System.Windows.Forms.ColumnHeader colAttrType;
+        private System.Windows.Forms.ColumnHeader colAttrInclude;
+        private System.Windows.Forms.ColumnHeader colAttrHidden;
         private System.Windows.Forms.ColumnHeader colAttrExpand;
         private System.Windows.Forms.Panel panelAttrButtons;
         private System.Windows.Forms.Button btnSelectAll;

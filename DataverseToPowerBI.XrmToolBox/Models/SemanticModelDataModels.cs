@@ -52,6 +52,9 @@ namespace DataverseToPowerBI.XrmToolBox.Models
         public bool IsActive { get; set; } = true;
         [System.Runtime.Serialization.DataMember]
         public bool IsSnowflake { get; set; } = false;      // True if Dimension->ParentDimension
+        /// <summary>0 = Direct, 1 = Snowflake, 2 = Double Snowflake.</summary>
+        [System.Runtime.Serialization.DataMember]
+        public int SnowflakeLevel { get; set; } = 0;
         [System.Runtime.Serialization.DataMember]
         public bool AssumeReferentialIntegrity { get; set; } = false;  // True if lookup field is required
     }

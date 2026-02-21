@@ -6,6 +6,67 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2026.5.101] - 2026-02-21
+
+### Added
+
+- **Lookup Sub-Column Configuration** — Per-lookup control over which generated sub-columns (ID/GUID, Name, Type, Yomi) are included or hidden in the semantic model. New `LookupSubColumnConfig` model with nullable boolean fields; null values fall through to smart defaults based on relationship status:
+  - Lookups in a relationship default to: ID=Included+Hidden, Name=Excluded
+  - Lookups not in a relationship default to: ID=Excluded, Name=Included
+  - Owner/Customer polymorphic lookups additionally expose Type and Yomi sub-columns
+  - Include/Hidden toggles appear as clickable `☑`/`☐` text checkboxes in the attribute list
+  - Configurations persisted per semantic model and restored on load
+
+- **Collapsible Lookup Groups** — Lookup attributes in the attribute list now render as expandable/collapsible groups with `▼`/`▶` toggle headers. Click the display name to collapse/expand sub-rows. Expanded lookup child rows appear nested under the group header.
+
+- **Polymorphic Lookup Support (Owner/Customer)** — Full support for Owner and Customer polymorphic lookup types:
+  - Type (`{lookup}type`) and Yomi (`{lookup}yominame`) sub-columns exposed as toggleable rows
+  - Virtual sub-columns (e.g., `owneridname`, `owneridtype`, `owneridyominame`) automatically filtered from the main attribute list to prevent duplicate selection
+  - Migration logic upgrades previously-selected polymorphic virtual columns into the new sub-column config system
+  - TMDL generation, M query, and expected column calculations all updated to conditionally include/exclude each sub-column
+
+- **Cross-Chain Ambiguity Detection** — The Fact/Dimension selector now detects when the same dimension table is reachable via multiple active relationship paths from different source tables (e.g., Contact as both a direct dimension and a snowflake off Account). Amber/orange highlighting distinguishes cross-chain conflicts from same-source conflicts (red). A warning dialog on Finish prompts the user to resolve ambiguous paths.
+
+- **Source Table Column in Relationship Selector** — New "Source Table" column added to the Fact/Dimension selector ListView, making it clear which table each lookup originates from. Particularly useful when snowflake relationships introduce lookups from multiple source tables. Dialog widened from 900px to 980px to accommodate.
+
+- **Dimension Chain Grouping** — Relationships in the Fact/Dimension selector are now grouped by dimension chain rather than just target table. Direct dimensions and their snowflake descendants form a single visual group, with items sorted by lineage order (direct → snowflake L1 → snowflake L2). Group headers reflect the chain structure.
+
+- **Snowflake Table Tracking** — Snowflake dimension targets that aren't in the current solution are now tracked in a separate `_snowflakeAddedTables` list, enabling deeper snowflake chaining (Fact → Dim → Snowflake → Snowflake2). `FindTableByLogicalName()` searches both solution and snowflake-added tables.
+
+- **Lookup Sub-Column Unit Tests** — 378 lines of new xUnit tests covering lookup sub-column configuration behavior in TMDL generation: ID include/exclude, Name include/exclude, polymorphic type/yomi columns, hidden flag propagation, and interaction with relationship-required columns.
+
+### Changed
+
+- **Attribute List Column Headers** — Renamed abbreviated "Incl" and "Hid" column headers to full "Include" and "Hidden" labels for clarity. Rebalanced column widths across the attribute grid (Default, Type, and Expand columns reduced proportionally to accommodate the wider labels).
+
+- **Lookup Sub-Row Checkbox Cleanup** — The "Sel" checkbox column no longer renders empty, non-functional checkboxes on lookup sub-rows (sublookup child rows and expanded lookup child rows). Uses native Win32 `LVM_SETITEM` to selectively hide the state image on rows where selection is managed via the Include/Hidden toggles instead.
+
+- **Expand Lookup Always Enabled** — Removed `FeatureFlags.EnableExpandLookup` experimental gate. The Expand Lookup feature is now always available for all Lookup, Owner, and Customer attribute types.
+
+- **TMDL Lookup Column Generation Overhaul** — `GenerateTableTmdl()`, `GenerateMQuery()`, and `GenerateExpectedColumns()` refactored to use `ResolveLookupSubColumnFlags()` for consistent, config-driven lookup sub-column generation. Each sub-column (ID, Name, Type, Yomi) is conditionally included/excluded and marked hidden based on the per-lookup config. Replaces the previous behavior of always emitting both ID (hidden) and Name (visible) columns.
+
+- **User-Added Relationship Marker** — Preserved user relationships in TMDL output now include a `/// User-added relationship (preserved by DataverseToPowerBI)` comment marker if not already present, making it clear which relationships were manually added vs. tool-generated.
+
+- **Auto-Check Prevention on Re-Edit** — When re-opening the Fact/Dimension selector for an existing fact table, relationships are no longer auto-checked. Only first-time setup or switching to a different fact table triggers auto-selection, preventing the tool from re-adding relationships the user previously removed.
+
+- **Select All / Deselect All Safety** — Select All and Deselect All now skip internal sub-rows (`__sublookup__` and `__expanded__` tags), preventing synthetic sub-row tags from being added to `_selectedAttributes`.
+
+### Fixed
+
+- **Relationship Lookup GUID Auto-Defaults** — When adding a dimension relationship (e.g., Case → Product via `productid`), the lookup's GUID/ID sub-column is now correctly defaulted to Include=true and Hidden=true. Previously, stale explicit `LookupSubColumnConfig` entries (created when toggling any sub-column before the relationship existed) could override the smart defaults, leaving the foreign key column excluded.
+
+- **Relationship-Required Columns in Build Output** — `PrepareExportData()` now includes relationship-required lookup columns in the exported attribute list, matching the display behavior. Previously, if a lookup column was required by a relationship but not explicitly in `_selectedAttributes`, it could be omitted from the TMDL build output.
+
+- **Relationship-Required Columns Auto-Selected** — Lookup columns required by relationships are now automatically added to `_selectedAttributes` during metadata load (alongside primary key and primary name attributes). Ensures consistent state between the UI display and the underlying selection model.
+
+- **Relationship GUID Include Lock** — The Include checkbox on the GUID/ID sub-row is now read-only (grayed, click-ignored) when the parent lookup supports a defined relationship. The foreign key column cannot be accidentally excluded while the dimension table is part of the model; the Hidden toggle remains editable.
+
+- **Cross-Chain Relationship Status Refresh** — Checking, unchecking, or double-clicking a relationship now refreshes the status display for ALL relationships sharing the same target table (including cross-chain items from different source tables), not just same-source items. Prevents stale status/highlighting when relationships from multiple chains point to the same dimension.
+
+- **Polymorphic Virtual Column Filtering** — `GenerateTableTmdl()`, `GenerateMQuery()`, and `GenerateExpectedColumns()` now skip polymorphic virtual sub-columns (e.g., `owneridname`, `customeridtype`) that are handled by the parent lookup's sub-column config. Prevents duplicate columns in the generated output when both the virtual column and its parent lookup are selected.
+
+---
+
 ## [1.2026.5.84] - 2026-02-20
 
 ### Fixed

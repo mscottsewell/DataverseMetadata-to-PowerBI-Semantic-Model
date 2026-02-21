@@ -14,15 +14,5 @@ namespace DataverseToPowerBI.XrmToolBox
     /// </summary>
     internal static class FeatureFlags
     {
-        /// <summary>
-        /// When true, enables the "Expand Lookup" feature that allows users to
-        /// flatten related table attributes into the parent table via LEFT OUTER JOIN.
-        /// </summary>
-        /// <remarks>
-        /// EXPERIMENTAL: This feature adds a column to the attributes list with an
-        /// expand button for lookup-type attributes. Selected attributes from the
-        /// related table appear as grouped items under the lookup.
-        /// </remarks>
-        internal static bool EnableExpandLookup { get; set; } = true;
     }
 }

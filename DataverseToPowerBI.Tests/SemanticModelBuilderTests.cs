@@ -729,6 +729,384 @@ namespace DataverseToPowerBI.Tests
             Assert.DoesNotContain("LEFT OUTER JOIN Account Display Name exp_customerid", tmdl);
         }
 
+        [Fact]
+        public void GenerateTableTmdl_LookupIncludeIdFalse_NoIdColumnInOutput()
+        {
+            var table = new ExportTable
+            {
+                LogicalName = "incident",
+                DisplayName = "Incident",
+                PrimaryIdAttribute = "incidentid",
+                PrimaryNameAttribute = "title",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "customerid",
+                        DisplayName = "Customer",
+                        AttributeType = "Lookup"
+                    }
+                },
+                LookupSubColumnConfigs = new Dictionary<string, DataverseToPowerBI.Core.Models.LookupSubColumnConfig>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["customerid"] = new DataverseToPowerBI.Core.Models.LookupSubColumnConfig
+                    {
+                        LookupAttributeLogicalName = "customerid",
+                        IncludeIdField = false,
+                        IncludeNameField = true
+                    }
+                }
+            };
+
+            var info = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["incident"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["customerid"] = new AttributeDisplayInfo { LogicalName = "customerid", DisplayName = "Customer", AttributeType = "Lookup" }
+                }
+            };
+
+            var tmdl = _builder.GenerateTableTmdl(table, info, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+
+            Assert.DoesNotContain("column customerid", tmdl);
+            Assert.DoesNotContain("sourceColumn: customerid", tmdl);
+        }
+
+        [Fact]
+        public void GenerateTableTmdl_LookupIncludeIdTrueHidden_IdColumnIsHidden()
+        {
+            var table = new ExportTable
+            {
+                LogicalName = "incident",
+                DisplayName = "Incident",
+                PrimaryIdAttribute = "incidentid",
+                PrimaryNameAttribute = "title",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata { LogicalName = "customerid", DisplayName = "Customer", AttributeType = "Lookup" }
+                },
+                LookupSubColumnConfigs = new Dictionary<string, DataverseToPowerBI.Core.Models.LookupSubColumnConfig>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["customerid"] = new DataverseToPowerBI.Core.Models.LookupSubColumnConfig
+                    {
+                        LookupAttributeLogicalName = "customerid",
+                        IncludeIdField = true,
+                        IdFieldHidden = true,
+                        IncludeNameField = false
+                    }
+                }
+            };
+
+            var info = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["incident"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["customerid"] = new AttributeDisplayInfo { LogicalName = "customerid", DisplayName = "Customer", AttributeType = "Lookup" }
+                }
+            };
+
+            var tmdl = _builder.GenerateTableTmdl(table, info, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+            Assert.Contains("column customerid", tmdl);
+            Assert.Contains("isHidden", tmdl);
+        }
+
+        [Fact]
+        public void GenerateTableTmdl_LookupIncludeNameFalse_NoNameColumnInOutput()
+        {
+            var table = new ExportTable
+            {
+                LogicalName = "incident",
+                DisplayName = "Incident",
+                PrimaryIdAttribute = "incidentid",
+                PrimaryNameAttribute = "title",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata { LogicalName = "customerid", DisplayName = "Customer", AttributeType = "Lookup" }
+                },
+                LookupSubColumnConfigs = new Dictionary<string, DataverseToPowerBI.Core.Models.LookupSubColumnConfig>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["customerid"] = new DataverseToPowerBI.Core.Models.LookupSubColumnConfig
+                    {
+                        LookupAttributeLogicalName = "customerid",
+                        IncludeIdField = true,
+                        IncludeNameField = false
+                    }
+                }
+            };
+
+            var info = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["incident"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["customerid"] = new AttributeDisplayInfo { LogicalName = "customerid", DisplayName = "Customer", AttributeType = "Lookup" }
+                }
+            };
+
+            var tmdl = _builder.GenerateTableTmdl(table, info, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+            Assert.DoesNotContain("sourceColumn: customeridname", tmdl);
+            Assert.DoesNotContain("Base.customeridname", tmdl);
+        }
+
+        [Fact]
+        public void GenerateTableTmdl_LookupRelationshipDefaults_IdHiddenNameExcluded()
+        {
+            var table = new ExportTable
+            {
+                LogicalName = "incident",
+                DisplayName = "Incident",
+                PrimaryIdAttribute = "incidentid",
+                PrimaryNameAttribute = "title",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata { LogicalName = "customerid", DisplayName = "Customer", AttributeType = "Lookup" }
+                },
+                LookupSubColumnConfigs = new Dictionary<string, DataverseToPowerBI.Core.Models.LookupSubColumnConfig>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["customerid"] = new DataverseToPowerBI.Core.Models.LookupSubColumnConfig
+                    {
+                        LookupAttributeLogicalName = "customerid",
+                        IncludeIdField = true,
+                        IdFieldHidden = true,
+                        IncludeNameField = false
+                    }
+                }
+            };
+
+            var info = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["incident"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["customerid"] = new AttributeDisplayInfo { LogicalName = "customerid", DisplayName = "Customer", AttributeType = "Lookup" }
+                }
+            };
+
+            var tmdl = _builder.GenerateTableTmdl(table, info, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+            Assert.Contains("column customerid", tmdl);
+            Assert.DoesNotContain("sourceColumn: customeridname", tmdl);
+        }
+
+        [Fact]
+        public void GenerateTableTmdl_LookupNonRelationshipDefaults_IdExcludedNameVisible()
+        {
+            var table = new ExportTable
+            {
+                LogicalName = "incident",
+                DisplayName = "Incident",
+                PrimaryIdAttribute = "incidentid",
+                PrimaryNameAttribute = "title",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata { LogicalName = "customerid", DisplayName = "Customer", AttributeType = "Lookup" }
+                },
+                LookupSubColumnConfigs = new Dictionary<string, DataverseToPowerBI.Core.Models.LookupSubColumnConfig>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["customerid"] = new DataverseToPowerBI.Core.Models.LookupSubColumnConfig
+                    {
+                        LookupAttributeLogicalName = "customerid",
+                        IncludeIdField = false,
+                        IncludeNameField = true,
+                        NameFieldHidden = false
+                    }
+                }
+            };
+
+            var info = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["incident"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["customerid"] = new AttributeDisplayInfo { LogicalName = "customerid", DisplayName = "Customer", AttributeType = "Lookup" }
+                }
+            };
+
+            var tmdl = _builder.GenerateTableTmdl(table, info, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+            Assert.DoesNotContain("column customerid", tmdl);
+            Assert.Contains("sourceColumn: Customer", tmdl);
+        }
+
+        [Fact]
+        public void GenerateTableTmdl_OwnerType_TypeAndYomiDefaultExcluded()
+        {
+            var table = new ExportTable
+            {
+                LogicalName = "incident",
+                DisplayName = "Incident",
+                PrimaryIdAttribute = "incidentid",
+                PrimaryNameAttribute = "title",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata { LogicalName = "ownerid", DisplayName = "Owner", AttributeType = "Owner" }
+                }
+            };
+
+            var info = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["incident"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["ownerid"] = new AttributeDisplayInfo { LogicalName = "ownerid", DisplayName = "Owner", AttributeType = "Owner" }
+                }
+            };
+
+            var tmdl = _builder.GenerateTableTmdl(table, info, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+            Assert.DoesNotContain("owneridtype", tmdl);
+            Assert.DoesNotContain("owneridyominame", tmdl);
+        }
+
+        [Fact]
+        public void GenerateTableTmdl_OwnerType_TypeIncluded_TypeColumnPresent()
+        {
+            var table = new ExportTable
+            {
+                LogicalName = "incident",
+                DisplayName = "Incident",
+                PrimaryIdAttribute = "incidentid",
+                PrimaryNameAttribute = "title",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata { LogicalName = "ownerid", DisplayName = "Owner", AttributeType = "Owner" }
+                },
+                LookupSubColumnConfigs = new Dictionary<string, DataverseToPowerBI.Core.Models.LookupSubColumnConfig>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["ownerid"] = new DataverseToPowerBI.Core.Models.LookupSubColumnConfig
+                    {
+                        LookupAttributeLogicalName = "ownerid",
+                        IncludeNameField = true,
+                        IncludeTypeField = true,
+                        IncludeYomiField = false
+                    }
+                }
+            };
+
+            var info = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["incident"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["ownerid"] = new AttributeDisplayInfo { LogicalName = "ownerid", DisplayName = "Owner", AttributeType = "Owner" }
+                }
+            };
+
+            var tmdl = _builder.GenerateTableTmdl(table, info, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+            Assert.Contains("owneridtype", tmdl);
+        }
+
+        [Fact]
+        public void GenerateTableTmdl_PolymorphicVirtualColumn_OrderingBugFixed()
+        {
+            var table = new ExportTable
+            {
+                LogicalName = "incident",
+                DisplayName = "Incident",
+                PrimaryIdAttribute = "incidentid",
+                PrimaryNameAttribute = "title",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata { LogicalName = "owneridname", DisplayName = null, AttributeType = "String" },
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata { LogicalName = "ownerid", DisplayName = "Owner", AttributeType = "Owner" }
+                },
+                LookupSubColumnConfigs = new Dictionary<string, DataverseToPowerBI.Core.Models.LookupSubColumnConfig>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["ownerid"] = new DataverseToPowerBI.Core.Models.LookupSubColumnConfig
+                    {
+                        LookupAttributeLogicalName = "ownerid",
+                        IncludeIdField = false,
+                        IncludeNameField = true
+                    }
+                }
+            };
+
+            var info = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["incident"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["ownerid"] = new AttributeDisplayInfo { LogicalName = "ownerid", DisplayName = "Owner", AttributeType = "Owner" },
+                    ["owneridname"] = new AttributeDisplayInfo { LogicalName = "owneridname", DisplayName = null, AttributeType = "String" }
+                }
+            };
+
+            var tmdl = _builder.GenerateTableTmdl(table, info, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+            Assert.Contains("column Owner", tmdl);
+            Assert.DoesNotContain("column owneridname", tmdl);
+        }
+
+        [Fact]
+        public void GenerateTableTmdl_CustomerType_VirtualColumnBeforeParent_CorrectDisplayName()
+        {
+            var table = new ExportTable
+            {
+                LogicalName = "contact",
+                DisplayName = "Contact",
+                PrimaryIdAttribute = "contactid",
+                PrimaryNameAttribute = "fullname",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata { LogicalName = "customeridname", DisplayName = null, AttributeType = "String" },
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata { LogicalName = "customerid", DisplayName = "Customer", AttributeType = "Customer" }
+                },
+                LookupSubColumnConfigs = new Dictionary<string, DataverseToPowerBI.Core.Models.LookupSubColumnConfig>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["customerid"] = new DataverseToPowerBI.Core.Models.LookupSubColumnConfig
+                    {
+                        LookupAttributeLogicalName = "customerid",
+                        IncludeIdField = false,
+                        IncludeNameField = true
+                    }
+                }
+            };
+
+            var info = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["contact"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["customerid"] = new AttributeDisplayInfo { LogicalName = "customerid", DisplayName = "Customer", AttributeType = "Customer" },
+                    ["customeridname"] = new AttributeDisplayInfo { LogicalName = "customeridname", DisplayName = null, AttributeType = "String" }
+                }
+            };
+
+            var tmdl = _builder.GenerateTableTmdl(table, info, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+            Assert.Contains("column Customer", tmdl);
+            Assert.DoesNotContain("column customeridname", tmdl);
+        }
+
+        [Fact]
+        public void GenerateTableTmdl_RelationshipRequiredLookup_SelectedWithoutConfig_StillIncludesIdColumn()
+        {
+            var table = new ExportTable
+            {
+                LogicalName = "product",
+                DisplayName = "Product",
+                PrimaryIdAttribute = "productid",
+                PrimaryNameAttribute = "name",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "createdby",
+                        DisplayName = "Created By",
+                        AttributeType = "Lookup"
+                    }
+                }
+            };
+
+            var info = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["product"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["createdby"] = new AttributeDisplayInfo
+                    {
+                        LogicalName = "createdby",
+                        DisplayName = "Created By",
+                        AttributeType = "Lookup"
+                    }
+                }
+            };
+
+            var requiredLookupColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "createdby" };
+            var tmdl = _builder.GenerateTableTmdl(table, info, requiredLookupColumns);
+
+            Assert.Contains("column createdby", tmdl);
+            Assert.Contains("sourceColumn: createdby", tmdl);
+            Assert.Contains("isHidden", tmdl);
+        }
+
         #endregion
 
         #region Auto-Measure Cleanup Tests

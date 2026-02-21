@@ -251,6 +251,7 @@ namespace DataverseToPowerBI.XrmToolBox
                             TargetTable = r.TargetTable,
                             IsActive = r.IsActive,
                             IsSnowflake = r.IsSnowflake,
+                            SnowflakeLevel = r.SnowflakeLevel,
                             AssumeReferentialIntegrity = r.AssumeReferentialIntegrity
                         }).ToList(),
                     TableDisplayInfo = settings.TableDisplayInfo
@@ -343,10 +344,10 @@ namespace DataverseToPowerBI.XrmToolBox
 
             // Relationships.csv
             sb.Clear();
-            sb.AppendLine("Source Table,Source Attribute,Target Table,Active,Snowflake,Referential Integrity");
+            sb.AppendLine("Source Table,Source Attribute,Target Table,Active,Snowflake,Snowflake Level,Referential Integrity");
             foreach (var rel in settings.Relationships.OrderBy(r => r.SourceTable).ThenBy(r => r.SourceAttribute))
             {
-                sb.AppendLine($"{CsvEscape(rel.SourceTable ?? "")},{CsvEscape(rel.SourceAttribute ?? "")},{CsvEscape(rel.TargetTable ?? "")},{rel.IsActive},{rel.IsSnowflake},{rel.AssumeReferentialIntegrity}");
+                sb.AppendLine($"{CsvEscape(rel.SourceTable ?? "")},{CsvEscape(rel.SourceAttribute ?? "")},{CsvEscape(rel.TargetTable ?? "")},{rel.IsActive},{rel.IsSnowflake},{rel.SnowflakeLevel},{rel.AssumeReferentialIntegrity}");
             }
             File.WriteAllText(Path.Combine(folderPath, "Relationships.csv"), sb.ToString(), Encoding.UTF8);
 

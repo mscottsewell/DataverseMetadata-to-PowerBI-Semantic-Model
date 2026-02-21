@@ -1065,6 +1065,11 @@ namespace DataverseToPowerBI.Core.Models
         public bool IsSnowflake { get; set; } = false;
 
         /// <summary>
+        /// Snowflake depth level: 0 = Direct, 1 = Snowflake, 2 = Double Snowflake.
+        /// </summary>
+        public int SnowflakeLevel { get; set; } = 0;
+
+        /// <summary>
         /// Whether to assume referential integrity.
         /// </summary>
         public bool AssumeReferentialIntegrity { get; set; } = false;
@@ -1138,6 +1143,12 @@ namespace DataverseToPowerBI.Core.Models
         /// are flattened into this table via LEFT OUTER JOIN.
         /// </summary>
         public List<ExpandedLookupConfig> ExpandedLookups { get; set; } = new();
+
+        /// <summary>
+        /// Per-lookup sub-column configurations. Keyed by lookup attribute logical name.
+        /// Null config or missing key means defaults should be resolved by the caller.
+        /// </summary>
+        public Dictionary<string, LookupSubColumnConfig>? LookupSubColumnConfigs { get; set; }
     }
 
     /// <summary>
@@ -1239,6 +1250,58 @@ namespace DataverseToPowerBI.Core.Models
         /// Selected attributes from the related table to include in the parent table.
         /// </summary>
         public List<ExpandedLookupAttribute> Attributes { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Per-sub-column configuration for a lookup field's generated columns.
+    /// Null values mean caller should use smart defaults.
+    /// </summary>
+    public class LookupSubColumnConfig
+    {
+        /// <summary>
+        /// Logical name of the parent lookup attribute (e.g., "productid").
+        /// </summary>
+        public string LookupAttributeLogicalName { get; set; } = "";
+
+        /// <summary>
+        /// Include the ID (GUID) lookup column.
+        /// </summary>
+        public bool? IncludeIdField { get; set; }
+
+        /// <summary>
+        /// Hide the ID (GUID) lookup column in report field list.
+        /// </summary>
+        public bool? IdFieldHidden { get; set; }
+
+        /// <summary>
+        /// Include the generated name lookup column ({lookup}name).
+        /// </summary>
+        public bool? IncludeNameField { get; set; }
+
+        /// <summary>
+        /// Hide the generated name lookup column in report field list.
+        /// </summary>
+        public bool? NameFieldHidden { get; set; }
+
+        /// <summary>
+        /// Include the generated polymorphic type column ({lookup}type) for Owner/Customer.
+        /// </summary>
+        public bool? IncludeTypeField { get; set; }
+
+        /// <summary>
+        /// Hide the generated polymorphic type column in report field list.
+        /// </summary>
+        public bool? TypeFieldHidden { get; set; }
+
+        /// <summary>
+        /// Include the generated polymorphic yomi column ({lookup}yominame) for Owner/Customer.
+        /// </summary>
+        public bool? IncludeYomiField { get; set; }
+
+        /// <summary>
+        /// Hide the generated polymorphic yomi column in report field list.
+        /// </summary>
+        public bool? YomiFieldHidden { get; set; }
     }
 
     /// <summary>

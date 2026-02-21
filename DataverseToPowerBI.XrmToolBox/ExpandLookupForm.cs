@@ -19,7 +19,7 @@
 // 3. User checks attributes to include from that form
 // 4. Performance warnings shown if thresholds exceeded
 //
-// EXPERIMENTAL: This feature is gated behind FeatureFlags.EnableExpandLookup
+// Expand Lookup: always enabled for Lookup/Owner/Customer attribute types
 //
 // ===================================================================================
 
