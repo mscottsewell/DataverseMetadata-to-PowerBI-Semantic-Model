@@ -24,13 +24,6 @@
 - Check that both source and target tables are in the model
 - Re-run the table selection and view the created tables
 
-> **[SCREENSHOT PLACEHOLDER: SS-06]** Relationship conflict/troubleshooting visual.
-> 
-> **Include in screenshot:** Relationship selector with Active vs Inactive state indicators and a conflict example (if available).
->
-> ![SS-06 TODO: Relationship conflict troubleshooting visual](TODO_IMAGE_URL_SS06)
-> *SS-06: Relationship conflict troubleshooting view with Active/Inactive indicators.*
-
 ### "My report is slow—what can I do?"
 Try these optimizations:
 1. Reduce the number of columns (only include what you need)

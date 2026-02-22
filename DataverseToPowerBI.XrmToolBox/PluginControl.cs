@@ -1340,10 +1340,23 @@ namespace DataverseToPowerBI.XrmToolBox
                             }
                         }
                         
-                        // Auto-select form and its fields for each table if not already set
+                        // Auto-select defaults for each table if not already set
                         foreach (var tableName in _selectedTables.Keys)
                         {
                             var table = _selectedTables[tableName];
+
+                            // Select default view first, since it drives both the default row filter and field list
+                            if (!_selectedViewIds.ContainsKey(tableName) && _tableViews.ContainsKey(tableName) && _tableViews[tableName].Count > 0)
+                            {
+                                var defaultView = _tableViews[tableName].FirstOrDefault(v => v.IsDefault) ?? _tableViews[tableName][0];
+                                _selectedViewIds[tableName] = defaultView.ViewId;
+                            }
+
+                            // Default mode for newly added tables is View
+                            if (!_fieldSelectionModes.ContainsKey(tableName))
+                            {
+                                _fieldSelectionModes[tableName] = FieldSelectionMode.View;
+                            }
                             
                             // Select default form if not already set
                             if (!_selectedFormIds.ContainsKey(tableName) && _tableForms.ContainsKey(tableName) && _tableForms[tableName].Count > 0)
@@ -1351,40 +1364,54 @@ namespace DataverseToPowerBI.XrmToolBox
                                 var infoForm = _tableForms[tableName].FirstOrDefault(f => f.Name == "Information");
                                 var selectedForm = infoForm ?? _tableForms[tableName][0];
                                 _selectedFormIds[tableName] = selectedForm.FormId;
-                                
-                                // Auto-select form fields as attributes (matching MainForm behavior)
-                                // Check if user has selected any attributes beyond the required primary ID/name
-                                var requiredAttrs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                                if (!string.IsNullOrEmpty(table.PrimaryIdAttribute))
-                                    requiredAttrs.Add(table.PrimaryIdAttribute);
-                                if (!string.IsNullOrEmpty(table.PrimaryNameAttribute))
-                                    requiredAttrs.Add(table.PrimaryNameAttribute);
-                                
-                                var hasUserSelectedAttributes = _selectedAttributes.ContainsKey(tableName) &&
-                                    _selectedAttributes[tableName].Any(a => !requiredAttrs.Contains(a));
-                                
-                                if (!hasUserSelectedAttributes)
+
+                                // Keep form default available, but do not use it to seed fields by default
+                            }
+
+                            // Auto-select default fields as attributes from the selected view
+                            // Check if user has selected any attributes beyond the required primary ID/name
+                            var requiredAttrs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                            if (!string.IsNullOrEmpty(table.PrimaryIdAttribute))
+                                requiredAttrs.Add(table.PrimaryIdAttribute);
+                            if (!string.IsNullOrEmpty(table.PrimaryNameAttribute))
+                                requiredAttrs.Add(table.PrimaryNameAttribute);
+
+                            var hasUserSelectedAttributes = _selectedAttributes.ContainsKey(tableName) &&
+                                _selectedAttributes[tableName].Any(a => !requiredAttrs.Contains(a));
+
+                            if (!hasUserSelectedAttributes)
+                            {
+                                if (!_selectedAttributes.ContainsKey(tableName))
+                                    _selectedAttributes[tableName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                                var selectedAttrs = _selectedAttributes[tableName];
+                                var attributes = _tableAttributes.ContainsKey(tableName) ? _tableAttributes[tableName] : new List<AttributeMetadata>();
+
+                                // Always include primary ID and name attributes
+                                var primaryId = table.PrimaryIdAttribute;
+                                if (!string.IsNullOrEmpty(primaryId))
+                                    selectedAttrs.Add(primaryId);
+                                var primaryName = table.PrimaryNameAttribute;
+                                if (!string.IsNullOrEmpty(primaryName))
+                                    selectedAttrs.Add(primaryName);
+
+                                // Keep relationship-required lookup columns
+                                foreach (var relCol in GetRelationshipRequiredColumns(tableName))
                                 {
-                                    if (!_selectedAttributes.ContainsKey(tableName))
-                                        _selectedAttributes[tableName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                                    
-                                    var selectedAttrs = _selectedAttributes[tableName];
-                                    var attributes = _tableAttributes.ContainsKey(tableName) ? _tableAttributes[tableName] : new List<AttributeMetadata>();
-                                    
-                                    // Always include primary ID and name attributes
-                                    var primaryId = table.PrimaryIdAttribute;
-                                    if (!string.IsNullOrEmpty(primaryId))
-                                        selectedAttrs.Add(primaryId);
-                                    var primaryName = table.PrimaryNameAttribute;
-                                    if (!string.IsNullOrEmpty(primaryName))
-                                        selectedAttrs.Add(primaryName);
-                                    
-                                    // Add all fields from the selected form
-                                    if (selectedForm.Fields != null)
+                                    selectedAttrs.Add(relCol);
+                                }
+
+                                // Add all fields from the selected view
+                                if (_selectedViewIds.TryGetValue(tableName, out var selectedViewId) &&
+                                    _tableViews.ContainsKey(tableName))
+                                {
+                                    var selectedView = _tableViews[tableName].FirstOrDefault(v => v.ViewId == selectedViewId);
+                                    if (selectedView?.Columns != null)
                                     {
-                                        foreach (var field in selectedForm.Fields)
+                                        foreach (var field in selectedView.Columns)
                                         {
                                             if (!string.IsNullOrEmpty(field) &&
+                                                !field.Equals("entityimage_url", StringComparison.OrdinalIgnoreCase) &&
                                                 attributes.Any(a => a.LogicalName.Equals(field, StringComparison.OrdinalIgnoreCase)))
                                             {
                                                 selectedAttrs.Add(field);
@@ -1392,13 +1419,6 @@ namespace DataverseToPowerBI.XrmToolBox
                                         }
                                     }
                                 }
-                            }
-                            
-                            // Select default view if not already set
-                            if (!_selectedViewIds.ContainsKey(tableName) && _tableViews.ContainsKey(tableName) && _tableViews[tableName].Count > 0)
-                            {
-                                var defaultView = _tableViews[tableName].FirstOrDefault(v => v.IsDefault) ?? _tableViews[tableName][0];
-                                _selectedViewIds[tableName] = defaultView.ViewId;
                             }
                         }
                     }
@@ -1784,7 +1804,7 @@ namespace DataverseToPowerBI.XrmToolBox
         
         private string GetFormDisplayText(string logicalName)
         {
-            var mode = _fieldSelectionModes.TryGetValue(logicalName, out var m) ? m : FieldSelectionMode.Form;
+            var mode = _fieldSelectionModes.TryGetValue(logicalName, out var m) ? m : FieldSelectionMode.View;
 
             switch (mode)
             {
@@ -2183,7 +2203,7 @@ namespace DataverseToPowerBI.XrmToolBox
             var selected = _selectedAttributes.ContainsKey(logicalName) ? _selectedAttributes[logicalName] : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var fieldSelectionMode = _fieldSelectionModes.TryGetValue(logicalName, out var mode)
                 ? mode
-                : FieldSelectionMode.Form;
+                : FieldSelectionMode.View;
             var selectedViewLinkedKeys = GetSelectedViewLinkedColumnKeys(logicalName);
             var searchText = txtAttrSearch.Text.ToLower();
             var showSelected = radioShowSelected.Checked;
@@ -2767,7 +2787,7 @@ namespace DataverseToPowerBI.XrmToolBox
             if (listViewSelectedTables.SelectedItems.Count == 0) return;
             var logicalName = listViewSelectedTables.SelectedItems[0].Name;
 
-            var mode = _fieldSelectionModes.TryGetValue(logicalName, out var m) ? m : FieldSelectionMode.Form;
+            var mode = _fieldSelectionModes.TryGetValue(logicalName, out var m) ? m : FieldSelectionMode.View;
 
             if (mode == FieldSelectionMode.Custom)
             {
@@ -3510,7 +3530,7 @@ namespace DataverseToPowerBI.XrmToolBox
             
             var currentFormId = _selectedFormIds.TryGetValue(logicalName, out var formId) ? formId : null;
             var currentViewId = _selectedViewIds.TryGetValue(logicalName, out var viewId) ? viewId : null;
-            var currentMode = _fieldSelectionModes.TryGetValue(logicalName, out var mode) ? mode : FieldSelectionMode.Form;
+            var currentMode = _fieldSelectionModes.TryGetValue(logicalName, out var mode) ? mode : FieldSelectionMode.View;
 
             using (var dialog = new FormViewSelectorForm(
                 logicalName,
@@ -3639,7 +3659,7 @@ namespace DataverseToPowerBI.XrmToolBox
         /// </summary>
         private HashSet<string> GetDefaultFieldsForTable(string logicalName)
         {
-            var mode = _fieldSelectionModes.TryGetValue(logicalName, out var m) ? m : FieldSelectionMode.Form;
+            var mode = _fieldSelectionModes.TryGetValue(logicalName, out var m) ? m : FieldSelectionMode.View;
 
             switch (mode)
             {

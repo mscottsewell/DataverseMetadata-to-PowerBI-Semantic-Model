@@ -81,7 +81,7 @@ namespace DataverseToPowerBI.XrmToolBox
             List<ViewMetadata> views,
             string? currentFormId,
             string? currentViewId,
-            FieldSelectionMode currentMode = FieldSelectionMode.Form)
+            FieldSelectionMode currentMode = FieldSelectionMode.View)
         {
             _forms = forms;
             _views = views;
