@@ -1174,6 +1174,53 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         }
 
         /// <summary>
+        /// Writes the .pbi/editorSettings.json file for the SemanticModel folder.
+        /// This file signals to Power BI Desktop that the project has been initialized and
+        /// disables auto-relationship detection (which could conflict with our explicit definitions).
+        /// Also writes a minimal localSettings.json so PBI Desktop doesn't treat it as brand-new.
+        /// </summary>
+        private void WriteEditorSettings(string semanticModelFolder)
+        {
+            try
+            {
+                var pbiFolder = Path.Combine(semanticModelFolder, ".pbi");
+                Directory.CreateDirectory(pbiFolder);
+
+                // editorSettings.json — disable auto-relationship detection since we define relationships explicitly
+                var editorSettingsPath = Path.Combine(pbiFolder, "editorSettings.json");
+                if (!File.Exists(editorSettingsPath))
+                {
+                    var editorSettings = @"{
+  ""$schema"": ""https://developer.microsoft.com/json-schemas/fabric/item/semanticModel/editorSettings/1.0.0/schema.json"",
+  ""version"": ""1.0"",
+  ""autodetectRelationships"": false,
+  ""relationshipImportEnabled"": false,
+  ""parallelQueryLoading"": true,
+  ""typeDetectionEnabled"": true
+}";
+                    File.WriteAllText(editorSettingsPath, editorSettings, Utf8WithoutBom);
+                    DebugLogger.Log("Created .pbi/editorSettings.json");
+                }
+
+                // localSettings.json — minimal file so PBI Desktop recognizes the project as initialized
+                var localSettingsPath = Path.Combine(pbiFolder, "localSettings.json");
+                if (!File.Exists(localSettingsPath))
+                {
+                    var localSettings = @"{
+  ""$schema"": ""https://developer.microsoft.com/json-schemas/fabric/item/semanticModel/localSettings/1.2.0/schema.json"",
+  ""userConsent"": {}
+}";
+                    File.WriteAllText(localSettingsPath, localSettings, Utf8WithoutBom);
+                    DebugLogger.Log("Created .pbi/localSettings.json");
+                }
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Log($"Warning: Failed to write .pbi settings: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Writes the DataverseURL parameter table TMDL file.
         /// This is a hidden table with mode: import partition that acts as a Power Query parameter.
         /// The table must have Enable Load checked (which is the default for tables) — without it,
@@ -1378,6 +1425,12 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             {
                 DebugLogger.Log($"Warning: Failed to generate diagram layout: {ex.Message}");
             }
+
+            // Write .pbi folder with editor settings for the SemanticModel
+            // This signals to Power BI Desktop that the project is initialized and prevents
+            // unnecessary auto-relationship detection that could conflict with our definitions
+            var semanticModelFolder = Path.Combine(pbipFolder, $"{projectName}.SemanticModel");
+            WriteEditorSettings(semanticModelFolder);
 
             // Verify critical files exist
             VerifyPbipStructure(pbipFolder, projectName);
@@ -3594,27 +3647,26 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             var hasDateTable = FindExistingDateTable(tablesFolder) != null;
             UpdateModelTmdl(pbipFolder, projectName, tables, hasDateTable);
 
-            // Regenerate diagram layout if it doesn't exist (preserve user-arranged layouts)
+            // Regenerate diagram layout (always regenerate because Power BI Desktop resets
+            // the layout on first open of a new/changed project — our computed layout is
+            // reapplied so the next open will show the arranged model)
             var incrementalDefinitionFolder = Path.Combine(pbipFolder, $"{projectName}.SemanticModel", "definition");
             var layoutPath = Path.Combine(incrementalDefinitionFolder, "diagramLayout.json");
-            if (!File.Exists(layoutPath))
+            SetStatus("Generating diagram layout...");
+            try
             {
-                SetStatus("Generating diagram layout...");
-                try
-                {
-                    var layoutJson = DiagramLayoutGenerator.Generate(tables, relationships, dateTableConfig);
-                    File.WriteAllText(layoutPath, layoutJson, Utf8WithoutBom);
-                    DebugLogger.Log($"Generated diagramLayout.json with {tables.Count} table(s)");
-                }
-                catch (Exception ex)
-                {
-                    DebugLogger.Log($"Warning: Failed to generate diagram layout: {ex.Message}");
-                }
+                var layoutJson = DiagramLayoutGenerator.Generate(tables, relationships, dateTableConfig);
+                File.WriteAllText(layoutPath, layoutJson, Utf8WithoutBom);
+                DebugLogger.Log($"Generated diagramLayout.json with {tables.Count} table(s)");
             }
-            else
+            catch (Exception ex)
             {
-                DebugLogger.Log("Preserving existing diagramLayout.json (user may have customized layout)");
+                DebugLogger.Log($"Warning: Failed to generate diagram layout: {ex.Message}");
             }
+
+            // Ensure .pbi editor settings exist
+            var semanticModelFolder = Path.Combine(pbipFolder, $"{projectName}.SemanticModel");
+            WriteEditorSettings(semanticModelFolder);
 
             // Verify critical files exist
             VerifyPbipStructure(pbipFolder, projectName);
