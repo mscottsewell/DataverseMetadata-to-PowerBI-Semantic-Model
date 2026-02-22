@@ -52,7 +52,8 @@ This tool eliminates all of that complexity:
 - [For Developers](#-for-developers)
 
 ---
-<img width="1677" height="859" alt="image" src="https://github.com/user-attachments/assets/0742ee11-65a6-4c90-ae8a-83536ebd1c23" />
+<img width="1840" height="857" alt="image" src="https://github.com/user-attachments/assets/b8dac286-9da7-49b1-bac2-37fbd00ea620" />
+
 
 ## ✨ Key Features
 
@@ -124,12 +125,7 @@ For the most up-to-date release details, see [CHANGELOG.md](CHANGELOG.md).
 - The tool will show all lookup relationships from your fact table
 - The selector includes a **Source Table** column so you can see where each relationship originates
 
-> **[SCREENSHOT PLACEHOLDER: SS-01]** Relationship selector showing the **Source Table** column and grouped relationships.
-> 
-> **Include in screenshot:** Source Table column visible, grouped relationship headers, and checked/unchecked examples.
->
-> ![SS-01 TODO: Source Table and grouped relationships](TODO_IMAGE_URL_SS01)
-> *SS-01: Relationship selector with Source Table context and grouped relationships.*
+><img width="600" alt="Relationship selector with Source Table context and grouped relationships." src="https://github.com/user-attachments/assets/ce2216ad-1656-4e83-a26f-7974e8d0760f" />
 
 - Check which dimensions to include
 - **Multiple relationships to the same dimension** are automatically grouped together with a visual header for easy identification
@@ -139,12 +135,7 @@ For the most up-to-date release details, see [CHANGELOG.md](CHANGELOG.md).
 - Use the **Search box** to filter relationships by field or table names
 - If the same target dimension is reachable through multiple active chains, the tool flags **cross-chain ambiguity** and prompts you to resolve it before finishing
 
-> **[SCREENSHOT PLACEHOLDER: SS-02]** Cross-chain ambiguity warning/highlight in the relationship selector.
-> 
-> **Include in screenshot:** Amber/orange ambiguity highlight and the warning prompt shown before finishing.
->
-> ![SS-02 TODO: Cross-chain ambiguity warning](TODO_IMAGE_URL_SS02)
-> *SS-02: Cross-chain ambiguity highlight and finish-time warning prompt.*
+> <img width="700" alt="Cross-chain ambiguity highlight and finish-time warning prompt" src="https://github.com/user-attachments/assets/f77ddacc-c267-4134-b72e-f49e7af0f170" />
 
 - Optionally add "snowflake" parent dimensions if needed
 - **Tip:** Start with only a few tables to optimize performance.
@@ -161,12 +152,7 @@ For the most up-to-date release details, see [CHANGELOG.md](CHANGELOG.md).
 - Lookup attributes can be expanded into sub-columns with per-sub-column **Include**/**Hidden** toggles.
 - Owner/Customer lookups support additional **Type** and **Yomi** sub-columns.
 
-> **[SCREENSHOT PLACEHOLDER: SS-03]** Expanded lookup sub-column controls in the attributes grid.
-> 
-> **Include in screenshot:** Lookup group expanded with ID/Name/Type/Yomi rows and Include/Hidden toggle states.
->
-> ![SS-03 TODO: Expanded lookup sub-column controls](TODO_IMAGE_URL_SS03)
-> *SS-03: Expanded lookup sub-column controls (ID/Name/Type/Yomi) with Include/Hidden states.*
+> <img width="600" alt="Expanded lookup sub-column controls (ID/Name/Type/Yomi) with Include/Hidden states." src="https://github.com/user-attachments/assets/a858a00f-c431-4cde-80c9-34909282521c" />
 
 - **Double-click any Display Name** to override it with a custom alias (e.g., rename "Name" to "Account Name" to avoid conflicts)
 - Overridden names show an asterisk (*) suffix; duplicates are highlighted in red and must be fixed before building
@@ -175,7 +161,7 @@ For the most up-to-date release details, see [CHANGELOG.md](CHANGELOG.md).
 
 #### Step 7: Preview Your Model (Optional)
 
-><img width="200" alt="Preview Your TMDL Screenshot" src="https://github.com/user-attachments/assets/2da36c14-f9dc-4e64-a5bf-70836e496366" />
+> <img width="600" alt="TMDL Preview" src="https://github.com/user-attachments/assets/7684bd40-46ba-4874-8445-afb37748f153" />
 
 - Click **Preview TMDL** to see the exact code that will be generated
 - Review the TMDL definitions for tables, columns, relationships, and expressions
@@ -238,12 +224,9 @@ When using **Dual** mode, you can configure individual dimension tables with dif
 - **Dual (All)** — All dimension tables use Dual mode, fact tables stay DirectQuery
 - **Dual (Select)** — Choose which dimension tables use Dual mode; unselected dimensions stay DirectQuery
 
-> **[SCREENSHOT PLACEHOLDER: SS-04]** Storage mode configuration showing **Dual (All)** vs **Dual (Select)**.
-> 
-> **Include in screenshot:** Semantic model list/details with storage mode values and one example of per-table mode differences.
->
-> ![SS-04 TODO: Dual All vs Dual Select storage modes](TODO_IMAGE_URL_SS04)
-> *SS-04: Storage mode configuration with Dual (All) and Dual (Select) examples.*
+> <img width="300" alt="image" src="https://github.com/user-attachments/assets/88af5332-8b09-429a-9e3a-ac657c078632" />
+> <img width="400" alt="image" src="https://github.com/user-attachments/assets/ede93c85-8c03-4ba2-8ee8-0e939f07d149" />
+
 
 This is ideal when you have some large dimension tables (like Product or Account) that benefit from Import caching, while smaller or frequently-changing dimensions should stay DirectQuery.
 
@@ -543,12 +526,7 @@ Before applying any changes, the tool shows a detailed preview of exactly what w
 - **Filter toggles** — Show/hide Warnings, New, Updated, or Preserved items
 - **Detail pane** — Click any change to see expanded context, before/after values, and guidance
 
-> **[SCREENSHOT PLACEHOLDER: SS-05]** Change Preview dialog with TreeView and detail pane.
-> 
-> **Include in screenshot:** Impact badges, grouped TreeView nodes, and right-side detail text for a selected change.
->
-> ![SS-05 TODO: Change Preview TreeView and detail pane](TODO_IMAGE_URL_SS05)
-> *SS-05: Change Preview with grouped TreeView, impact badges, and detail pane.*
+<img width="1840" height="950" alt="Change Preview with grouped TreeView, impact badges, and detail pane." src="https://github.com/user-attachments/assets/8374e8f5-f80a-4e27-b3ea-8520ae956062" />
 
 ### Impact Levels
 
