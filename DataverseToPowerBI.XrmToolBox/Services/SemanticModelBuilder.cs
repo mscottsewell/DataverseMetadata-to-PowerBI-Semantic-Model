@@ -1412,11 +1412,13 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             UpdateModelTmdl(pbipFolder, projectName, tables, hasDateTable);
 
             // Generate diagram layout for Model View
+            // diagramLayout.json goes at the SemanticModel root (not in definition/)
+            var semanticModelFolder = Path.Combine(pbipFolder, $"{projectName}.SemanticModel");
             SetStatus("Generating diagram layout...");
             try
             {
                 var layoutJson = DiagramLayoutGenerator.Generate(tables, relationships, dateTableConfig);
-                var layoutPath = Path.Combine(definitionFolder, "diagramLayout.json");
+                var layoutPath = Path.Combine(semanticModelFolder, "diagramLayout.json");
                 File.WriteAllText(layoutPath, layoutJson, Utf8WithoutBom);
                 DebugLogger.Log($"Generated diagramLayout.json with {tables.Count} table(s)");
             }
@@ -1428,7 +1430,6 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             // Write .pbi folder with editor settings for the SemanticModel
             // This signals to Power BI Desktop that the project is initialized and prevents
             // unnecessary auto-relationship detection that could conflict with our definitions
-            var semanticModelFolder = Path.Combine(pbipFolder, $"{projectName}.SemanticModel");
             WriteEditorSettings(semanticModelFolder);
 
             // Verify critical files exist
@@ -3649,8 +3650,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             // Regenerate diagram layout (always regenerate because Power BI Desktop resets
             // the layout on first open of a new/changed project — our computed layout is
             // reapplied so the next open will show the arranged model)
-            var incrementalDefinitionFolder = Path.Combine(pbipFolder, $"{projectName}.SemanticModel", "definition");
-            var layoutPath = Path.Combine(incrementalDefinitionFolder, "diagramLayout.json");
+            // diagramLayout.json goes at the SemanticModel root (not in definition/)
+            var incrementalSemanticModelFolder = Path.Combine(pbipFolder, $"{projectName}.SemanticModel");
+            var layoutPath = Path.Combine(incrementalSemanticModelFolder, "diagramLayout.json");
             SetStatus("Generating diagram layout...");
             try
             {
@@ -3664,8 +3666,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             }
 
             // Ensure .pbi editor settings exist
-            var semanticModelFolder = Path.Combine(pbipFolder, $"{projectName}.SemanticModel");
-            WriteEditorSettings(semanticModelFolder);
+            WriteEditorSettings(incrementalSemanticModelFolder);
 
             // Verify critical files exist
             VerifyPbipStructure(pbipFolder, projectName);
