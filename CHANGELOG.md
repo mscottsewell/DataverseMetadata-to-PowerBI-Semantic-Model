@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [1.2026.5.105] - 2026-02-21
+## [1.2026.5.110] - 2026-02-21
 
 ### Fixed
 
