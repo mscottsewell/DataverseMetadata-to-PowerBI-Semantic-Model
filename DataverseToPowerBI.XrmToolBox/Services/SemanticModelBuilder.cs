@@ -87,7 +87,38 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         {
             "Owner", "Customer"
         };
-        
+
+        #region Compiled Regex patterns with timeout (ReDoS mitigation)
+
+        private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(5);
+
+        /// <summary>Column block pattern for <see cref="ParseExistingColumnMetadata"/>.</summary>
+        private static readonly Regex ExistingColumnBlockRegex = new Regex(
+            @"^\tcolumn\s+.+?\r?\n((?:\t\t.+\r?\n|\s*\r?\n)*)",
+            RegexOptions.Multiline | RegexOptions.Compiled, RegexTimeout);
+
+        /// <summary>Relationship block pattern (full body capture) used across multiple parsing methods.</summary>
+        private static readonly Regex RelationshipBlockRegex = new Regex(
+            @"^(relationship\s+\S+\s*\r?\n(?:.*?\r?\n)*?)(?=^relationship\s|\z)",
+            RegexOptions.Multiline | RegexOptions.Singleline | RegexOptions.Compiled, RegexTimeout);
+
+        /// <summary>Column definition pattern for <see cref="ParseExistingColumns"/>.</summary>
+        private static readonly Regex ColumnDefinitionRegex = new Regex(
+            @"(?:///\s*([^\r\n]+)\r?\n)?\s*column\s+(?:'([^']+)'""|""([^""]+)""|([^\r\n]+))\r?\n((?:\t[^\r\n]+\r?\n)+)",
+            RegexOptions.Multiline | RegexOptions.Compiled, RegexTimeout);
+
+        /// <summary>Measure block pattern for <see cref="ExtractUserMeasuresSection"/>.</summary>
+        private static readonly Regex MeasureBlockRegex = new Regex(
+            @"(^\s*(?:///[^\r\n]*\r?\n)*\s*measure\s+([^\r\n]+)\r?\n(?:.*?\r?\n)*?(?=^\s*(?:measure|column|partition|annotation)\s|\z))",
+            RegexOptions.Multiline | RegexOptions.Compiled, RegexTimeout);
+
+        /// <summary>Relationship start-line counter.</summary>
+        private static readonly Regex RelationshipStartRegex = new Regex(
+            @"^relationship\s+\S+",
+            RegexOptions.Multiline | RegexOptions.Compiled, RegexTimeout);
+
+        #endregion
+
         private readonly string _connectionType;
         private readonly string? _fabricLinkEndpoint;
         private readonly string? _fabricLinkDatabase;
@@ -290,8 +321,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             {
                 var content = File.ReadAllText(tmdlPath);
                 // Match each column block: starts with \tcolumn and continues until next column/measure/partition/annotation at column indent level
-                var colPattern = @"^\tcolumn\s+.+?\r?\n((?:\t\t.+\r?\n|\s*\r?\n)*)";
-                var matches = Regex.Matches(content, colPattern, RegexOptions.Multiline);
+                var matches = ExistingColumnBlockRegex.Matches(content);
 
                 foreach (Match match in matches)
                 {
@@ -410,8 +440,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             try
             {
                 var content = File.ReadAllText(relationshipsPath);
-                var relPattern = @"^(relationship\s+\S+\s*\r?\n(?:.*?\r?\n)*?)(?=^relationship\s|\z)";
-                var matches = Regex.Matches(content, relPattern, RegexOptions.Multiline | RegexOptions.Singleline);
+                var matches = RelationshipBlockRegex.Matches(content);
 
                 foreach (Match match in matches)
                 {
@@ -564,40 +593,47 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             if (string.IsNullOrWhiteSpace(relationshipsTmdl) || validColumnReferences == null || validColumnReferences.Count == 0)
                 return relationshipsTmdl;
 
-            var relationshipPattern = @"^(relationship\s+\S+\s*\r?\n(?:.*?\r?\n)*?)(?=^relationship\s|\z)";
-            var matches = Regex.Matches(relationshipsTmdl, relationshipPattern, RegexOptions.Multiline | RegexOptions.Singleline);
-            if (matches.Count == 0)
-                return relationshipsTmdl;
-
-            var output = new StringBuilder();
-            foreach (Match match in matches)
+            try
             {
-                var block = match.Groups[1].Value;
-                var fromMatch = Regex.Match(block, @"fromColumn:\s*(.+)$", RegexOptions.Multiline);
-                var toMatch = Regex.Match(block, @"toColumn:\s*(.+)$", RegexOptions.Multiline);
+                var matches = RelationshipBlockRegex.Matches(relationshipsTmdl);
+                if (matches.Count == 0)
+                    return relationshipsTmdl;
 
-                if (!fromMatch.Success || !toMatch.Success)
+                var output = new StringBuilder();
+                foreach (Match match in matches)
                 {
-                    DebugLogger.Log("Skipping relationship block missing from/to column reference.");
-                    continue;
+                    var block = match.Groups[1].Value;
+                    var fromMatch = Regex.Match(block, @"fromColumn:\s*(.+)$", RegexOptions.Multiline);
+                    var toMatch = Regex.Match(block, @"toColumn:\s*(.+)$", RegexOptions.Multiline);
+
+                    if (!fromMatch.Success || !toMatch.Success)
+                    {
+                        DebugLogger.Log("Skipping relationship block missing from/to column reference.");
+                        continue;
+                    }
+
+                    var fromKey = NormalizeColumnReferenceKey(fromMatch.Groups[1].Value.Trim());
+                    var toKey = NormalizeColumnReferenceKey(toMatch.Groups[1].Value.Trim());
+
+                    if (string.IsNullOrEmpty(fromKey) || string.IsNullOrEmpty(toKey) ||
+                        !validColumnReferences.Contains(fromKey) || !validColumnReferences.Contains(toKey))
+                    {
+                        var guidMatch = Regex.Match(block, @"^relationship\s+(\S+)", RegexOptions.Multiline);
+                        var relGuid = guidMatch.Success ? guidMatch.Groups[1].Value : "(unknown-guid)";
+                        DebugLogger.Log($"Removing invalid relationship {relGuid}: {fromMatch.Groups[1].Value.Trim()} → {toMatch.Groups[1].Value.Trim()}");
+                        continue;
+                    }
+
+                    output.Append(block);
                 }
 
-                var fromKey = NormalizeColumnReferenceKey(fromMatch.Groups[1].Value.Trim());
-                var toKey = NormalizeColumnReferenceKey(toMatch.Groups[1].Value.Trim());
-
-                if (string.IsNullOrEmpty(fromKey) || string.IsNullOrEmpty(toKey) ||
-                    !validColumnReferences.Contains(fromKey) || !validColumnReferences.Contains(toKey))
-                {
-                    var guidMatch = Regex.Match(block, @"^relationship\s+(\S+)", RegexOptions.Multiline);
-                    var relGuid = guidMatch.Success ? guidMatch.Groups[1].Value : "(unknown-guid)";
-                    DebugLogger.Log($"Removing invalid relationship {relGuid}: {fromMatch.Groups[1].Value.Trim()} → {toMatch.Groups[1].Value.Trim()}");
-                    continue;
-                }
-
-                output.Append(block);
+                return output.ToString();
             }
-
-            return output.ToString();
+            catch (RegexMatchTimeoutException)
+            {
+                DebugLogger.Log("Warning: Regex timeout in FilterInvalidRelationshipBlocks — returning input unchanged.");
+                return relationshipsTmdl;
+            }
         }
 
         /// <summary>
@@ -626,8 +662,8 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 sanitized = ResolveAmbiguousRelationshipPaths(sanitized, out _);
                 var repaired = FilterInvalidRelationshipBlocks(sanitized, validColumnReferences);
 
-                var originalCount = Regex.Matches(original, @"^relationship\s+\S+", RegexOptions.Multiline).Count;
-                var repairedCount = Regex.Matches(repaired, @"^relationship\s+\S+", RegexOptions.Multiline).Count;
+                var originalCount = RelationshipStartRegex.Matches(original).Count;
+                var repairedCount = RelationshipStartRegex.Matches(repaired).Count;
                 var removedCount = Math.Max(0, originalCount - repairedCount);
 
                 if (!string.Equals(original, repaired, StringComparison.Ordinal))
@@ -689,18 +725,25 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             if (string.IsNullOrWhiteSpace(relationshipsTmdl))
                 return relationshipsTmdl;
 
-            var relationshipPattern = @"^(relationship\s+\S+\s*\r?\n(?:.*?\r?\n)*?)(?=^relationship\s|\z)";
-            var matches = Regex.Matches(relationshipsTmdl, relationshipPattern, RegexOptions.Multiline | RegexOptions.Singleline);
-            if (matches.Count == 0)
-                return relationshipsTmdl;
-
-            var output = new StringBuilder();
-            foreach (Match match in matches)
+            try
             {
-                output.Append(SanitizeRelationshipBlock(match.Groups[1].Value));
-            }
+                var matches = RelationshipBlockRegex.Matches(relationshipsTmdl);
+                if (matches.Count == 0)
+                    return relationshipsTmdl;
 
-            return output.ToString();
+                var output = new StringBuilder();
+                foreach (Match match in matches)
+                {
+                    output.Append(SanitizeRelationshipBlock(match.Groups[1].Value));
+                }
+
+                return output.ToString();
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                DebugLogger.Log("Warning: Regex timeout in SanitizeRelationshipsTmdl — returning input unchanged.");
+                return relationshipsTmdl;
+            }
         }
 
         /// <summary>
@@ -714,13 +757,14 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             if (string.IsNullOrWhiteSpace(relationshipsTmdl))
                 return relationshipsTmdl;
 
-            var relationshipPattern = @"^(relationship\s+\S+\s*\r?\n(?:.*?\r?\n)*?)(?=^relationship\s|\z)";
-            var matches = Regex.Matches(relationshipsTmdl, relationshipPattern, RegexOptions.Multiline | RegexOptions.Singleline);
-            if (matches.Count == 0)
-                return relationshipsTmdl;
+            try
+            {
+                var matches = RelationshipBlockRegex.Matches(relationshipsTmdl);
+                if (matches.Count == 0)
+                    return relationshipsTmdl;
 
-            var output = new StringBuilder();
-            var activePathOwnerByKey = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                var output = new StringBuilder();
+                var activePathOwnerByKey = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (Match match in matches)
             {
@@ -767,7 +811,13 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 output.Append(block);
             }
 
-            return output.ToString();
+                return output.ToString();
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                DebugLogger.Log("Warning: Regex timeout in ResolveAmbiguousRelationshipPaths — returning input unchanged.");
+                return relationshipsTmdl;
+            }
         }
 
         /// <summary>
@@ -844,8 +894,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 var targetTableDisplay = tableDisplayNames[rel.TargetTable];
                 var targetPrimaryKey = tablePrimaryKeys[rel.TargetTable];
 
-                var fromRef = $"{QuoteTmdlName(sourceTableDisplay)}.{QuoteTmdlName(rel.SourceAttribute)}";
-                var toRef = $"{QuoteTmdlName(targetTableDisplay)}.{QuoteTmdlName(targetPrimaryKey)}";
+                // Logical names (SourceAttribute, primary keys) are simple identifiers — no quoting needed
+                var fromRef = $"{QuoteTmdlName(sourceTableDisplay)}.{rel.SourceAttribute}";
+                var toRef = $"{QuoteTmdlName(targetTableDisplay)}.{targetPrimaryKey}";
                 keys.Add($"{fromRef}→{toRef}");
             }
 
@@ -1045,8 +1096,14 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             if (displayName.Equals(logicalName, StringComparison.OrdinalIgnoreCase))
                 return sqlExpression;
             
-            return $"{sqlExpression} AS [{displayName}]";
+            return $"{sqlExpression} AS {EscapeSqlIdentifier(displayName)}";
         }
+
+        /// <summary>
+        /// Bracket-escapes a SQL identifier to prevent injection via metacharacters in display names.
+        /// Wraps <paramref name="name"/> in <c>[…]</c> and doubles any embedded <c>]</c>.
+        /// </summary>
+        private static string EscapeSqlIdentifier(string name) => "[" + name.Replace("]", "]]") + "]";
 
         private void SetStatus(string message)
         {
@@ -1066,7 +1123,8 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             DataverseToPowerBI.XrmToolBox.UrlHelper.ExtractEnvironmentName(dataverseUrl);
 
         /// <summary>
-        /// Writes text to a file using UTF-8 without BOM encoding and CRLF line endings
+        /// Writes text to a file using UTF-8 without BOM encoding and CRLF line endings.
+        /// Creates parent directories if they do not exist.
         /// </summary>
         private static void WriteTmdlFile(string path, string content)
         {
@@ -1094,7 +1152,24 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
             // Ensure CRLF line endings (Power BI Desktop standard)
             content = content.Replace("\r\n", "\n").Replace("\n", "\r\n");
-            File.WriteAllText(path, content, Utf8WithoutBom);
+
+            // Ensure parent directory exists
+            var dir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir))
+                Directory.CreateDirectory(dir);
+
+            try
+            {
+                File.WriteAllText(path, content, Utf8WithoutBom);
+            }
+            catch (IOException ex)
+            {
+                throw new InvalidOperationException($"Failed to write TMDL file '{path}': {ex.Message}", ex);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                throw new InvalidOperationException($"Failed to write TMDL file '{path}': {ex.Message}", ex);
+            }
         }
 
         /// <summary>
@@ -1905,8 +1980,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             
             // Match column blocks with optional /// comment
             // Pattern captures: comment, display name (quoted or unquoted), and properties block
-            var columnPattern = @"(?:///\s*([^\r\n]+)\r?\n)?\s*column\s+(?:'([^']+)'|""([^""]+)""|([^\r\n]+))\r?\n((?:\t[^\r\n]+\r?\n)+)";
-            var matches = Regex.Matches(tmdlContent, columnPattern, RegexOptions.Multiline);
+            var matches = ColumnDefinitionRegex.Matches(tmdlContent);
 
             foreach (Match match in matches)
             {
@@ -2405,7 +2479,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             if (!processedColumns.Contains(nameColumn))
                             {
                                 var fabricChoiceAlias = _useDisplayNameAliasesInSql && !effectiveName.Equals(nameColumn, StringComparison.OrdinalIgnoreCase)
-                                    ? $"{joinAlias}.[LocalizedLabel] AS [{effectiveName}]"
+                                    ? $"{joinAlias}.[LocalizedLabel] AS {EscapeSqlIdentifier(effectiveName)}"
                                     : $"{joinAlias}.[LocalizedLabel] {nameColumn}";
                                 sqlFields.Add(fabricChoiceAlias);
                             }
@@ -2487,7 +2561,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             var offset = dateTableConfig!.UtcOffsetHours;
                             var dtAlias = isPrimaryKey ? attr.LogicalName : (_useDisplayNameAliasesInSql ? effectiveName : attr.LogicalName);
                             var dtAliasClause = dtAlias.Equals(attr.LogicalName, StringComparison.OrdinalIgnoreCase)
-                                ? $"AS {attr.LogicalName}" : $"AS [{dtAlias}]";
+                                ? $"AS {attr.LogicalName}" : $"AS {EscapeSqlIdentifier(dtAlias)}";
                             sqlFields.Add($"CAST(DATEADD(hour, {offset}, Base.{attr.LogicalName}) AS DATE) {dtAliasClause}");
                         }
                         else
@@ -2556,7 +2630,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                 }
                                 
                                 var fabricAlias = _useDisplayNameAliasesInSql && !prefixedDisplayName.Equals(colKey, StringComparison.OrdinalIgnoreCase)
-                                    ? $"{metadataJoinAlias}.[LocalizedLabel] AS [{prefixedDisplayName}]"
+                                    ? $"{metadataJoinAlias}.[LocalizedLabel] AS {EscapeSqlIdentifier(prefixedDisplayName)}"
                                     : $"{metadataJoinAlias}.[LocalizedLabel] {colKey}";
                                 sqlFields.Add(fabricAlias);
                             }
@@ -3531,8 +3605,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 }
 
                 // Find all measure blocks
-                var measurePattern = @"(^\s*(?:///[^\r\n]*\r?\n)*\s*measure\s+([^\r\n]+)\r?\n(?:.*?\r?\n)*?(?=^\s*(?:measure|column|partition|annotation)\s|\z))";
-                var matches = Regex.Matches(content, measurePattern, RegexOptions.Multiline);
+                var matches = MeasureBlockRegex.Matches(content);
 
                 if (matches.Count == 0)
                     return null;
@@ -3712,6 +3785,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         {
             // Create target directory
             Directory.CreateDirectory(targetDir);
+            var fullTargetDir = Path.GetFullPath(targetDir) + Path.DirectorySeparatorChar;
 
             // Copy files
             foreach (var file in Directory.GetFiles(sourceDir))
@@ -3721,7 +3795,12 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     var fileName = Path.GetFileName(file);
                     // Rename files containing the template name
                     var newFileName = fileName.Replace(templateName, projectName);
-                    var targetPath = Path.Combine(targetDir,newFileName);
+                    var targetPath = Path.Combine(targetDir, newFileName);
+
+                    // Path traversal guard: ensure target stays within targetDir
+                    var fullTarget = Path.GetFullPath(targetPath);
+                    if (!fullTarget.StartsWith(fullTargetDir, StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidOperationException($"Path traversal detected in template: {targetPath}");
 
                     DebugLogger.Log($"Copying: {fileName} -> {newFileName}");
 
@@ -3773,7 +3852,14 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 
                 // Rename directories containing the template name
                 var newDirName = dirName.Replace(templateName, projectName);
-                CopyDirectory(dir, Path.Combine(targetDir, newDirName), projectName, templateName);
+                var newDirPath = Path.Combine(targetDir, newDirName);
+
+                // Path traversal guard: ensure target stays within targetDir
+                var fullNewDir = Path.GetFullPath(newDirPath);
+                if (!fullNewDir.StartsWith(fullTargetDir, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException($"Path traversal detected in template: {newDirPath}");
+
+                CopyDirectory(dir, newDirPath, projectName, templateName);
             }
         }
 
@@ -4185,7 +4271,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         {
                             var fabricChoiceSourceCol = _useDisplayNameAliasesInSql ? effectiveName : nameColumn;
                             var fabricChoiceAlias = _useDisplayNameAliasesInSql && !effectiveName.Equals(nameColumn, StringComparison.OrdinalIgnoreCase)
-                                ? $"{joinAlias}.[LocalizedLabel] AS [{effectiveName}]"
+                                ? $"{joinAlias}.[LocalizedLabel] AS {EscapeSqlIdentifier(effectiveName)}"
                                 : $"{joinAlias}.[LocalizedLabel] {nameColumn}";
                             sqlFields.Add(fabricChoiceAlias);
 
@@ -4344,7 +4430,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         var offset = dateTableConfig!.UtcOffsetHours;
                         var dtAlias = isPrimaryKey ? attr.LogicalName : (_useDisplayNameAliasesInSql ? effectiveName : attr.LogicalName);
                         var dtAliasClause = dtAlias.Equals(attr.LogicalName, StringComparison.OrdinalIgnoreCase)
-                            ? $"AS {attr.LogicalName}" : $"AS [{dtAlias}]";
+                            ? $"AS {attr.LogicalName}" : $"AS {EscapeSqlIdentifier(dtAlias)}";
                         sqlFields.Add($"CAST(DATEADD(hour, {offset}, Base.{attr.LogicalName}) AS DATE) {dtAliasClause}");
                     }
                     else
@@ -4436,7 +4522,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                 }
                                 
                                 var fabricAlias = _useDisplayNameAliasesInSql && !prefixedDisplayName.Equals(colKey, StringComparison.OrdinalIgnoreCase)
-                                    ? $"{metadataJoinAlias}.[LocalizedLabel] AS [{prefixedDisplayName}]"
+                                    ? $"{metadataJoinAlias}.[LocalizedLabel] AS {EscapeSqlIdentifier(prefixedDisplayName)}"
                                     : $"{metadataJoinAlias}.[LocalizedLabel] {colKey}";
                                 sqlFields.Add(fabricAlias);
                             }
@@ -4622,7 +4708,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             var fromTable = IsFabricLink ? table.LogicalName : (table.SchemaName ?? table.LogicalName);
 
             // Build SQL SELECT list with proper formatting
-            var sqlSelectList = new StringBuilder();
+            var sqlSelectList = new StringBuilder(sqlFields.Count * 64);
             for (int i = 0; i < sqlFields.Count; i++)
             {
                 if (i == 0)
@@ -4866,12 +4952,13 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 // CRITICAL: In TMDL, relationships must reference columns by their logical names
                 // as they appear in the column declarations, not by display names.
                 // Column names in TMDL are the logical names (e.g., 'parentaccountid', 'stageid')
+                // Logical names are always simple identifiers — only quote table display names.
                 var sourceColumn = rel.SourceAttribute;
                 var targetColumn = targetPrimaryKey;
 
                 // Build relationship key to match existing GUID
-                var fromRef = $"{QuoteTmdlName(sourceTableDisplay)}.{QuoteTmdlName(sourceColumn)}";
-                var toRef = $"{QuoteTmdlName(targetTableDisplay)}.{QuoteTmdlName(targetColumn)}";
+                var fromRef = $"{QuoteTmdlName(sourceTableDisplay)}.{sourceColumn}";
+                var toRef = $"{QuoteTmdlName(targetTableDisplay)}.{targetColumn}";
                 var relKey = $"{fromRef}→{toRef}";
                 var relGuid = existingRelGuids != null && existingRelGuids.TryGetValue(relKey, out var existing) 
                     ? existing : Guid.NewGuid().ToString();
@@ -4890,8 +4977,8 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     sb.AppendLine($"\tisActive: false");
                 }
 
-                sb.AppendLine($"\tfromColumn: {QuoteTmdlName(sourceTableDisplay)}.{QuoteTmdlName(sourceColumn)}");
-                sb.AppendLine($"\ttoColumn: {QuoteTmdlName(targetTableDisplay)}.{QuoteTmdlName(targetColumn)}");
+                sb.AppendLine($"\tfromColumn: {QuoteTmdlName(sourceTableDisplay)}.{sourceColumn}");
+                sb.AppendLine($"\ttoColumn: {QuoteTmdlName(targetTableDisplay)}.{targetColumn}");
                 sb.AppendLine();
             }
 
@@ -4932,8 +5019,8 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         sb.AppendLine($"\trelyOnReferentialIntegrity");
                     }
                     
-                    sb.AppendLine($"\tfromColumn: {QuoteTmdlName(sourceTableDisplay)}.{QuoteTmdlName(primaryDateFieldName)}");
-                    sb.AppendLine($"\ttoColumn: Date.Date");
+                    sb.AppendLine($"\tfromColumn: {dateFromRef}");
+                    sb.AppendLine($"\ttoColumn: {dateToRef}");
                     sb.AppendLine();
                 }
                 else
