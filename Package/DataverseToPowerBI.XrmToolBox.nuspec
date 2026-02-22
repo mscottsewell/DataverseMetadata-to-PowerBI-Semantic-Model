@@ -2,7 +2,7 @@
 <package>
 	<metadata>
     <id>DataverseToPowerBI.XrmToolBox</id>
-    <version>1.2026.5.109</version>
+    <version>1.2026.5.112</version>
     <title>Dataverse to Power BI Semantic Model</title>
     <authors>Scott Sewell</authors>
     <owners>mScottSewell</owners>

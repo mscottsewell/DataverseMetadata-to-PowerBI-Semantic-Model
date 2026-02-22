@@ -114,6 +114,10 @@ namespace DataverseToPowerBI.XrmToolBox
         private int _sortedCacheSortColumn = -1;
         private bool _sortedCacheSortAscending = true;
 
+        // Cache for view filter support status per table (keyed by logical name; invalidated on view change)
+        private Dictionary<string, (bool isPartial, List<string> features)> _viewFilterSupportCache =
+            new Dictionary<string, (bool, List<string>)>(StringComparer.OrdinalIgnoreCase);
+
         // Cached fonts to avoid GDI handle leaks (WinForms does not dispose replaced Fonts)
         private Font? _boldTableFont;
         private Font? _boldAttrFont;
@@ -593,6 +597,7 @@ namespace DataverseToPowerBI.XrmToolBox
             _loadingStates.Clear();
             _relatedTableAttributesCache.Clear();
             _relatedTableDisplayNameCache.Clear();
+            _viewFilterSupportCache.Clear();
             _factTable = null;
             _relationships.Clear();
             _expandedLookups.Clear();
@@ -1767,12 +1772,17 @@ namespace DataverseToPowerBI.XrmToolBox
 
             var item = new ListViewItem("✏️");
             item.Name = logicalName;
+            item.UseItemStyleForSubItems = false;
             item.SubItems.Add(roleText);
             item.SubItems.Add(table.DisplayName ?? logicalName);
             item.SubItems.Add(GetTableModeDisplayText(logicalName, isFact));
             item.SubItems.Add(formText);
             item.SubItems.Add(viewText);
             item.SubItems.Add(attrCount);
+
+            var (isFilterPartial, _) = GetViewFilterSupportStatus(logicalName);
+            if (isFilterPartial)
+                item.SubItems[5].ForeColor = Color.DarkGoldenrod;
 
             if (isFact)
             {
@@ -1806,6 +1816,10 @@ namespace DataverseToPowerBI.XrmToolBox
                 item.SubItems[6].Text = _selectedAttributes.ContainsKey(logicalName)
                     ? _selectedAttributes[logicalName].Count.ToString()
                     : "0";
+
+                item.UseItemStyleForSubItems = false;
+                var (isFilterPartial, _) = GetViewFilterSupportStatus(logicalName);
+                item.SubItems[5].ForeColor = isFilterPartial ? Color.DarkGoldenrod : listViewSelectedTables.ForeColor;
 
                 if (isFact)
                 {
@@ -1855,23 +1869,86 @@ namespace DataverseToPowerBI.XrmToolBox
             }
         }
         
+        /// <summary>
+        /// Checks whether the selected view's FetchXML filter for a table contains conditions
+        /// that cannot be fully translated given the current model's connection and storage mode.
+        /// Results are cached per table and invalidated when the view or mode selection changes.
+        /// </summary>
+        private (bool isPartial, List<string> features) GetViewFilterSupportStatus(string logicalName)
+        {
+            var mode = _fieldSelectionModes.TryGetValue(logicalName, out var m) ? m : FieldSelectionMode.View;
+            if (mode != FieldSelectionMode.View)
+                return (false, new List<string>());
+
+            if (!_selectedViewIds.TryGetValue(logicalName, out var selectedViewId) ||
+                string.IsNullOrEmpty(selectedViewId))
+                return (false, new List<string>());
+
+            if (!_tableViews.TryGetValue(logicalName, out var views))
+                return (false, new List<string>());
+
+            var view = views.FirstOrDefault(v => v.ViewId == selectedViewId);
+            if (view == null || string.IsNullOrEmpty(view.FetchXml))
+                return (false, new List<string>());
+
+            if (_viewFilterSupportCache.TryGetValue(logicalName, out var cached))
+                return cached;
+
+            var connectionType = _currentModel?.ConnectionType ?? "DataverseTDS";
+            var storageMode = _currentModel?.StorageMode ?? "DirectQuery";
+            var isFabricLink = connectionType == "FabricLink";
+            var isImportMode = storageMode == "Import";
+
+            var converter = new FetchXmlToSqlConverter(0, isFabricLink, isImportMode);
+            var result = converter.ConvertToWhereClause(view.FetchXml, "Base");
+
+            var status = (!result.IsFullySupported, result.UnsupportedFeatures);
+            _viewFilterSupportCache[logicalName] = status;
+            return status;
+        }
+
         private string GetViewDisplayText(string logicalName)
         {
             if (!_tableViews.ContainsKey(logicalName))
                 return "(not loaded)";
-            
+
             var views = _tableViews[logicalName];
             if (!views.Any())
                 return "(no views)";
-            
+
             var selectedViewId = _selectedViewIds.ContainsKey(logicalName)
                 ? _selectedViewIds[logicalName]
                 : (views.FirstOrDefault(v => v.IsDefault) ?? views.First()).ViewId;
-            
+
             var view = views.FirstOrDefault(v => v.ViewId == selectedViewId);
             return view != null ? view.Name : views.First().Name;
         }
-        
+
+        /// <summary>
+        /// Shows or hides the view filter warning panel at the bottom of the field list.
+        /// Displayed when the selected view's FetchXML contains conditions that cannot be
+        /// fully translated for the current connection or storage mode.
+        /// </summary>
+        private void UpdateViewWarningPanel(string? logicalName)
+        {
+            if (string.IsNullOrEmpty(logicalName))
+            {
+                panelAttrWarning.Visible = false;
+                return;
+            }
+
+            var (isPartial, _) = GetViewFilterSupportStatus(logicalName);
+            if (isPartial)
+            {
+                lblAttrWarning.Text = "\u26a0 View filter is partially supported \u2013 some conditions may not translate. See TMDL preview for details.";
+                panelAttrWarning.Visible = true;
+            }
+            else
+            {
+                panelAttrWarning.Visible = false;
+            }
+        }
+
         private string GetTableModeDisplayText(string logicalName, bool isFact)
         {
             var mode = (_currentModel?.StorageMode ?? "DirectQuery");
@@ -2027,11 +2104,13 @@ namespace DataverseToPowerBI.XrmToolBox
             {
                 listViewAttributes.Items.Clear();
                 groupBoxAttributes.Text = "Attributes";
+                UpdateViewWarningPanel(null);
                 return;
             }
 
             var logicalName = listViewSelectedTables.SelectedItems[0].Name;
             _collapsedLookupGroups.Clear();
+            UpdateViewWarningPanel(logicalName);
             UpdateAttributesDisplay(logicalName);
         }
 
@@ -2201,9 +2280,9 @@ namespace DataverseToPowerBI.XrmToolBox
         private void UpdateAttributesDisplay(string logicalName)
         {
             listViewAttributes.Items.Clear();
-            
-            var tableDisplay = _selectedTables.ContainsKey(logicalName) 
-                ? _selectedTables[logicalName].DisplayName ?? logicalName 
+
+            var tableDisplay = _selectedTables.ContainsKey(logicalName)
+                ? _selectedTables[logicalName].DisplayName ?? logicalName
                 : logicalName;
             groupBoxAttributes.Text = $"Attributes - {tableDisplay}";
 
@@ -3573,6 +3652,7 @@ namespace DataverseToPowerBI.XrmToolBox
                     if (!string.IsNullOrEmpty(selectedViewId))
                         _selectedViewIds[logicalName] = selectedViewId;
                     _fieldSelectionModes[logicalName] = selectedMode;
+                    _viewFilterSupportCache.Remove(logicalName);
 
                     bool modeChanged = selectedMode != previousMode;
                     bool formChanged = selectedFormId != previousFormId;

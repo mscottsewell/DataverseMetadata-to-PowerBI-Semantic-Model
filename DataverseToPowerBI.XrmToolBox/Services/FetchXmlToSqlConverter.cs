@@ -483,8 +483,8 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
         private string UnsupportedUserContextOp(string operatorValue, string? attribute)
         {
-            var reason = _isImportMode ? "Import mode" : "FabricLink";
-            var message = $"Operator '{operatorValue}' for attribute '{attribute ?? ""}' - not supported in {reason} (current user filters require DirectQuery)";
+            var reason = _isImportMode ? "Import/Dual mode" : "FabricLink";
+            var message = $"Operator '{operatorValue}' for attribute '{attribute ?? ""}' - current user filters require the TDS endpoint in DirectQuery mode (not supported with {reason})";
             LogUnsupported(message);
             _debugLog.Add($"  UNSUPPORTED ({reason.ToUpperInvariant()}): {message}");
             return "";

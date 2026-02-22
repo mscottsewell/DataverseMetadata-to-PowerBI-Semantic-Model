@@ -75,6 +75,8 @@ namespace DataverseToPowerBI.XrmToolBox
             this.btnSelectAll = new System.Windows.Forms.Button();
             this.btnDeselectAll = new System.Windows.Forms.Button();
             this.btnSelectFromForm = new System.Windows.Forms.Button();
+            this.panelAttrWarning = new System.Windows.Forms.Panel();
+            this.lblAttrWarning = new System.Windows.Forms.Label();
 
             this.panelStatus = new System.Windows.Forms.Panel();
             this.lblStatus = new System.Windows.Forms.Label();
@@ -94,6 +96,7 @@ namespace DataverseToPowerBI.XrmToolBox
             this.groupBoxAttributes.SuspendLayout();
             this.panelAttrFilter.SuspendLayout();
             this.panelAttrButtons.SuspendLayout();
+            this.panelAttrWarning.SuspendLayout();
             this.panelStatus.SuspendLayout();
             this.SuspendLayout();
 
@@ -225,6 +228,7 @@ namespace DataverseToPowerBI.XrmToolBox
             // groupBoxSelectedTables
             this.groupBoxSelectedTables.Controls.Add(this.listViewSelectedTables);
             this.groupBoxSelectedTables.Controls.Add(this.panelTableInfo);
+            this.groupBoxSelectedTables.Controls.Add(this.panelAttrWarning);
             this.groupBoxSelectedTables.Dock = System.Windows.Forms.DockStyle.Fill;
             this.groupBoxSelectedTables.Location = new System.Drawing.Point(0, 0);
             this.groupBoxSelectedTables.Name = "groupBoxSelectedTables";
@@ -519,6 +523,25 @@ namespace DataverseToPowerBI.XrmToolBox
             this.btnSelectFromForm.UseVisualStyleBackColor = true;
             this.btnSelectFromForm.Click += new System.EventHandler(this.BtnSelectFromForm_Click);
 
+            // panelAttrWarning
+            this.panelAttrWarning.Controls.Add(this.lblAttrWarning);
+            this.panelAttrWarning.BackColor = System.Drawing.Color.FromArgb(255, 248, 220);
+            this.panelAttrWarning.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.panelAttrWarning.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.panelAttrWarning.Name = "panelAttrWarning";
+            this.panelAttrWarning.Padding = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.panelAttrWarning.Size = new System.Drawing.Size(576, 26);
+            this.panelAttrWarning.TabIndex = 3;
+            this.panelAttrWarning.Visible = false;
+
+            // lblAttrWarning
+            this.lblAttrWarning.AutoSize = false;
+            this.lblAttrWarning.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lblAttrWarning.ForeColor = System.Drawing.Color.DarkGoldenrod;
+            this.lblAttrWarning.Name = "lblAttrWarning";
+            this.lblAttrWarning.TabIndex = 0;
+            this.lblAttrWarning.Text = "";
+
             // panelStatus
             this.panelStatus.Controls.Add(this.lblTableCount);
             this.panelStatus.Controls.Add(this.lblStatus);
@@ -585,6 +608,7 @@ namespace DataverseToPowerBI.XrmToolBox
             this.panelAttrFilter.ResumeLayout(false);
             this.panelAttrFilter.PerformLayout();
             this.panelAttrButtons.ResumeLayout(false);
+            this.panelAttrWarning.ResumeLayout(false);
             this.panelStatus.ResumeLayout(false);
             this.panelStatus.PerformLayout();
             this.ResumeLayout(false);
@@ -646,6 +670,8 @@ namespace DataverseToPowerBI.XrmToolBox
         private System.Windows.Forms.Button btnSelectAll;
         private System.Windows.Forms.Button btnDeselectAll;
         private System.Windows.Forms.Button btnSelectFromForm;
+        private System.Windows.Forms.Panel panelAttrWarning;
+        private System.Windows.Forms.Label lblAttrWarning;
 
         private System.Windows.Forms.Panel panelStatus;
         private System.Windows.Forms.Label lblTableCount;
