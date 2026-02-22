@@ -4802,6 +4802,10 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 // No view filter - apply default active records filter
                 sb.AppendLine($"\t\t\t\t    WHERE Base.statecode = 0");
             }
+
+            // Add a single trailing blank line after the final SQL line.
+            sb.AppendLine($"\t\t\t\t");
+
             if (IsFabricLink)
             {
                 sb.AppendLine($"\t\t\t\t        \"");

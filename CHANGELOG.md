@@ -6,7 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [Unreleased] — Code Review Fixes
+## [Unreleased]
+
+- _No unreleased changes yet._
+
+---
+
+## [1.2026.5.105] - 2026-02-21
 
 ### Fixed
 

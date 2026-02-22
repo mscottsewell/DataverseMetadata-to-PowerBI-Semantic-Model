@@ -2,7 +2,7 @@
 <package>
 	<metadata>
     <id>DataverseToPowerBI.XrmToolBox</id>
-    <version>1.2026.5.104</version>
+    <version>1.2026.5.108</version>
     <title>Dataverse to Power BI Semantic Model</title>
     <authors>Scott Sewell</authors>
     <owners>mScottSewell</owners>
@@ -11,6 +11,20 @@
     <description>Extract Dataverse metadata and generate Power BI TMDL/PBIP semantic models with automatic table relationships, calendar tables, and incremental change detection.</description>
     <summary>XrmToolBox plugin for generating Power BI semantic models from Dataverse metadata</summary>
     <releaseNotes>
+  v1.2026.5.104 — Sweeping bugfix and stability release focused on incremental update safety, lineage stability, and output hygiene.
+
+Highlights:
+- Fixed TMDL description preservation so table/column descriptions are no longer stripped during write (relationship descriptions still sanitized for Power BI Desktop compatibility)
+- Fixed null-safety in lookup type checks (`IsLookupType` / `IsPolymorphicLookupType`) to prevent potential null reference failures
+- Made FetchXML debug output opt-in (`enableFetchXmlDebugLogs`) to avoid writing sensitive filter data by default
+- Stabilized lineage across Dataverse display-name renames via logical-name annotation fallback
+- Consolidated duplicated environment-name extraction logic into shared `UrlHelper`
+
+Quality:
+- Added 28 FetchXmlToSqlConverter unit tests across operators, nested logic, link-entity behavior, and edge cases
+- Added 12 integration tests for incremental-update preservation (lineage, descriptions, user measures, annotations)
+- Removed experimental PPTB (Power Platform Toolbox) port from active codebase
+
   v1.2026.5.101 — Lookup sub-column configuration, polymorphic lookup support, cross-chain ambiguity detection, and relationship selector enhancements.
 
 New Features:

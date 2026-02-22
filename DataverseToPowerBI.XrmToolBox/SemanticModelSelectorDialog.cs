@@ -138,17 +138,17 @@ namespace DataverseToPowerBI.XrmToolBox
             listViewModels = new ListView
             {
                 Location = new Point(35, 58),
-                Size = new Size(565, 362),
+                Size = new Size(580, 362),
                 View = View.Details,
                 FullRowSelect = true,
                 MultiSelect = false,
                 HideSelection = false
             };
-            listViewModels.Columns.Add("Name", 130);
-            listViewModels.Columns.Add("Fact Table", 90);
-            listViewModels.Columns.Add("Tables", 45);
-            listViewModels.Columns.Add("Mode", 80);
-            listViewModels.Columns.Add("Connection", 75);
+            listViewModels.Columns.Add("Name", 150);
+            listViewModels.Columns.Add("Fact Table", 75);
+            listViewModels.Columns.Add("Tables", 50);
+            listViewModels.Columns.Add("Mode", 75);
+            listViewModels.Columns.Add("Connection", 50);
             listViewModels.Columns.Add("Last Used", 80);
             listViewModels.SelectedIndexChanged += ListViewModels_SelectedIndexChanged;
             listViewModels.DoubleClick += ListViewModels_DoubleClick;
