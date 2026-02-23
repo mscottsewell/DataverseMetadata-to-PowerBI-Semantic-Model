@@ -668,6 +668,272 @@ namespace DataverseToPowerBI.Tests
         }
 
         [Fact]
+        public void GenerateTableTmdl_FabricLinkPicklist_WhenIsGlobalUnknown_InfersGlobalFromOptionSetName()
+        {
+            var fabricBuilder = new SemanticModelBuilder(
+                _tempDir,
+                connectionType: "FabricLink",
+                fabricLinkEndpoint: "test-endpoint",
+                fabricLinkDatabase: "test-db",
+                languageCode: 1033,
+                useDisplayNameAliasesInSql: false);
+
+            var table = new ExportTable
+            {
+                LogicalName = "incident",
+                DisplayName = "Incident",
+                PrimaryIdAttribute = "incidentid",
+                PrimaryNameAttribute = "title",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "prioritycode",
+                        DisplayName = "Priority",
+                        SchemaName = "prioritycode",
+                        AttributeType = "Picklist",
+                        OptionSetName = "incident_priority"
+                    }
+                }
+            };
+
+            var attributeDisplayInfo = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["incident"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["prioritycode"] = new AttributeDisplayInfo
+                    {
+                        LogicalName = "prioritycode",
+                        DisplayName = "Priority",
+                        AttributeType = "Picklist",
+                        OptionSetName = "incident_priority"
+                    }
+                }
+            };
+
+            var tmdl = fabricBuilder.GenerateTableTmdl(
+                table,
+                attributeDisplayInfo,
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+
+            Assert.Contains("LEFT JOIN [GlobalOptionsetMetadata] incident_prioritycode", tmdl);
+            Assert.DoesNotContain("LEFT JOIN [OptionsetMetadata] incident_prioritycode", tmdl);
+        }
+
+        [Fact]
+        public void GenerateTableTmdl_FabricLinkPicklist_WhenIsGlobalUnknown_UsesLocalMetadataForAttributeNamedOptionSet()
+        {
+            var fabricBuilder = new SemanticModelBuilder(
+                _tempDir,
+                connectionType: "FabricLink",
+                fabricLinkEndpoint: "test-endpoint",
+                fabricLinkDatabase: "test-db",
+                languageCode: 1033,
+                useDisplayNameAliasesInSql: false);
+
+            var table = new ExportTable
+            {
+                LogicalName = "incident",
+                DisplayName = "Incident",
+                PrimaryIdAttribute = "incidentid",
+                PrimaryNameAttribute = "title",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "severitycode",
+                        DisplayName = "Severity",
+                        SchemaName = "severitycode",
+                        AttributeType = "Picklist",
+                        OptionSetName = "severitycode"
+                    }
+                }
+            };
+
+            var attributeDisplayInfo = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["incident"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["severitycode"] = new AttributeDisplayInfo
+                    {
+                        LogicalName = "severitycode",
+                        DisplayName = "Severity",
+                        AttributeType = "Picklist",
+                        OptionSetName = "severitycode"
+                    }
+                }
+            };
+
+            var tmdl = fabricBuilder.GenerateTableTmdl(
+                table,
+                attributeDisplayInfo,
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+
+            Assert.Contains("LEFT JOIN [OptionsetMetadata] incident_severitycode", tmdl);
+            Assert.DoesNotContain("LEFT JOIN [GlobalOptionsetMetadata] incident_severitycode", tmdl);
+        }
+
+        [Fact]
+        public void GenerateTableTmdl_FabricLinkBoolean_UsesAttributeLogicalNameForOptionSetJoin()
+        {
+            var fabricBuilder = new SemanticModelBuilder(
+                _tempDir,
+                connectionType: "FabricLink",
+                fabricLinkEndpoint: "test-endpoint",
+                fabricLinkDatabase: "test-db",
+                languageCode: 1033,
+                useDisplayNameAliasesInSql: false);
+
+            var table = new ExportTable
+            {
+                LogicalName = "incident",
+                DisplayName = "Incident",
+                PrimaryIdAttribute = "incidentid",
+                PrimaryNameAttribute = "title",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "pbi_booleanfield",
+                        DisplayName = "BooleanField",
+                        AttributeType = "Boolean",
+                        OptionSetName = "some_other_boolean_name",
+                        IsGlobal = false
+                    }
+                }
+            };
+
+            var attributeDisplayInfo = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["incident"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["pbi_booleanfield"] = new AttributeDisplayInfo
+                    {
+                        LogicalName = "pbi_booleanfield",
+                        DisplayName = "BooleanField",
+                        AttributeType = "Boolean",
+                        OptionSetName = "some_other_boolean_name",
+                        IsGlobal = false
+                    }
+                }
+            };
+
+            var tmdl = fabricBuilder.GenerateTableTmdl(
+                table,
+                attributeDisplayInfo,
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+
+            Assert.Contains("[OptionSetName] = 'pbi_booleanfield'", tmdl);
+            Assert.DoesNotContain("[OptionSetName] = 'some_other_boolean_name'", tmdl);
+            Assert.Contains("LEFT JOIN [OptionsetMetadata] incident_pbi_booleanfield", tmdl);
+        }
+
+        [Fact]
+        public void GenerateTableTmdl_FabricLinkPicklist_UsesAttributeLogicalNameForOptionSetJoin_WhenMetadataNameDiffers()
+        {
+            var fabricBuilder = new SemanticModelBuilder(
+                _tempDir,
+                connectionType: "FabricLink",
+                fabricLinkEndpoint: "test-endpoint",
+                fabricLinkDatabase: "test-db",
+                languageCode: 1033,
+                useDisplayNameAliasesInSql: false);
+
+            var table = new ExportTable
+            {
+                LogicalName = "incident",
+                DisplayName = "Incident",
+                PrimaryIdAttribute = "incidentid",
+                PrimaryNameAttribute = "title",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "pbi_choicefield_differentchoicename",
+                        DisplayName = "ChoiceField_DifferentChoiceName",
+                        AttributeType = "Picklist",
+                        OptionSetName = "pbi_samplechoice",
+                        IsGlobal = true
+                    }
+                }
+            };
+
+            var attributeDisplayInfo = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["incident"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["pbi_choicefield_differentchoicename"] = new AttributeDisplayInfo
+                    {
+                        LogicalName = "pbi_choicefield_differentchoicename",
+                        DisplayName = "ChoiceField_DifferentChoiceName",
+                        AttributeType = "Picklist",
+                        OptionSetName = "pbi_samplechoice",
+                        IsGlobal = true
+                    }
+                }
+            };
+
+            var tmdl = fabricBuilder.GenerateTableTmdl(
+                table,
+                attributeDisplayInfo,
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+
+            Assert.Contains("LEFT JOIN [GlobalOptionsetMetadata] incident_pbi_choicefield_differentchoicename", tmdl);
+            Assert.Contains("[OptionSetName] = 'pbi_choicefield_differentchoicename'", tmdl);
+            Assert.DoesNotContain("[OptionSetName] = 'pbi_samplechoice'", tmdl);
+        }
+
+        [Fact]
+        public void GenerateTableTmdl_FabricLinkStatecode_Selected_IncludesStateLabelColumn()
+        {
+            var fabricBuilder = new SemanticModelBuilder(
+                _tempDir,
+                connectionType: "FabricLink",
+                fabricLinkEndpoint: "test-endpoint",
+                fabricLinkDatabase: "test-db",
+                languageCode: 1033,
+                useDisplayNameAliasesInSql: false);
+
+            var table = new ExportTable
+            {
+                LogicalName = "incident",
+                DisplayName = "Incident",
+                PrimaryIdAttribute = "incidentid",
+                PrimaryNameAttribute = "title",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "statecode",
+                        DisplayName = "Status",
+                        AttributeType = "State"
+                    }
+                }
+            };
+
+            var attributeDisplayInfo = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["incident"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["statecode"] = new AttributeDisplayInfo
+                    {
+                        LogicalName = "statecode",
+                        DisplayName = "Status",
+                        AttributeType = "State"
+                    }
+                }
+            };
+
+            var tmdl = fabricBuilder.GenerateTableTmdl(
+                table,
+                attributeDisplayInfo,
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+
+            Assert.Contains("JOIN [StateMetadata] incident_statecode", tmdl);
+            Assert.Contains("incident_statecode.[LocalizedLabel] statecodename", tmdl);
+        }
+
+        [Fact]
         public void GenerateTableTmdl_ExpandedLookupJoin_UsesTargetLogicalNameNotDisplayName()
         {
             var table = new ExportTable

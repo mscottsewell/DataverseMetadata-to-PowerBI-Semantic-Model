@@ -1106,6 +1106,25 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// </summary>
         private static string EscapeSqlIdentifier(string name) => "[" + name.Replace("]", "]]") + "]";
 
+        /// <summary>
+        /// Resolves which Fabric metadata table to use for option-set labels.
+        /// Uses explicit IsGlobal metadata when available; otherwise applies a name-based heuristic.
+        /// </summary>
+        private string ResolveFabricOptionSetMetadataTable(string attributeType, string attributeLogicalName, string optionSetName, bool? isGlobal, string entityLogicalName)
+        {
+            if (isGlobal.HasValue)
+                return isGlobal.Value ? "GlobalOptionsetMetadata" : "OptionsetMetadata";
+
+            // Heuristic for incomplete metadata: when the option set name differs from the
+            // attribute logical name, it typically indicates a global/shared option set.
+            var looksGlobalByName = !string.IsNullOrWhiteSpace(optionSetName) &&
+                !optionSetName.Equals(attributeLogicalName, StringComparison.OrdinalIgnoreCase);
+
+            var resolved = looksGlobalByName ? "GlobalOptionsetMetadata" : "OptionsetMetadata";
+            DebugLogger.Log($"[FabricLink] Option-set metadata table inferred for {entityLogicalName}.{attributeLogicalName} (type={attributeType}, optionSetName={optionSetName}, IsGlobal=<null>): {resolved}");
+            return resolved;
+        }
+
         private void SetStatus(string message)
         {
             _statusCallback?.Invoke(message);
@@ -2129,9 +2148,8 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     var effectiveName = GetEffectiveDisplayName(attrDisplayInfo, attrDisplayName);
                     var targets = attr.Targets ?? attrDisplayInfo?.Targets;
 
-                    // Skip statecode and special owning name columns (not available in TDS/Fabric endpoints)
-                    if (attr.LogicalName.Equals("statecode", StringComparison.OrdinalIgnoreCase) ||
-                        attr.LogicalName.Equals("owningusername", StringComparison.OrdinalIgnoreCase) ||
+                    // Skip special owning name columns (not available in TDS/Fabric endpoints)
+                    if (attr.LogicalName.Equals("owningusername", StringComparison.OrdinalIgnoreCase) ||
                         attr.LogicalName.Equals("owningteamname", StringComparison.OrdinalIgnoreCase) ||
                         attr.LogicalName.Equals("owningbusinessunitname", StringComparison.OrdinalIgnoreCase))
                         continue;
@@ -2459,8 +2477,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     var effectiveName = GetEffectiveDisplayName(attrDisplayInfo2, attrDisplayName);
 
                     // Skip statecode and special owning name columns (not available in TDS/Fabric endpoints)
-                    if (attr.LogicalName.Equals("statecode", StringComparison.OrdinalIgnoreCase) ||
-                        attr.LogicalName.Equals("owningusername", StringComparison.OrdinalIgnoreCase) ||
+                    if (attr.LogicalName.Equals("owningusername", StringComparison.OrdinalIgnoreCase) ||
                         attr.LogicalName.Equals("owningteamname", StringComparison.OrdinalIgnoreCase) ||
                         attr.LogicalName.Equals("owningbusinessunitname", StringComparison.OrdinalIgnoreCase))
                         continue;
@@ -2533,15 +2550,18 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             }
                             else if (isBoolean)
                             {
-                                // Boolean fields always use GlobalOptionsetMetadata (matches GenerateTableTmdl)
-                                var optionSetName = attr.OptionSetName ?? attrDisplayInfo2?.OptionSetName ?? attr.LogicalName;
-                                joinClauses.Add($"LEFT JOIN [GlobalOptionsetMetadata] {joinAlias} ON {joinAlias}.[OptionSetName]='{optionSetName}' AND {joinAlias}.[EntityName]='{table.LogicalName}' AND {joinAlias}.[LocalizedLabelLanguageCode]={_languageCode} AND {joinAlias}.[Option]=Base.{attr.LogicalName}");
+                                var optionSetName = attr.LogicalName;
+                                var optionSetNameHint = attr.OptionSetName ?? attrDisplayInfo2?.OptionSetName ?? optionSetName;
+                                var isGlobal = attr.IsGlobal ?? attrDisplayInfo2?.IsGlobal;
+                                var metadataTable = ResolveFabricOptionSetMetadataTable(attrType, attr.LogicalName, optionSetNameHint, isGlobal, table.LogicalName);
+                                joinClauses.Add($"LEFT JOIN [{metadataTable}] {joinAlias} ON {joinAlias}.[OptionSetName]='{optionSetName}' AND {joinAlias}.[EntityName]='{table.LogicalName}' AND {joinAlias}.[LocalizedLabelLanguageCode]={_languageCode} AND {joinAlias}.[Option]=Base.{attr.LogicalName}");
                             }
                             else
                             {
-                                var isGlobal = attr.IsGlobal ?? attrDisplayInfo2?.IsGlobal ?? false;
-                                var optionSetName = attr.OptionSetName ?? attrDisplayInfo2?.OptionSetName ?? attr.LogicalName;
-                                var metadataTable = isGlobal ? "GlobalOptionsetMetadata" : "OptionsetMetadata";
+                                var isGlobal = attr.IsGlobal ?? attrDisplayInfo2?.IsGlobal;
+                                var optionSetName = attr.LogicalName;
+                                var optionSetNameHint = attr.OptionSetName ?? attrDisplayInfo2?.OptionSetName ?? optionSetName;
+                                var metadataTable = ResolveFabricOptionSetMetadataTable(attrType, attr.LogicalName, optionSetNameHint, isGlobal, table.LogicalName);
                                 joinClauses.Add($"LEFT JOIN [{metadataTable}] {joinAlias} ON {joinAlias}.[OptionSetName]='{optionSetName}' AND {joinAlias}.[EntityName]='{table.LogicalName}' AND {joinAlias}.[LocalizedLabelLanguageCode]={_languageCode} AND {joinAlias}.[Option]=Base.{attr.LogicalName}");
                             }
                             if (!processedColumns.Contains(nameColumn))
@@ -2585,9 +2605,10 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             nameColumn = attr.LogicalName + "name";
                             var applyAlias = $"mspl_{attr.LogicalName}";
                             var joinAlias2 = $"meta_{attr.LogicalName}";
-                            var isGlobal = attr.IsGlobal ?? attrDisplayInfo2?.IsGlobal ?? false;
+                            var isGlobal = attr.IsGlobal ?? attrDisplayInfo2?.IsGlobal;
                             var optionSetName = attr.LogicalName;
-                            var metadataTable = isGlobal ? "GlobalOptionsetMetadata" : "OptionsetMetadata";
+                            var optionSetNameHint = attr.OptionSetName ?? attrDisplayInfo2?.OptionSetName ?? optionSetName;
+                            var metadataTable = ResolveFabricOptionSetMetadataTable(attrType, attr.LogicalName, optionSetNameHint, isGlobal, table.LogicalName);
 
                             joinClauses.Add($"OUTER APPLY (SELECT STRING_AGG({joinAlias2}.[LocalizedLabel], ', ') AS {nameColumn} FROM STRING_SPLIT(CAST(Base.{attr.LogicalName} AS VARCHAR(4000)), ';') AS split JOIN [{metadataTable}] AS {joinAlias2} ON {joinAlias2}.[OptionSetName]='{optionSetName}' AND {joinAlias2}.[EntityName]='{table.LogicalName}' AND {joinAlias2}.[LocalizedLabelLanguageCode]={_languageCode} AND {joinAlias2}.[Option]=CAST(LTRIM(RTRIM(split.value)) AS INT) WHERE Base.{attr.LogicalName} IS NOT NULL) {applyAlias}");
                             if (!processedColumns.Contains(nameColumn))
@@ -2684,16 +2705,19 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             {
                                 // FabricLink: JOIN to metadata table for the target entity
                                 var metadataJoinAlias = $"{joinAlias}_{expAttr.LogicalName}";
-                                var optionSetName = expAttr.OptionSetName ?? expAttr.LogicalName;
+                                var optionSetName = expAttr.LogicalName;
+                                var optionSetNameHint = expAttr.OptionSetName ?? optionSetName;
                                 
                                 if (isExpBoolean)
                                 {
-                                    joinClauses.Add($"LEFT JOIN [GlobalOptionsetMetadata] {metadataJoinAlias} ON {metadataJoinAlias}.[OptionSetName]='{optionSetName}' AND {metadataJoinAlias}.[EntityName]='{expand.TargetTableLogicalName}' AND {metadataJoinAlias}.[LocalizedLabelLanguageCode]={_languageCode} AND {metadataJoinAlias}.[Option]={joinAlias}.{expAttr.LogicalName}");
+                                    var isGlobal = expAttr.IsGlobal;
+                                    var metadataTable = ResolveFabricOptionSetMetadataTable(expAttrType, expAttr.LogicalName, optionSetNameHint, isGlobal, expand.TargetTableLogicalName);
+                                    joinClauses.Add($"LEFT JOIN [{metadataTable}] {metadataJoinAlias} ON {metadataJoinAlias}.[OptionSetName]='{optionSetName}' AND {metadataJoinAlias}.[EntityName]='{expand.TargetTableLogicalName}' AND {metadataJoinAlias}.[LocalizedLabelLanguageCode]={_languageCode} AND {metadataJoinAlias}.[Option]={joinAlias}.{expAttr.LogicalName}");
                                 }
                                 else
                                 {
-                                    var isGlobal = expAttr.IsGlobal ?? false;
-                                    var metadataTable = isGlobal ? "GlobalOptionsetMetadata" : "OptionsetMetadata";
+                                    var isGlobal = expAttr.IsGlobal;
+                                    var metadataTable = ResolveFabricOptionSetMetadataTable(expAttrType, expAttr.LogicalName, optionSetNameHint, isGlobal, expand.TargetTableLogicalName);
                                     joinClauses.Add($"LEFT JOIN [{metadataTable}] {metadataJoinAlias} ON {metadataJoinAlias}.[OptionSetName]='{optionSetName}' AND {metadataJoinAlias}.[EntityName]='{expand.TargetTableLogicalName}' AND {metadataJoinAlias}.[LocalizedLabelLanguageCode]={_languageCode} AND {metadataJoinAlias}.[Option]={joinAlias}.{expAttr.LogicalName}");
                                 }
                                 
@@ -2717,9 +2741,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                 var nameColumn = expAttr.LogicalName + "name";
                                 var applyAlias = $"mspl_{joinAlias}_{expAttr.LogicalName}";
                                 var metaAlias = $"meta_{joinAlias}_{expAttr.LogicalName}";
-                                var isGlobal = expAttr.IsGlobal ?? false;
+                                var isGlobal = expAttr.IsGlobal;
                                 var optionSetName = expAttr.OptionSetName ?? expAttr.LogicalName;
-                                var metadataTable = isGlobal ? "GlobalOptionsetMetadata" : "OptionsetMetadata";
+                                var metadataTable = ResolveFabricOptionSetMetadataTable(expAttrType, expAttr.LogicalName, optionSetName, isGlobal, expand.TargetTableLogicalName);
 
                                 joinClauses.Add($"OUTER APPLY (SELECT STRING_AGG({metaAlias}.[LocalizedLabel], ', ') AS {nameColumn} FROM STRING_SPLIT(CAST({joinAlias}.{expAttr.LogicalName} AS VARCHAR(4000)), ';') AS split JOIN [{metadataTable}] AS {metaAlias} ON {metaAlias}.[OptionSetName]='{optionSetName}' AND {metaAlias}.[EntityName]='{expand.TargetTableLogicalName}' AND {metaAlias}.[LocalizedLabelLanguageCode]={_languageCode} AND {metaAlias}.[Option]=CAST(LTRIM(RTRIM(split.value)) AS INT) WHERE {joinAlias}.{expAttr.LogicalName} IS NOT NULL) {applyAlias}");
                                 sqlFields.Add(ApplySqlAlias($"{applyAlias}.{nameColumn}", prefixedDisplayName, colKey, false));
@@ -4193,11 +4217,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 var effectiveName = GetEffectiveDisplayName(attrDisplayInfo, attrDisplayName);
                 var targets = attr.Targets ?? attrDisplayInfo?.Targets;
 
-                // Skip statecode and special owning name columns
-                // statecode: used in WHERE clause but not included in model
+                // Skip special owning name columns
                 // owning*name columns: not available in TDS or Fabric endpoints (but owning* lookup IDs are fine)
-                if (attr.LogicalName.Equals("statecode", StringComparison.OrdinalIgnoreCase) ||
-                    attr.LogicalName.Equals("owningusername", StringComparison.OrdinalIgnoreCase) ||
+                if (attr.LogicalName.Equals("owningusername", StringComparison.OrdinalIgnoreCase) ||
                     attr.LogicalName.Equals("owningteamname", StringComparison.OrdinalIgnoreCase) ||
                     attr.LogicalName.Equals("owningbusinessunitname", StringComparison.OrdinalIgnoreCase))
                 {
@@ -4334,10 +4356,12 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         }
                         else if (isBoolean)
                         {
-                            // Boolean fields: use GlobalOptionsetMetadata with LEFT JOIN (value can be null)
-                            var optionSetName = attr.OptionSetName ?? attrDisplayInfo?.OptionSetName ?? attr.LogicalName;
+                            var optionSetName = attr.LogicalName;
+                            var optionSetNameHint = attr.OptionSetName ?? attrDisplayInfo?.OptionSetName ?? optionSetName;
+                            var isGlobal = attr.IsGlobal ?? attrDisplayInfo?.IsGlobal;
+                            var metadataTable = ResolveFabricOptionSetMetadataTable(attrType, attr.LogicalName, optionSetNameHint, isGlobal, table.LogicalName);
                             joinClauses.Add(
-                                $"LEFT JOIN [GlobalOptionsetMetadata] {joinAlias}\r\n" +
+                                $"LEFT JOIN [{metadataTable}] {joinAlias}\r\n" +
                                 $"\t\t\t\t            ON  {joinAlias}.[OptionSetName] = '{optionSetName}'\r\n" +
                                 $"\t\t\t\t            AND {joinAlias}.[EntityName] = '{table.LogicalName}'\r\n" +
                                 $"\t\t\t\t            AND {joinAlias}.[LocalizedLabelLanguageCode] = {_languageCode}\r\n" +
@@ -4346,9 +4370,10 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         else
                         {
                             // Picklist: determine GlobalOptionsetMetadata vs OptionsetMetadata
-                            var isGlobal = attr.IsGlobal ?? attrDisplayInfo?.IsGlobal ?? false;
-                            var optionSetName = attr.OptionSetName ?? attrDisplayInfo?.OptionSetName ?? attr.LogicalName;
-                            var metadataTable = isGlobal ? "GlobalOptionsetMetadata" : "OptionsetMetadata";
+                            var isGlobal = attr.IsGlobal ?? attrDisplayInfo?.IsGlobal;
+                            var optionSetName = attr.LogicalName;
+                            var optionSetNameHint = attr.OptionSetName ?? attrDisplayInfo?.OptionSetName ?? optionSetName;
+                            var metadataTable = ResolveFabricOptionSetMetadataTable(attrType, attr.LogicalName, optionSetNameHint, isGlobal, table.LogicalName);
                             joinClauses.Add(
                                 $"LEFT JOIN [{metadataTable}] {joinAlias}\r\n" +
                                 $"\t\t\t\t            ON  {joinAlias}.[OptionSetName] = '{optionSetName}'\r\n" +
@@ -4442,9 +4467,10 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         nameColumn = attr.LogicalName + "name";
                         var applyAlias = $"mspl_{attr.LogicalName}";
                         var joinAlias = $"meta_{attr.LogicalName}";
-                        var isGlobal = attr.IsGlobal ?? attrDisplayInfo?.IsGlobal ?? false;
+                        var isGlobal = attr.IsGlobal ?? attrDisplayInfo?.IsGlobal;
                         var optionSetName = attr.LogicalName;
-                        var metadataTable = isGlobal ? "GlobalOptionsetMetadata" : "OptionsetMetadata";
+                        var optionSetNameHint = attr.OptionSetName ?? attrDisplayInfo?.OptionSetName ?? optionSetName;
+                        var metadataTable = ResolveFabricOptionSetMetadataTable(attrType, attr.LogicalName, optionSetNameHint, isGlobal, table.LogicalName);
 
                         // Use OUTER APPLY with a correlated subquery
                         joinClauses.Add(
@@ -4590,12 +4616,15 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             {
                                 // FabricLink: JOIN to metadata table for the target entity
                                 var metadataJoinAlias = $"{joinAlias}_{expAttr.LogicalName}";
-                                var optionSetName = expAttr.OptionSetName ?? expAttr.LogicalName;
+                                var optionSetName = expAttr.LogicalName;
+                                var optionSetNameHint = expAttr.OptionSetName ?? optionSetName;
                                 
                                 if (isExpBoolean)
                                 {
+                                    var isGlobal = expAttr.IsGlobal;
+                                    var metadataTable = ResolveFabricOptionSetMetadataTable(expAttrType, expAttr.LogicalName, optionSetNameHint, isGlobal, expand.TargetTableLogicalName);
                                     joinClauses.Add(
-                                        $"LEFT JOIN [GlobalOptionsetMetadata] {metadataJoinAlias}\r\n" +
+                                        $"LEFT JOIN [{metadataTable}] {metadataJoinAlias}\r\n" +
                                         $"\t\t\t\t            ON  {metadataJoinAlias}.[OptionSetName] = '{optionSetName}'\r\n" +
                                         $"\t\t\t\t            AND {metadataJoinAlias}.[EntityName] = '{expand.TargetTableLogicalName}'\r\n" +
                                         $"\t\t\t\t            AND {metadataJoinAlias}.[LocalizedLabelLanguageCode] = {_languageCode}\r\n" +
@@ -4603,8 +4632,8 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                 }
                                 else
                                 {
-                                    var isGlobal = expAttr.IsGlobal ?? false;
-                                    var metadataTable = isGlobal ? "GlobalOptionsetMetadata" : "OptionsetMetadata";
+                                    var isGlobal = expAttr.IsGlobal;
+                                    var metadataTable = ResolveFabricOptionSetMetadataTable(expAttrType, expAttr.LogicalName, optionSetNameHint, isGlobal, expand.TargetTableLogicalName);
                                     joinClauses.Add(
                                         $"LEFT JOIN [{metadataTable}] {metadataJoinAlias}\r\n" +
                                         $"\t\t\t\t            ON  {metadataJoinAlias}.[OptionSetName] = '{optionSetName}'\r\n" +
@@ -4643,9 +4672,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                 var nameColumn = expAttr.LogicalName + "name";
                                 var applyAlias = $"mspl_{joinAlias}_{expAttr.LogicalName}";
                                 var metaAlias = $"meta_{joinAlias}_{expAttr.LogicalName}";
-                                var isGlobal = expAttr.IsGlobal ?? false;
+                                var isGlobal = expAttr.IsGlobal;
                                 var optionSetName = expAttr.OptionSetName ?? expAttr.LogicalName;
-                                var metadataTable = isGlobal ? "GlobalOptionsetMetadata" : "OptionsetMetadata";
+                                var metadataTable = ResolveFabricOptionSetMetadataTable(expAttrType, expAttr.LogicalName, optionSetName, isGlobal, expand.TargetTableLogicalName);
 
                                 joinClauses.Add(
                                     $"OUTER APPLY (\r\n" +

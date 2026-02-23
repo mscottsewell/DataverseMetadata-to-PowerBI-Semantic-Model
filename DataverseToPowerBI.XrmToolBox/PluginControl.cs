@@ -2734,6 +2734,16 @@ namespace DataverseToPowerBI.XrmToolBox
                     {
                         // User unchecked a lookup group header — deselect it
                         _selectedAttributes[logicalName].Remove(attrName);
+
+                        // Remove any expanded lookup config tied to this parent lookup.
+                        // Without this cleanup, stale expanded columns can still appear in Preview/Build.
+                        if (_expandedLookups.ContainsKey(logicalName))
+                        {
+                            _expandedLookups[logicalName].RemoveAll(e =>
+                                e.LookupAttributeName.Equals(attrName, StringComparison.OrdinalIgnoreCase));
+                            if (_expandedLookups[logicalName].Count == 0)
+                                _expandedLookups.Remove(logicalName);
+                        }
                     }
 
                     // Clear any explicit config so smart defaults are used
@@ -2932,6 +2942,7 @@ namespace DataverseToPowerBI.XrmToolBox
                     return;
                 }
                 targetFields = new HashSet<string>(view.Columns, StringComparer.OrdinalIgnoreCase);
+                targetFields.Remove("entityimage_url");
             }
 
             // Check the matching items in the listview
@@ -2948,9 +2959,14 @@ namespace DataverseToPowerBI.XrmToolBox
             if (!_selectedAttributes.ContainsKey(logicalName))
                 _selectedAttributes[logicalName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+            var validTableAttrs = _tableAttributes.ContainsKey(logicalName)
+                ? new HashSet<string>(_tableAttributes[logicalName].Select(a => a.LogicalName), StringComparer.OrdinalIgnoreCase)
+                : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
             foreach (var field in targetFields)
             {
-                _selectedAttributes[logicalName].Add(field);
+                if (validTableAttrs.Contains(field))
+                    _selectedAttributes[logicalName].Add(field);
             }
 
             UpdateSelectedTableRow(logicalName);
@@ -4320,11 +4336,14 @@ namespace DataverseToPowerBI.XrmToolBox
                     Role = (t.LogicalName == _factTable) ? "Fact" : "Dimension",
                     Attributes = new List<AttributeMetadata>()
                 };
+
+                var selectedAttrNames = _selectedAttributes.ContainsKey(t.LogicalName)
+                    ? _selectedAttributes[t.LogicalName]
+                    : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 
                 // Add selected and required attributes
-                if (_selectedAttributes.ContainsKey(t.LogicalName) && _tableAttributes.ContainsKey(t.LogicalName))
+                if (_tableAttributes.ContainsKey(t.LogicalName))
                 {
-                    var selectedAttrNames = _selectedAttributes[t.LogicalName];
                     var requiredAttrNames = GetRelationshipRequiredColumns(t.LogicalName);
                     table.Attributes = _tableAttributes[t.LogicalName]
                         .Where(a => selectedAttrNames.Contains(a.LogicalName) || requiredAttrNames.Contains(a.LogicalName))
@@ -4358,7 +4377,9 @@ namespace DataverseToPowerBI.XrmToolBox
                 if (_expandedLookups.ContainsKey(t.LogicalName))
                 {
                     table.ExpandedLookups = _expandedLookups[t.LogicalName]
-                        .Where(e => e.Attributes.Count > 0)
+                        .Where(e =>
+                            e.Attributes.Count > 0 &&
+                            selectedAttrNames.Contains(e.LookupAttributeName))
                         .ToList();
                 }
 
