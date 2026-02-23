@@ -636,7 +636,7 @@ namespace DataverseToPowerBI.XrmToolBox
             // System (public) views from savedquery
             var systemQuery = new QueryExpression("savedquery")
             {
-                ColumnSet = new ColumnSet("savedqueryid", "name", "querytype", "fetchxml", "returnedtypecode", "isdefault"),
+                ColumnSet = new ColumnSet("savedqueryid", "name", "querytype", "fetchxml", "layoutxml", "returnedtypecode", "isdefault"),
                 Criteria = new FilterExpression
                 {
                     Conditions =
@@ -653,9 +653,10 @@ namespace DataverseToPowerBI.XrmToolBox
             views.AddRange(systemResults.Entities.Select(e => 
             {
                 var fetchXml = e.GetAttributeValue<string>("fetchxml");
-                var extractResult = includeFetchXml && !string.IsNullOrEmpty(fetchXml) 
-                    ? ExtractViewColumnsFromFetchXml(fetchXml) 
-                    : (new List<string>(), new List<ViewLinkedColumn>());
+                var layoutXml = e.GetAttributeValue<string>("layoutxml");
+                var extractResult = includeFetchXml
+                    ? ExtractViewColumns(fetchXml, layoutXml)
+                    : new ViewColumnExtractionResult();
                 
                 return new ViewMetadata
                 {
@@ -663,8 +664,8 @@ namespace DataverseToPowerBI.XrmToolBox
                     Name = e.GetAttributeValue<string>("name") ?? "",
                     IsDefault = e.GetAttributeValue<bool>("isdefault"),
                     FetchXml = includeFetchXml ? fetchXml : null,
-                    Columns = extractResult.Item1,
-                    LinkedColumns = extractResult.Item2,
+                    Columns = extractResult.VisibleColumns,
+                    LinkedColumns = extractResult.LinkedColumns,
                     IsPersonal = false
                 };
             }));
@@ -674,7 +675,7 @@ namespace DataverseToPowerBI.XrmToolBox
             {
                 var personalQuery = new QueryExpression("userquery")
                 {
-                    ColumnSet = new ColumnSet("userqueryid", "name", "querytype", "fetchxml", "returnedtypecode"),
+                    ColumnSet = new ColumnSet("userqueryid", "name", "querytype", "fetchxml", "layoutxml", "returnedtypecode"),
                     Criteria = new FilterExpression
                     {
                         Conditions =
@@ -692,9 +693,10 @@ namespace DataverseToPowerBI.XrmToolBox
                 views.AddRange(personalResults.Entities.Select(e => 
                 {
                     var fetchXml = e.GetAttributeValue<string>("fetchxml");
-                    var extractResult = includeFetchXml && !string.IsNullOrEmpty(fetchXml) 
-                        ? ExtractViewColumnsFromFetchXml(fetchXml) 
-                        : (new List<string>(), new List<ViewLinkedColumn>());
+                    var layoutXml = e.GetAttributeValue<string>("layoutxml");
+                    var extractResult = includeFetchXml
+                        ? ExtractViewColumns(fetchXml, layoutXml)
+                        : new ViewColumnExtractionResult();
                     
                     return new ViewMetadata
                     {
@@ -702,8 +704,8 @@ namespace DataverseToPowerBI.XrmToolBox
                         Name = e.GetAttributeValue<string>("name") ?? "",
                         IsDefault = false,
                         FetchXml = includeFetchXml ? fetchXml : null,
-                        Columns = extractResult.Item1,
-                        LinkedColumns = extractResult.Item2,
+                        Columns = extractResult.VisibleColumns,
+                        LinkedColumns = extractResult.LinkedColumns,
                         IsPersonal = true
                     };
                 }));
@@ -763,6 +765,76 @@ namespace DataverseToPowerBI.XrmToolBox
         private static List<string> ExtractColumnsFromFetchXml(string? fetchXml)
         {
             return ExtractViewColumnsFromFetchXml(fetchXml).Item1;
+        }
+
+        private sealed class ViewColumnExtractionResult
+        {
+            public List<string> VisibleColumns { get; set; } = new List<string>();
+            public List<ViewLinkedColumn> LinkedColumns { get; set; } = new List<ViewLinkedColumn>();
+        }
+
+        /// <summary>
+        /// Extracts visible view columns from LayoutXML and FetchXML columns used by the query.
+        /// If LayoutXML has no columns, falls back to FetchXML direct attributes as visible columns.
+        /// </summary>
+        private static ViewColumnExtractionResult ExtractViewColumns(string? fetchXml, string? layoutXml)
+        {
+            var fetchResult = ExtractViewColumnsFromFetchXml(fetchXml);
+            var layoutColumns = ExtractVisibleColumnsFromLayoutXml(layoutXml);
+
+            var visibleColumns = layoutColumns.Count > 0
+                ? layoutColumns
+                : fetchResult.Item1;
+
+            return new ViewColumnExtractionResult
+            {
+                VisibleColumns = visibleColumns,
+                LinkedColumns = fetchResult.Item2
+            };
+        }
+
+        /// <summary>
+        /// Extracts visible column names from Dataverse view LayoutXML (&lt;cell name="..." /&gt;).
+        /// </summary>
+        private static List<string> ExtractVisibleColumnsFromLayoutXml(string? layoutXml)
+        {
+            var columns = new List<string>();
+            try
+            {
+                if (string.IsNullOrWhiteSpace(layoutXml))
+                {
+                    return columns;
+                }
+
+                if (layoutXml!.Length > MAX_XML_SIZE_BYTES)
+                {
+                    Services.DebugLogger.Log($"WARNING: LayoutXML exceeds {MAX_XML_SIZE_BYTES} bytes ({layoutXml.Length} bytes). Skipping parse.");
+                    return columns;
+                }
+
+                var doc = ParseXmlSecurely(layoutXml!);
+                var unique = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var cell in doc.Descendants("cell"))
+                {
+                    var name = cell.Attribute("name")?.Value;
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        continue;
+                    }
+
+                    if (unique.Add(name))
+                    {
+                        columns.Add(name.ToLower());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Services.DebugLogger.Log($"XML parsing error in LayoutXml: {ex.Message}");
+            }
+
+            return columns;
         }
 
         /// <summary>

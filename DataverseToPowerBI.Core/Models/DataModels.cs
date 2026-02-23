@@ -923,8 +923,8 @@ namespace DataverseToPowerBI.Core.Models
         public string? FetchXml { get; set; }
 
         /// <summary>
-        /// List of column logical names returned by this view.
-        /// Extracted from the FetchXML attribute list.
+        /// List of column logical names visible in this view layout.
+        /// Extracted from LayoutXML when available, with fallback to FetchXML attributes.
         /// </summary>
         public List<string> Columns { get; set; } = new();
 
