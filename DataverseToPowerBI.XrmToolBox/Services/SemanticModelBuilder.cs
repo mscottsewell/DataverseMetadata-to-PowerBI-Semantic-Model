@@ -1309,7 +1309,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             sb.AppendLine();
             sb.AppendLine("\tpartition DataverseURL = m");
             sb.AppendLine("\t\tmode: import");
-            sb.AppendLine($"\t\tsource = \"{normalizedUrl}\" meta [IsParameterQuery=true, Type=\"Any\", IsParameterQueryRequired=true]");
+            sb.AppendLine($"\t\tsource = \"{normalizedUrl}\" meta [IsParameterQuery=true, Type=\"Text\", IsParameterQueryRequired=true]");
             sb.AppendLine();
             sb.AppendLine("\tchangedProperty = IsHidden");
             sb.AppendLine();
@@ -5206,13 +5206,13 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         {
             var sb = new StringBuilder();
 
-            sb.AppendLine($"expression FabricSQLEndpoint = \"{endpoint}\" meta [IsParameterQuery=true, Type=\"Any\", IsParameterQueryRequired=true]");
+            sb.AppendLine($"expression FabricSQLEndpoint = \"{endpoint}\" meta [IsParameterQuery=true, Type=\"Text\", IsParameterQueryRequired=true]");
             sb.AppendLine($"\tlineageTag: {GetOrNewLineageTag(existingTags, "expr:FabricSQLEndpoint")}");
             sb.AppendLine();
             sb.AppendLine("\tannotation PBI_ResultType = Text");
             sb.AppendLine();
 
-            sb.AppendLine($"expression FabricLakehouse = \"{database}\" meta [IsParameterQuery=true, Type=\"Any\", IsParameterQueryRequired=true]");
+            sb.AppendLine($"expression FabricLakehouse = \"{database}\" meta [IsParameterQuery=true, Type=\"Text\", IsParameterQueryRequired=true]");
             sb.AppendLine($"\tlineageTag: {GetOrNewLineageTag(existingTags, "expr:FabricLakehouse")}");
             sb.AppendLine();
             sb.AppendLine("\tannotation PBI_NavigationStepName = Navigation");

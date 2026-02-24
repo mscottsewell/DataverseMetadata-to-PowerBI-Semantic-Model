@@ -469,6 +469,13 @@ namespace DataverseToPowerBI.Tests
             Assert.Contains("myorg.crm.dynamics.com", result);
         }
 
+        [Fact]
+        public void GenerateDataverseUrlTableTmdl_UsesTextParameterType()
+        {
+            var result = _builder.GenerateDataverseUrlTableTmdl("myorg.crm.dynamics.com");
+            Assert.Contains("Type=\"Text\"", result);
+        }
+
         #endregion
 
         #region GenerateFabricLinkExpressions Tests
@@ -493,6 +500,14 @@ namespace DataverseToPowerBI.Tests
             var result = _builder.GenerateFabricLinkExpressions("endpoint", "database");
             var count = result.Split(new[] { "lineageTag:" }, StringSplitOptions.None).Length - 1;
             Assert.Equal(2, count);
+        }
+
+        [Fact]
+        public void GenerateFabricLinkExpressions_UsesTextParameterType()
+        {
+            var result = _builder.GenerateFabricLinkExpressions("endpoint", "database");
+            Assert.Contains("expression FabricSQLEndpoint = \"endpoint\" meta [IsParameterQuery=true, Type=\"Text\", IsParameterQueryRequired=true]", result);
+            Assert.Contains("expression FabricLakehouse = \"database\" meta [IsParameterQuery=true, Type=\"Text\", IsParameterQueryRequired=true]", result);
         }
 
         #endregion
