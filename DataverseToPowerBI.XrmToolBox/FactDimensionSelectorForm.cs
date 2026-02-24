@@ -83,6 +83,8 @@ namespace DataverseToPowerBI.XrmToolBox
         private CheckBox chkIncludeOneToMany = null!;
         private ListView listViewRelationships = null!;
         private Button btnAddSnowflake = null!;
+        private Button btnUnselectAllRelationships = null!;
+        private Button btnSelectRequiredRelationships = null!;
         private Button btnFinish = null!;
         private Button btnCancel = null!;
         private WinLabel lblStatus = null!;
@@ -289,6 +291,26 @@ namespace DataverseToPowerBI.XrmToolBox
             };
             btnAddSnowflake.Click += BtnAddSnowflake_Click;
             this.Controls.Add(btnAddSnowflake);
+
+            btnUnselectAllRelationships = new Button
+            {
+                Text = "Unselect all relationships",
+                Location = new Point(660, 560),
+                Width = 290,
+                Height = 28
+            };
+            btnUnselectAllRelationships.Click += BtnUnselectAllRelationships_Click;
+            this.Controls.Add(btnUnselectAllRelationships);
+
+            btnSelectRequiredRelationships = new Button
+            {
+                Text = "Select all related to required fields",
+                Location = new Point(660, 595),
+                Width = 290,
+                Height = 28
+            };
+            btnSelectRequiredRelationships.Click += BtnSelectRequiredRelationships_Click;
+            this.Controls.Add(btnSelectRequiredRelationships);
 
             // Status and progress
             lblStatus = new WinLabel
@@ -1164,6 +1186,94 @@ namespace DataverseToPowerBI.XrmToolBox
             btnFinish.Enabled = SelectedFactTable != null;
         }
 
+        private void BtnUnselectAllRelationships_Click(object sender, EventArgs e)
+        {
+            ApplyBulkRelationshipSelection(requiredOnly: false);
+        }
+
+        private void BtnSelectRequiredRelationships_Click(object sender, EventArgs e)
+        {
+            ApplyBulkRelationshipSelection(requiredOnly: true);
+        }
+
+        private void ApplyBulkRelationshipSelection(bool requiredOnly)
+        {
+            var relationshipItems = _allRelationshipItems
+                .Where(item => item?.Tag is RelationshipTag)
+                .Select(item => (Item: item, Config: (RelationshipTag)item.Tag))
+                .ToList();
+
+            if (!relationshipItems.Any())
+            {
+                return;
+            }
+
+            _suppressItemCheckedEvent = true;
+            try
+            {
+                foreach (var entry in relationshipItems)
+                {
+                    var shouldCheck = requiredOnly && entry.Config.AssumeReferentialIntegrity && !entry.Config.IsOneToMany;
+                    entry.Config.IsChecked = shouldCheck;
+                    entry.Item.Checked = shouldCheck;
+                }
+
+                var groups = relationshipItems
+                    .GroupBy(entry => $"{entry.Config.SourceTable}|{entry.Config.TargetTable}", StringComparer.OrdinalIgnoreCase);
+
+                foreach (var group in groups)
+                {
+                    var checkedEntries = group
+                        .Where(entry => entry.Config.IsChecked)
+                        .OrderBy(entry => entry.Config.DisplayName, StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+
+                    if (checkedEntries.Count == 0)
+                    {
+                        foreach (var entry in group)
+                        {
+                            entry.Config.IsActive = true;
+                        }
+                        continue;
+                    }
+
+                    var isFirst = true;
+                    foreach (var entry in checkedEntries)
+                    {
+                        entry.Config.IsActive = isFirst;
+                        isFirst = false;
+                    }
+
+                    foreach (var entry in group.Where(entry => !entry.Config.IsChecked))
+                    {
+                        entry.Config.IsActive = false;
+                    }
+                }
+            }
+            finally
+            {
+                _suppressItemCheckedEvent = false;
+            }
+
+            FilterRelationships();
+
+            foreach (ListViewItem visibleItem in listViewRelationships.Items)
+            {
+                if (visibleItem?.Tag is RelationshipTag config)
+                {
+                    UpdateItemStatus(visibleItem, config);
+                }
+            }
+
+            var selectedCount = relationshipItems.Count(entry => entry.Config.IsChecked);
+            lblStatus.Text = requiredOnly
+                ? $"Selected {selectedCount} relationship(s) related to required fields."
+                : "Cleared all selected relationships.";
+
+            UpdateFinishButtonState();
+            UpdateSnowflakeButtonState();
+        }
+
         /// <summary>
         /// Finds a table by logical name from both solution tables and snowflake-added tables.
         /// </summary>
@@ -1742,9 +1852,10 @@ namespace DataverseToPowerBI.XrmToolBox
             };
             listViewParentTables.Columns.Add("Include", 55);
             listViewParentTables.Columns.Add("Lookup Field", 150);
-            listViewParentTables.Columns.Add("Parent Table", 150);
+            listViewParentTables.Columns.Add("Lookup Logical Name", 130);
+            listViewParentTables.Columns.Add("Parent Table", 130);
             listViewParentTables.Columns.Add("Status", 80);
-            listViewParentTables.Columns.Add("Logical Name", 150);
+            listViewParentTables.Columns.Add("Parent Logical Name", 110);
             listViewParentTables.ItemChecked += ListViewParentTables_ItemChecked;
             listViewParentTables.DoubleClick += ListViewParentTables_DoubleClick;
             this.Controls.Add(listViewParentTables);
@@ -1810,6 +1921,7 @@ namespace DataverseToPowerBI.XrmToolBox
                     var item = new ListViewItem("");
                     item.Checked = isChecked;
                     item.SubItems.Add(sourceDisplayName);
+                    item.SubItems.Add(lookup.LogicalName ?? "");
                     item.SubItems.Add(targetDisplayName);
                     item.SubItems.Add(statusText);
                     item.SubItems.Add(target);
@@ -1841,7 +1953,7 @@ namespace DataverseToPowerBI.XrmToolBox
             {
                 var targetTable = kvp.Key;
                 var items = kvp.Value;
-                var displayName = items.First().SubItems[2].Text; // Parent Table display name
+                var displayName = items.First().SubItems[3].Text; // Parent Table display name
                 
                 var group = new ListViewGroup(
                     displayName,
@@ -2053,7 +2165,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
         private void UpdateItemStatus(ListViewItem item, SnowflakeTag config)
         {
-            if (item == null || config == null || item.SubItems.Count < 4) return;
+            if (item == null || config == null || item.SubItems.Count < 5) return;
             
             // Count total relationships to this target
             var allToTarget = listViewParentTables.Items.Cast<ListViewItem>()
@@ -2070,7 +2182,7 @@ namespace DataverseToPowerBI.XrmToolBox
             // Update Status column to include (Inactive) suffix
             var statusText = config.IsActive ? "Active" : "Inactive";
             if (targetCount > 1) statusText += " ⚠";
-            item.SubItems[3].Text = statusText;
+            item.SubItems[4].Text = statusText;
             
             // Update background color - only highlight if multiple ACTIVE relationships exist
             if (activeCount > 1 && config.IsActive)

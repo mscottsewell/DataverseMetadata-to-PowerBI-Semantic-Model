@@ -993,6 +993,8 @@ namespace DataverseToPowerBI.Tests
 
             Assert.Contains("LEFT OUTER JOIN account exp_customerid ON exp_customerid.accountid = Base.customerid", tmdl);
             Assert.DoesNotContain("LEFT OUTER JOIN Account Display Name exp_customerid", tmdl);
+            Assert.Contains("Customer : Name", tmdl);
+            Assert.DoesNotContain("Account Display Name : Name", tmdl);
         }
 
         [Fact]

@@ -2328,6 +2328,13 @@ namespace DataverseToPowerBI.XrmToolBox
             return attr.SchemaName ?? attr.LogicalName;
         }
 
+        internal static string GetExpandedLookupFieldDisplayName(string lookupDisplayName, string? expandedDisplayName, string expandedLogicalName)
+        {
+            var prefix = string.IsNullOrWhiteSpace(lookupDisplayName) ? "Lookup" : lookupDisplayName;
+            var expandedName = string.IsNullOrWhiteSpace(expandedDisplayName) ? expandedLogicalName : expandedDisplayName;
+            return $"{prefix} : {expandedName}";
+        }
+
         private void RecalculateLookupDefaults()
         {
             if (listViewSelectedTables.SelectedItems.Count > 0)
@@ -2782,8 +2789,7 @@ namespace DataverseToPowerBI.XrmToolBox
                                     expandConfig.TargetTableLogicalName,
                                     expAttr.LogicalName));
                                 childItem.SubItems.Add((fieldSelectionMode == FieldSelectionMode.View || fieldSelectionMode == FieldSelectionMode.DifferentView) && isFromSelectedView ? "✓" : "");
-                                var targetDisplayPrefix = expandConfig.TargetTableDisplayName ?? expandConfig.TargetTableLogicalName;
-                                childItem.SubItems.Add($"    ↳ {targetDisplayPrefix} : {expAttr.DisplayName ?? expAttr.LogicalName}");
+                                childItem.SubItems.Add($"    ↳ {GetExpandedLookupFieldDisplayName(lookupDisplayBase, expAttr.DisplayName, expAttr.LogicalName)}");
                                 childItem.SubItems.Add($"{expandConfig.TargetTableLogicalName}.{expAttr.LogicalName}");
                                 childItem.SubItems.Add(expAttr.AttributeType ?? "");
                                 var includeExpanded = expAttr.IncludeInModel ?? true;
@@ -2799,7 +2805,6 @@ namespace DataverseToPowerBI.XrmToolBox
                             }
                         }
                     }
-
                     continue;
                 }
 

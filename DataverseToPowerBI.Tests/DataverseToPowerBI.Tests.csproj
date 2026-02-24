@@ -21,6 +21,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="XrmToolBox.Extensibility">
+      <HintPath>$(APPDATA)\MscrmTools\XrmToolBox\Plugins\XrmToolBox.Extensibility.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="Fixtures\**\*.*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

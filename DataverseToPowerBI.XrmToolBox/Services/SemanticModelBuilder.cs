@@ -1002,6 +1002,28 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             return fallbackDisplayName;
         }
 
+        private string BuildExpandedLookupDisplayName(
+            ExportTable sourceTable,
+            ExpandedLookupConfig expand,
+            ExpandedLookupAttribute expandedAttribute,
+            Dictionary<string, AttributeDisplayInfo> sourceAttributeInfo)
+        {
+            sourceAttributeInfo.TryGetValue(expand.LookupAttributeName, out var lookupAttributeInfo);
+
+            var lookupAttribute = sourceTable.Attributes.FirstOrDefault(a =>
+                a.LogicalName.Equals(expand.LookupAttributeName, StringComparison.OrdinalIgnoreCase));
+
+            var lookupDisplayFallback = lookupAttribute?.DisplayName
+                ?? lookupAttributeInfo?.DisplayName
+                ?? lookupAttribute?.SchemaName
+                ?? expand.LookupAttributeName;
+
+            var lookupDisplayPrefix = GetEffectiveDisplayName(lookupAttributeInfo, lookupDisplayFallback);
+            var expandedDisplayName = expandedAttribute.DisplayName ?? expandedAttribute.LogicalName;
+
+            return $"{lookupDisplayPrefix} : {expandedDisplayName}";
+        }
+
         private static bool IsLookupType(string? attrType)
         {
             return string.Equals(attrType, "Lookup", StringComparison.OrdinalIgnoreCase) ||
@@ -2786,9 +2808,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         if (processedColumns.Contains(colKey)) continue;
                         var expandedHidden = expAttr.IsHidden ?? false;
                         
-                        var expDisplayName = expAttr.DisplayName ?? expAttr.LogicalName;
-                        var targetPrefix = expand.TargetTableDisplayName ?? expand.TargetTableLogicalName;
-                        var prefixedDisplayName = $"{targetPrefix} : {expDisplayName}";
+                        var prefixedDisplayName = BuildExpandedLookupDisplayName(table, expand, expAttr, attrInfo);
                         
                         var expAttrType = expAttr.AttributeType ?? "";
                         var isExpLookup = expAttrType.Equals("Lookup", StringComparison.OrdinalIgnoreCase) ||
@@ -4798,9 +4818,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         if (processedColumns.Contains(colKey)) continue;
                         var expandedHidden = expAttr.IsHidden ?? false;
                         
-                        var expDisplayName = expAttr.DisplayName ?? expAttr.LogicalName;
-                        var targetPrefix = expand.TargetTableDisplayName ?? expand.TargetTableLogicalName;
-                        var prefixedDisplayName = $"{targetPrefix} : {expDisplayName}";
+                        var prefixedDisplayName = BuildExpandedLookupDisplayName(table, expand, expAttr, attrInfo);
                         var description = $"Source: {expand.TargetTableLogicalName}.{expAttr.LogicalName} (via {expand.LookupAttributeName})";
                         
                         var expAttrType = expAttr.AttributeType ?? "";

@@ -162,6 +162,22 @@ namespace DataverseToPowerBI.Tests
             Assert.Equal("statecode", result);
         }
 
+        [Fact]
+        public void GetExpandedLookupFieldDisplayName_UsesLookupDisplayNamePrefix()
+        {
+            var result = PluginControl.GetExpandedLookupFieldDisplayName("Manager", "Primary Email", "internalemailaddress");
+
+            Assert.Equal("Manager : Primary Email", result);
+        }
+
+        [Fact]
+        public void GetExpandedLookupFieldDisplayName_FallsBackToLogicalName_WhenDisplayNameMissing()
+        {
+            var result = PluginControl.GetExpandedLookupFieldDisplayName("Manager", null, "internalemailaddress");
+
+            Assert.Equal("Manager : internalemailaddress", result);
+        }
+
         private static PluginSettings RoundTrip(PluginSettings source)
         {
             using (var ms = new MemoryStream())
