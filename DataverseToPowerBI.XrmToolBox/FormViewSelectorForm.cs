@@ -243,7 +243,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
             var lblFormHint = new Label
             {
-                Text = hintTexts[1],
+                Text = hintTexts[2],
                 Location = new Point(innerPad, gy),
                 AutoSize = true,
                 ForeColor = Color.Gray
@@ -279,7 +279,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
             var lblCustomHint = new Label
             {
-                Text = hintTexts[2],
+                Text = hintTexts[3],
                 Location = new Point(innerPad, gy),
                 AutoSize = true,
                 ForeColor = Color.Gray
