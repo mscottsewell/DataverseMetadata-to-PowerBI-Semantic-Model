@@ -70,7 +70,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private readonly DateTableConfig? _existingConfig;
 
         // All datetime fields across all tables
-        private List<(string TableName, string FieldName, string DisplayName)> _allDateTimeFields = new();
+        private List<(string TableName, string FieldName, string DisplayName, string? DateTimeBehavior)> _allDateTimeFields = new();
 
         // Output
         public DateTableConfig? Config { get; private set; }
@@ -297,7 +297,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
             var lblAdditionalHelp = new Label
             {
-                Text = "These fields will also be adjusted to the selected timezone and converted to date-only.",
+                Text = "These fields will be converted to date-only. TimeZoneIndependent/DateOnly fields are not timezone-adjusted.",
                 Location = new Point(200, y + 5),
                 Size = new Size(325, 15),
                 ForeColor = Color.Gray
@@ -466,9 +466,13 @@ namespace DataverseToPowerBI.XrmToolBox
                             ? (tbl.DisplayName ?? tableName)
                             : tableName;
                         var fieldDisplay = attr.DisplayName ?? logicalName;
-                        var itemText = $"{tableDisplay}.{fieldDisplay}";
+                        var dateTimeBehavior = attr.DateTimeBehavior;
+                        var behaviorSuffix = IsTimeZoneAdjustable(dateTimeBehavior)
+                            ? ""
+                            : " [No TZ conversion]";
+                        var itemText = $"{tableDisplay}.{fieldDisplay}{behaviorSuffix}";
 
-                        _allDateTimeFields.Add((tableName, logicalName, itemText));
+                        _allDateTimeFields.Add((tableName, logicalName, itemText, dateTimeBehavior));
                         lstDateTimeFields.Items.Add(itemText);
                     }
                 }
@@ -666,11 +670,17 @@ namespace DataverseToPowerBI.XrmToolBox
 
             // Build config
             var wrappedFields = new List<DateTimeFieldConfig>();
+            var nonAdjustableSelection = new List<string>();
             for (int i = 0; i < lstDateTimeFields.Items.Count; i++)
             {
                 if (lstDateTimeFields.GetItemChecked(i))
                 {
                     var field = _allDateTimeFields[i];
+                    if (!IsTimeZoneAdjustable(field.DateTimeBehavior))
+                    {
+                        nonAdjustableSelection.Add(field.DisplayName);
+                    }
+
                     wrappedFields.Add(new DateTimeFieldConfig
                     {
                         TableName = field.TableName,
@@ -689,6 +699,18 @@ namespace DataverseToPowerBI.XrmToolBox
                     FieldName = fieldItem.Value,
                     ConvertToDateOnly = true
                 });
+            }
+
+            if (Math.Abs(tzItem.TimeZone.BaseUtcOffset.TotalHours) > 0.0001 && nonAdjustableSelection.Count > 0)
+            {
+                MessageBox.Show(
+                    "Some selected DateTime fields have Dataverse behavior DateOnly/TimeZoneIndependent.\n\n" +
+                    "These fields will NOT be timezone-adjusted and will remain in their stored calendar values:\n" +
+                    string.Join("\n", nonAdjustableSelection.Take(10)) +
+                    (nonAdjustableSelection.Count > 10 ? $"\n...and {nonAdjustableSelection.Count - 10} more" : ""),
+                    "Timezone Adjustment Warning",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
             }
 
             Config = new DateTableConfig
@@ -716,6 +738,15 @@ namespace DataverseToPowerBI.XrmToolBox
                    type.IndexOf("DateTime", StringComparison.OrdinalIgnoreCase) >= 0 ||
                    (type.EndsWith("AttributeMetadata", StringComparison.OrdinalIgnoreCase) && 
                     type.IndexOf("Date", StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        private static bool IsTimeZoneAdjustable(string? dateTimeBehavior)
+        {
+            if (string.IsNullOrWhiteSpace(dateTimeBehavior))
+                return true;
+
+            return !dateTimeBehavior.Equals("DateOnly", StringComparison.OrdinalIgnoreCase)
+                && !dateTimeBehavior.Equals("TimeZoneIndependent", StringComparison.OrdinalIgnoreCase);
         }
 
         private class ComboItem

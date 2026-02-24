@@ -2647,11 +2647,19 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
                         if (shouldWrapDateTime)
                         {
-                            var offset = dateTableConfig!.UtcOffsetHours;
                             var dtAlias = isPrimaryKey ? attr.LogicalName : (_useDisplayNameAliasesInSql ? effectiveName : attr.LogicalName);
                             var dtAliasClause = dtAlias.Equals(attr.LogicalName, StringComparison.OrdinalIgnoreCase)
                                 ? $"AS {attr.LogicalName}" : $"AS {EscapeSqlIdentifier(dtAlias)}";
-                            sqlFields.Add($"CAST(DATEADD(hour, {offset}, Base.{attr.LogicalName}) AS DATE) {dtAliasClause}");
+                            var behavior = attr.DateTimeBehavior ?? attrDisplayInfo2?.DateTimeBehavior;
+                            if (ShouldApplyTimezoneAdjustment(behavior))
+                            {
+                                var offset = dateTableConfig!.UtcOffsetHours;
+                                sqlFields.Add($"CAST(DATEADD(hour, {offset}, Base.{attr.LogicalName}) AS DATE) {dtAliasClause}");
+                            }
+                            else
+                            {
+                                sqlFields.Add($"CAST(Base.{attr.LogicalName} AS DATE) {dtAliasClause}");
+                            }
                         }
                         else
                         {
@@ -2773,7 +2781,11 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             {
                 // Convert FetchXML to SQL WHERE clause for comparison
                 var utcOffset = (int)(dateTableConfig?.UtcOffsetHours ?? -6);
-                var converter = new FetchXmlToSqlConverter(utcOffset, IsFabricLink, ShouldStripUserContext(table.Role, table.LogicalName));
+                var converter = new FetchXmlToSqlConverter(
+                    utcOffset,
+                    IsFabricLink,
+                    ShouldStripUserContext(table.Role, table.LogicalName),
+                    GetDateTimeBehaviorMap(table, attributeDisplayInfo));
                 var conversionResult = converter.ConvertToWhereClause(table.View.FetchXml, "Base");
                 
                 if (!string.IsNullOrWhiteSpace(conversionResult.SqlWhereClause))
@@ -2794,6 +2806,51 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             var joinSection = joinClauses.Count > 0 ? " " + string.Join(" ", joinClauses) : "";
 
             return NormalizeQuery($"SELECT {selectList} FROM {fromTable} AS Base{joinSection}{whereClause}");
+        }
+
+        private static Dictionary<string, string> GetDateTimeBehaviorMap(
+            ExportTable table,
+            Dictionary<string, Dictionary<string, AttributeDisplayInfo>> attributeDisplayInfo)
+        {
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            if (table.Attributes != null)
+            {
+                foreach (var attr in table.Attributes)
+                {
+                    if (!string.IsNullOrWhiteSpace(attr.LogicalName) &&
+                        !string.IsNullOrWhiteSpace(attr.DateTimeBehavior))
+                    {
+                        result[attr.LogicalName] = attr.DateTimeBehavior;
+                    }
+                }
+            }
+
+            if (attributeDisplayInfo.TryGetValue(table.LogicalName, out var tableDisplayInfo))
+            {
+                foreach (var kvp in tableDisplayInfo)
+                {
+                    if (!string.IsNullOrWhiteSpace(kvp.Key) &&
+                        !string.IsNullOrWhiteSpace(kvp.Value.DateTimeBehavior) &&
+                        !result.ContainsKey(kvp.Key))
+                    {
+                        result[kvp.Key] = kvp.Value.DateTimeBehavior!;
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        private static bool ShouldApplyTimezoneAdjustment(string? dateTimeBehavior)
+        {
+            if (string.IsNullOrWhiteSpace(dateTimeBehavior))
+            {
+                return true;
+            }
+
+            return !dateTimeBehavior.Equals("DateOnly", StringComparison.OrdinalIgnoreCase)
+                && !dateTimeBehavior.Equals("TimeZoneIndependent", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -4101,7 +4158,11 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             if (table.View != null && !string.IsNullOrWhiteSpace(table.View.FetchXml))
             {
                 var utcOffset = (int)(dateTableConfig?.UtcOffsetHours ?? -6);
-                var converter = new FetchXmlToSqlConverter(utcOffset, IsFabricLink, ShouldStripUserContext(table.Role, table.LogicalName));
+                var converter = new FetchXmlToSqlConverter(
+                    utcOffset,
+                    IsFabricLink,
+                    ShouldStripUserContext(table.Role, table.LogicalName),
+                    GetDateTimeBehaviorMap(table, attributeDisplayInfo));
                 var conversionResult = converter.ConvertToWhereClause(table.View.FetchXml, "Base");
 
                 if (!string.IsNullOrWhiteSpace(conversionResult.SqlWhereClause) || !conversionResult.IsFullySupported)
@@ -4545,11 +4606,19 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     // Generate SQL field - wrap datetime if configured
                     if (shouldWrapDateTime)
                     {
-                        var offset = dateTableConfig!.UtcOffsetHours;
                         var dtAlias = isPrimaryKey ? attr.LogicalName : (_useDisplayNameAliasesInSql ? effectiveName : attr.LogicalName);
                         var dtAliasClause = dtAlias.Equals(attr.LogicalName, StringComparison.OrdinalIgnoreCase)
                             ? $"AS {attr.LogicalName}" : $"AS {EscapeSqlIdentifier(dtAlias)}";
-                        sqlFields.Add($"CAST(DATEADD(hour, {offset}, Base.{attr.LogicalName}) AS DATE) {dtAliasClause}");
+                        var behavior = attr.DateTimeBehavior;
+                        if (ShouldApplyTimezoneAdjustment(behavior))
+                        {
+                            var offset = dateTableConfig!.UtcOffsetHours;
+                            sqlFields.Add($"CAST(DATEADD(hour, {offset}, Base.{attr.LogicalName}) AS DATE) {dtAliasClause}");
+                        }
+                        else
+                        {
+                            sqlFields.Add($"CAST(Base.{attr.LogicalName} AS DATE) {dtAliasClause}");
+                        }
                     }
                     else
                     {

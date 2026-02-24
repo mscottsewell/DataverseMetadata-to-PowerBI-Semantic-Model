@@ -136,6 +136,53 @@ namespace DataverseToPowerBI.Tests
         }
 
         [Fact]
+        public void ConvertToWhereClause_LastMonthOperator_UsesPreviousMonthRange()
+        {
+            var result = new FetchXmlToSqlConverter().ConvertToWhereClause(
+                @"<fetch><entity name=""account""><filter><condition attribute=""createdon"" operator=""last-month"" /></filter></entity></fetch>");
+            Assert.Contains("DATEDIFF(month, 0", result.SqlWhereClause);
+            Assert.Contains("- 1, 0)", result.SqlWhereClause);
+            Assert.Contains("< DATEADD(month, DATEDIFF(month, 0", result.SqlWhereClause);
+            Assert.True(result.IsFullySupported);
+        }
+
+        [Fact]
+        public void ConvertToWhereClause_ThisMonthOperator_UsesCurrentMonthRange()
+        {
+            var result = new FetchXmlToSqlConverter().ConvertToWhereClause(
+                @"<fetch><entity name=""account""><filter><condition attribute=""createdon"" operator=""this-month"" /></filter></entity></fetch>");
+            Assert.Contains("DATEADD(month, DATEDIFF(month, 0", result.SqlWhereClause);
+            Assert.Contains("+ 1, 0)", result.SqlWhereClause);
+            Assert.True(result.IsFullySupported);
+        }
+
+        [Fact]
+        public void ConvertToWhereClause_NextMonthOperator_UsesNextMonthRange()
+        {
+            var result = new FetchXmlToSqlConverter().ConvertToWhereClause(
+                @"<fetch><entity name=""account""><filter><condition attribute=""createdon"" operator=""next-month"" /></filter></entity></fetch>");
+            Assert.Contains("+ 1, 0)", result.SqlWhereClause);
+            Assert.Contains("+ 2, 0)", result.SqlWhereClause);
+            Assert.True(result.IsFullySupported);
+        }
+
+        [Fact]
+        public void ConvertToWhereClause_DateOnlyBehavior_DoesNotApplyTimezoneAdjustmentToColumn()
+        {
+            var behaviors = new System.Collections.Generic.Dictionary<string, string>
+            {
+                ["cai_allocationperiod_start"] = "DateOnly"
+            };
+
+            var result = new FetchXmlToSqlConverter(utcOffsetHours: -6, dateTimeBehaviors: behaviors).ConvertToWhereClause(
+                @"<fetch><entity name=""account""><filter><condition attribute=""cai_allocationperiod_start"" operator=""last-month"" /></filter></entity></fetch>");
+
+            Assert.DoesNotContain("DATEADD(hour, -6, [Base].[cai_allocationperiod_start])", result.SqlWhereClause);
+            Assert.Contains("[Base].[cai_allocationperiod_start]", result.SqlWhereClause);
+            Assert.True(result.IsFullySupported);
+        }
+
+        [Fact]
         public void ConvertToWhereClause_OnOperator_UsesDateCast()
         {
             var result = new FetchXmlToSqlConverter().ConvertToWhereClause(

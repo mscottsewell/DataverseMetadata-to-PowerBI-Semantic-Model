@@ -503,6 +503,15 @@ namespace DataverseToPowerBI.Core.Models
         public string? AttributeType { get; set; }
 
         /// <summary>
+        /// For DateTime attributes, the Dataverse DateTimeBehavior value.
+        /// </summary>
+        /// <remarks>
+        /// Expected values include "UserLocal", "DateOnly", and "TimeZoneIndependent".
+        /// Null for non-DateTime attributes or when metadata is unavailable.
+        /// </remarks>
+        public string? DateTimeBehavior { get; set; }
+
+        /// <summary>
         /// Whether this attribute is required in Dataverse.
         /// Used for referential integrity settings.
         /// </summary>
@@ -823,6 +832,15 @@ namespace DataverseToPowerBI.Core.Models
         public string? AttributeType { get; set; }
 
         /// <summary>
+        /// For DateTime attributes, the Dataverse DateTimeBehavior value.
+        /// </summary>
+        /// <remarks>
+        /// Expected values include "UserLocal", "DateOnly", and "TimeZoneIndependent".
+        /// Null for non-DateTime attributes or when metadata is unavailable.
+        /// </remarks>
+        public string? DateTimeBehavior { get; set; }
+
+        /// <summary>
         /// Whether this is a custom (user-created) attribute vs. a system attribute.
         /// </summary>
         public bool IsCustomAttribute { get; set; }
@@ -976,6 +994,8 @@ namespace DataverseToPowerBI.Core.Models
         Form,
         /// <summary>Use columns from the selected Dataverse view.</summary>
         View,
+        /// <summary>Use columns from a different Dataverse view than the row filter view.</summary>
+        DifferentView,
         /// <summary>User manually selects fields (no automatic source).</summary>
         Custom
     }

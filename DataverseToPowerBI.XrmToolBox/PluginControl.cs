@@ -80,6 +80,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private Dictionary<string, HashSet<string>> _selectedAttributes = new Dictionary<string, HashSet<string>>();
         private Dictionary<string, string> _selectedFormIds = new Dictionary<string, string>();
         private Dictionary<string, string> _selectedViewIds = new Dictionary<string, string>();
+        private Dictionary<string, string> _selectedFieldViewIds = new Dictionary<string, string>();
         private Dictionary<string, FieldSelectionMode> _fieldSelectionModes = new Dictionary<string, FieldSelectionMode>();
         private Dictionary<string, string> _tableStorageModes = new Dictionary<string, string>();
         private Dictionary<string, bool> _loadingStates = new Dictionary<string, bool>();
@@ -645,6 +646,7 @@ namespace DataverseToPowerBI.XrmToolBox
             // Restore form/view selections
             _selectedFormIds = settings.SelectedFormIds ?? new Dictionary<string, string>();
             _selectedViewIds = settings.SelectedViewIds ?? new Dictionary<string, string>();
+            _selectedFieldViewIds = settings.SelectedFieldViewIds ?? new Dictionary<string, string>();
             _tableStorageModes = settings.TableStorageModes ?? new Dictionary<string, string>();
 
             // Restore field selection modes
@@ -839,6 +841,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 
                 settings.SelectedFormIds = _selectedFormIds;
                 settings.SelectedViewIds = _selectedViewIds;
+                settings.SelectedFieldViewIds = _selectedFieldViewIds;
                 
                 // Convert relationships to serialized form
                 settings.Relationships = _relationships.Select(r => new SerializedRelationship
@@ -1679,6 +1682,16 @@ namespace DataverseToPowerBI.XrmToolBox
                     }
                 }
             }
+
+            // Validate selected field-source view still exists
+            if (_selectedFieldViewIds.ContainsKey(tableName) && _tableViews.ContainsKey(tableName))
+            {
+                var selectedFieldViewId = _selectedFieldViewIds[tableName];
+                if (!_tableViews[tableName].Any(v => v.ViewId == selectedFieldViewId))
+                {
+                    _selectedFieldViewIds.Remove(tableName);
+                }
+            }
         }
         
         /// <summary>
@@ -1852,6 +1865,19 @@ namespace DataverseToPowerBI.XrmToolBox
                     }
                     return "View: (not loaded)";
 
+                case FieldSelectionMode.DifferentView:
+                    if (_tableViews.ContainsKey(logicalName))
+                    {
+                        var fieldViewId = _selectedFieldViewIds.TryGetValue(logicalName, out var fv)
+                            ? fv
+                            : (_selectedViewIds.TryGetValue(logicalName, out var fallbackViewId) ? fallbackViewId : null);
+                        var fieldView = !string.IsNullOrEmpty(fieldViewId)
+                            ? _tableViews[logicalName].FirstOrDefault(vw => vw.ViewId == fieldViewId)
+                            : null;
+                        return fieldView != null ? $"View: {fieldView.Name} (Different)" : "View: (none) (Different)";
+                    }
+                    return "View: (not loaded) (Different)";
+
                 case FieldSelectionMode.Custom:
                     return "Custom";
 
@@ -1877,7 +1903,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private (bool isPartial, List<string> features) GetViewFilterSupportStatus(string logicalName)
         {
             var mode = _fieldSelectionModes.TryGetValue(logicalName, out var m) ? m : FieldSelectionMode.View;
-            if (mode != FieldSelectionMode.View)
+            if (mode != FieldSelectionMode.View && mode != FieldSelectionMode.DifferentView)
                 return (false, new List<string>());
 
             if (!_selectedViewIds.TryGetValue(logicalName, out var selectedViewId) ||
@@ -1919,6 +1945,9 @@ namespace DataverseToPowerBI.XrmToolBox
             var selectedViewId = _selectedViewIds.ContainsKey(logicalName)
                 ? _selectedViewIds[logicalName]
                 : (views.FirstOrDefault(v => v.IsDefault) ?? views.First()).ViewId;
+
+            if (string.IsNullOrEmpty(selectedViewId))
+                return "(All records - No filter)";
 
             var view = views.FirstOrDefault(v => v.ViewId == selectedViewId);
             return view != null ? view.Name : views.First().Name;
@@ -2504,7 +2533,7 @@ namespace DataverseToPowerBI.XrmToolBox
                                     attr.LogicalName,
                                     expandConfig.TargetTableLogicalName,
                                     expAttr.LogicalName));
-                                childItem.SubItems.Add(fieldSelectionMode == FieldSelectionMode.View && isFromSelectedView ? "✓" : "");
+                                childItem.SubItems.Add((fieldSelectionMode == FieldSelectionMode.View || fieldSelectionMode == FieldSelectionMode.DifferentView) && isFromSelectedView ? "✓" : "");
                                 var targetDisplayPrefix = expandConfig.TargetTableDisplayName ?? expandConfig.TargetTableLogicalName;
                                 childItem.SubItems.Add($"    ↳ {targetDisplayPrefix} : {expAttr.DisplayName ?? expAttr.LogicalName}");
                                 childItem.SubItems.Add($"{expandConfig.TargetTableLogicalName}.{expAttr.LogicalName}");
@@ -2926,15 +2955,28 @@ namespace DataverseToPowerBI.XrmToolBox
                 }
                 targetFields = new HashSet<string>(form.Fields, StringComparer.OrdinalIgnoreCase);
             }
-            else // View
+            else // View / DifferentView
             {
-                if (!_selectedViewIds.ContainsKey(logicalName) || !_tableViews.ContainsKey(logicalName))
+                if (!_tableViews.ContainsKey(logicalName))
                 {
                     MessageBox.Show("Please select a view first by double-clicking the table row.", "No View Selected",
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
-                var vid = _selectedViewIds[logicalName];
+
+                var vid = mode == FieldSelectionMode.DifferentView
+                    ? (_selectedFieldViewIds.TryGetValue(logicalName, out var fieldViewId)
+                        ? fieldViewId
+                        : (_selectedViewIds.TryGetValue(logicalName, out var fallbackViewId) ? fallbackViewId : null))
+                    : (_selectedViewIds.TryGetValue(logicalName, out var selectedViewId) ? selectedViewId : null);
+
+                if (string.IsNullOrEmpty(vid))
+                {
+                    MessageBox.Show("Please select a view first by double-clicking the table row.", "No View Selected",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
                 var view = _tableViews[logicalName].FirstOrDefault(vw => vw.ViewId == vid);
                 if (view == null || view.Columns.Count == 0)
                 {
@@ -3644,6 +3686,7 @@ namespace DataverseToPowerBI.XrmToolBox
             
             var currentFormId = _selectedFormIds.TryGetValue(logicalName, out var formId) ? formId : null;
             var currentViewId = _selectedViewIds.TryGetValue(logicalName, out var viewId) ? viewId : null;
+            var currentFieldViewId = _selectedFieldViewIds.TryGetValue(logicalName, out var fieldViewId) ? fieldViewId : null;
             var currentMode = _fieldSelectionModes.TryGetValue(logicalName, out var mode) ? mode : FieldSelectionMode.View;
 
             using (var dialog = new FormViewSelectorForm(
@@ -3652,30 +3695,45 @@ namespace DataverseToPowerBI.XrmToolBox
                 _tableViews[logicalName],
                 currentFormId,
                 currentViewId,
+                currentFieldViewId,
                 currentMode))
             {
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
                     var previousFormId = currentFormId;
                     var previousViewId = currentViewId;
+                    var previousFieldViewId = currentFieldViewId;
                     var previousMode = currentMode;
                     var selectedFormId = dialog.SelectedFormId;
                     var selectedViewId = dialog.SelectedViewId;
+                    var selectedFieldViewId = dialog.SelectedFieldViewId;
                     var selectedMode = dialog.FieldSelectionMode;
 
                     if (!string.IsNullOrEmpty(selectedFormId))
                         _selectedFormIds[logicalName] = selectedFormId;
                     if (!string.IsNullOrEmpty(selectedViewId))
                         _selectedViewIds[logicalName] = selectedViewId;
+                    else
+                        _selectedViewIds[logicalName] = "";
+
+                    if (selectedMode == FieldSelectionMode.DifferentView && !string.IsNullOrEmpty(selectedFieldViewId))
+                        _selectedFieldViewIds[logicalName] = selectedFieldViewId;
+                    else
+                        _selectedFieldViewIds.Remove(logicalName);
+
                     _fieldSelectionModes[logicalName] = selectedMode;
                     _viewFilterSupportCache.Remove(logicalName);
 
                     bool modeChanged = selectedMode != previousMode;
                     bool formChanged = selectedFormId != previousFormId;
                     bool viewChanged = selectedViewId != previousViewId;
+                    bool fieldViewChanged = selectedFieldViewId != previousFieldViewId;
 
                     // Apply default field selection when mode changed, form/view changed in respective mode
-                    if (modeChanged || (selectedMode == FieldSelectionMode.Form && formChanged) || (selectedMode == FieldSelectionMode.View && viewChanged))
+                    if (modeChanged ||
+                        (selectedMode == FieldSelectionMode.Form && formChanged) ||
+                        (selectedMode == FieldSelectionMode.View && viewChanged) ||
+                        (selectedMode == FieldSelectionMode.DifferentView && fieldViewChanged))
                     {
                         ApplyFieldSelectionForTable(logicalName, selectedMode);
                     }
@@ -3762,6 +3820,46 @@ namespace DataverseToPowerBI.XrmToolBox
                     }
                     break;
 
+                case FieldSelectionMode.DifferentView:
+                    var fieldViewId = _selectedFieldViewIds.TryGetValue(logicalName, out var fv)
+                        ? fv
+                        : (_selectedViewIds.TryGetValue(logicalName, out var fallbackViewId) ? fallbackViewId : null);
+                    var fieldView = !string.IsNullOrEmpty(fieldViewId)
+                        ? _tableViews[logicalName].FirstOrDefault(vw => vw.ViewId == fieldViewId)
+                        : null;
+                    if (fieldView != null)
+                    {
+                        selectedAttrs.Clear();
+                        AddPrimaryAttributes(selectedAttrs, table);
+                        foreach (var col in fieldView.Columns)
+                        {
+                            if (!string.IsNullOrEmpty(col) &&
+                                !col.Equals("entityimage_url", StringComparison.OrdinalIgnoreCase) &&
+                                attributes.Any(a => a.LogicalName.Equals(col, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                selectedAttrs.Add(col);
+                            }
+                        }
+
+                        // Wire up link-entity columns as expanded lookups
+                        if (fieldView.LinkedColumns.Any())
+                        {
+                            ApplyViewLinkedColumnsAsExpandedLookups(logicalName, fieldView.LinkedColumns, attributes);
+
+                            // Auto-select the lookup attributes that the linked columns join through
+                            foreach (var lookupName in fieldView.LinkedColumns
+                                .Select(lc => lc.LookupAttribute)
+                                .Distinct(StringComparer.OrdinalIgnoreCase))
+                            {
+                                if (attributes.Any(a => a.LogicalName.Equals(lookupName, StringComparison.OrdinalIgnoreCase)))
+                                {
+                                    selectedAttrs.Add(lookupName);
+                                }
+                            }
+                        }
+                    }
+                    break;
+
                 case FieldSelectionMode.Custom:
                     // No automatic selection — leave current selections as-is
                     break;
@@ -3770,7 +3868,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
         /// <summary>
         /// Returns the set of "default" field names for a table based on the current field selection mode.
-        /// Form mode → form fields, View mode → view columns, Custom → empty.
+        /// Form mode → form fields, View modes → view columns, Custom → empty.
         /// </summary>
         private HashSet<string> GetDefaultFieldsForTable(string logicalName)
         {
@@ -3798,6 +3896,26 @@ namespace DataverseToPowerBI.XrmToolBox
                             var viewFields = new HashSet<string>(view.Columns, StringComparer.OrdinalIgnoreCase);
                             viewFields.Remove("entityimage_url");
                             return viewFields;
+                        }
+                    }
+                    break;
+
+                case FieldSelectionMode.DifferentView:
+                    if (_tableViews.ContainsKey(logicalName))
+                    {
+                        var selectedFieldViewId = _selectedFieldViewIds.TryGetValue(logicalName, out var fieldViewId)
+                            ? fieldViewId
+                            : (_selectedViewIds.TryGetValue(logicalName, out var fallbackViewId) ? fallbackViewId : null);
+
+                        if (!string.IsNullOrEmpty(selectedFieldViewId))
+                        {
+                            var view = _tableViews[logicalName].FirstOrDefault(v => v.ViewId == selectedFieldViewId);
+                            if (view?.Columns != null)
+                            {
+                                var viewFields = new HashSet<string>(view.Columns, StringComparer.OrdinalIgnoreCase);
+                                viewFields.Remove("entityimage_url");
+                                return viewFields;
+                            }
                         }
                     }
                     break;
@@ -3888,8 +4006,14 @@ namespace DataverseToPowerBI.XrmToolBox
 
         private HashSet<string> GetSelectedViewLinkedColumnKeys(string logicalName)
         {
+            var mode = _fieldSelectionModes.TryGetValue(logicalName, out var m) ? m : FieldSelectionMode.View;
+            var selectedViewId = mode == FieldSelectionMode.DifferentView
+                ? (_selectedFieldViewIds.TryGetValue(logicalName, out var fieldViewId)
+                    ? fieldViewId
+                    : (_selectedViewIds.TryGetValue(logicalName, out var fallbackViewId) ? fallbackViewId : null))
+                : (_selectedViewIds.TryGetValue(logicalName, out var viewId) ? viewId : null);
+
             if (!_tableViews.TryGetValue(logicalName, out var views) ||
-                !_selectedViewIds.TryGetValue(logicalName, out var selectedViewId) ||
                 string.IsNullOrEmpty(selectedViewId))
             {
                 return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -4086,6 +4210,7 @@ namespace DataverseToPowerBI.XrmToolBox
                             DisplayName = a.DisplayName,
                             SchemaName = a.SchemaName,
                             AttributeType = a.AttributeType,
+                            DateTimeBehavior = a.DateTimeBehavior,
                             IsRequired = a.IsRequired,
                             Targets = a.Targets,
                             VirtualAttributeName = a.VirtualAttributeName
@@ -4445,6 +4570,7 @@ namespace DataverseToPowerBI.XrmToolBox
                         DisplayName = attr.DisplayName,
                         SchemaName = attr.SchemaName,
                         AttributeType = attr.AttributeType,
+                        DateTimeBehavior = attr.DateTimeBehavior,
                         IsRequired = attr.IsRequired,
                         Targets = attr.Targets,
                         VirtualAttributeName = attr.VirtualAttributeName,
@@ -4898,6 +5024,8 @@ namespace DataverseToPowerBI.XrmToolBox
         [System.Runtime.Serialization.DataMember]
         public Dictionary<string, string> SelectedViewIds { get; set; } = new Dictionary<string, string>();
         [System.Runtime.Serialization.DataMember]
+        public Dictionary<string, string> SelectedFieldViewIds { get; set; } = new Dictionary<string, string>();
+        [System.Runtime.Serialization.DataMember]
         public List<SerializedRelationship> Relationships { get; set; } = new List<SerializedRelationship>();
         [System.Runtime.Serialization.DataMember]
         public Dictionary<string, TableDisplayInfo> TableDisplayInfo { get; set; } = new Dictionary<string, TableDisplayInfo>();
@@ -5104,6 +5232,8 @@ namespace DataverseToPowerBI.XrmToolBox
         public string? SchemaName { get; set; }
         [System.Runtime.Serialization.DataMember]
         public string? AttributeType { get; set; }
+        [System.Runtime.Serialization.DataMember]
+        public string? DateTimeBehavior { get; set; }
         [System.Runtime.Serialization.DataMember]
         public bool IsRequired { get; set; } = false;
         [System.Runtime.Serialization.DataMember]

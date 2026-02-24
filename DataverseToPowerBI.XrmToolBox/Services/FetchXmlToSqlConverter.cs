@@ -59,12 +59,20 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         private readonly int _utcOffsetHours;
         private readonly bool _isFabricLink;
         private readonly bool _isImportMode;
+        private readonly Dictionary<string, string> _dateTimeBehaviors;
 
-        public FetchXmlToSqlConverter(int utcOffsetHours = -6, bool isFabricLink = false, bool isImportMode = false)
+        public FetchXmlToSqlConverter(
+            int utcOffsetHours = -6,
+            bool isFabricLink = false,
+            bool isImportMode = false,
+            Dictionary<string, string>? dateTimeBehaviors = null)
         {
             _utcOffsetHours = utcOffsetHours;
             _isFabricLink = isFabricLink;
             _isImportMode = isImportMode;
+            _dateTimeBehaviors = dateTimeBehaviors != null
+                ? new Dictionary<string, string>(dateTimeBehaviors, StringComparer.OrdinalIgnoreCase)
+                : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -257,37 +265,37 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     "not-end-with" => $"{columnRef} NOT LIKE {FormatValue("%" + safeValue)}",
                     
                     // Date operators - absolute
-                    "today" => ConvertDateOperator(columnRef, "today"),
-                    "yesterday" => ConvertDateOperator(columnRef, "yesterday"),
-                    "tomorrow" => ConvertDateOperator(columnRef, "tomorrow"),
-                    "this-week" => ConvertDateOperator(columnRef, "this-week"),
-                    "last-week" => ConvertDateOperator(columnRef, "last-week"),
-                    "this-month" => ConvertDateOperator(columnRef, "this-month"),
-                    "last-month" => ConvertDateOperator(columnRef, "last-month"),
-                    "this-year" => ConvertDateOperator(columnRef, "this-year"),
-                    "last-year" => ConvertDateOperator(columnRef, "last-year"),
-                    "next-week" => ConvertDateOperator(columnRef, "next-week"),
-                    "next-month" => ConvertDateOperator(columnRef, "next-month"),
-                    "next-year" => ConvertDateOperator(columnRef, "next-year"),
+                    "today" => ConvertDateOperator(columnRef, attribute, "today"),
+                    "yesterday" => ConvertDateOperator(columnRef, attribute, "yesterday"),
+                    "tomorrow" => ConvertDateOperator(columnRef, attribute, "tomorrow"),
+                    "this-week" => ConvertDateOperator(columnRef, attribute, "this-week"),
+                    "last-week" => ConvertDateOperator(columnRef, attribute, "last-week"),
+                    "this-month" => ConvertDateOperator(columnRef, attribute, "this-month"),
+                    "last-month" => ConvertDateOperator(columnRef, attribute, "last-month"),
+                    "this-year" => ConvertDateOperator(columnRef, attribute, "this-year"),
+                    "last-year" => ConvertDateOperator(columnRef, attribute, "last-year"),
+                    "next-week" => ConvertDateOperator(columnRef, attribute, "next-week"),
+                    "next-month" => ConvertDateOperator(columnRef, attribute, "next-month"),
+                    "next-year" => ConvertDateOperator(columnRef, attribute, "next-year"),
                     
                     // Date operators - relative with value parameter
-                    "last-x-hours" => ConvertRelativeDateOperator(columnRef, "hour", safeValue, -1),
-                    "last-x-days" => ConvertRelativeDateOperator(columnRef, "day", safeValue, -1),
-                    "last-x-weeks" => ConvertRelativeDateOperator(columnRef, "week", safeValue, -1),
-                    "last-x-months" => ConvertRelativeDateOperator(columnRef, "month", safeValue, -1),
-                    "last-x-years" => ConvertRelativeDateOperator(columnRef, "year", safeValue, -1),
-                    "next-x-hours" => ConvertRelativeDateOperator(columnRef, "hour", safeValue, 1),
-                    "next-x-days" => ConvertRelativeDateOperator(columnRef, "day", safeValue, 1),
-                    "next-x-weeks" => ConvertRelativeDateOperator(columnRef, "week", safeValue, 1),
-                    "next-x-months" => ConvertRelativeDateOperator(columnRef, "month", safeValue, 1),
-                    "next-x-years" => ConvertRelativeDateOperator(columnRef, "year", safeValue, 1),
-                    "older-x-months" => ConvertOlderThanOperator(columnRef, "month", safeValue),
-                    "older-x-years" => ConvertOlderThanOperator(columnRef, "year", safeValue),
+                    "last-x-hours" => ConvertRelativeDateOperator(columnRef, attribute, "hour", safeValue, -1),
+                    "last-x-days" => ConvertRelativeDateOperator(columnRef, attribute, "day", safeValue, -1),
+                    "last-x-weeks" => ConvertRelativeDateOperator(columnRef, attribute, "week", safeValue, -1),
+                    "last-x-months" => ConvertRelativeDateOperator(columnRef, attribute, "month", safeValue, -1),
+                    "last-x-years" => ConvertRelativeDateOperator(columnRef, attribute, "year", safeValue, -1),
+                    "next-x-hours" => ConvertRelativeDateOperator(columnRef, attribute, "hour", safeValue, 1),
+                    "next-x-days" => ConvertRelativeDateOperator(columnRef, attribute, "day", safeValue, 1),
+                    "next-x-weeks" => ConvertRelativeDateOperator(columnRef, attribute, "week", safeValue, 1),
+                    "next-x-months" => ConvertRelativeDateOperator(columnRef, attribute, "month", safeValue, 1),
+                    "next-x-years" => ConvertRelativeDateOperator(columnRef, attribute, "year", safeValue, 1),
+                    "older-x-months" => ConvertOlderThanOperator(columnRef, attribute, "month", safeValue),
+                    "older-x-years" => ConvertOlderThanOperator(columnRef, attribute, "year", safeValue),
                     
                     // Date comparison operators (with timezone adjustment)
-                    "on" => $"CAST(DATEADD(hour, {_utcOffsetHours}, {columnRef}) AS DATE) = CAST({FormatValue(safeValue)} AS DATE)",
-                    "on-or-after" => $"DATEADD(hour, {_utcOffsetHours}, {columnRef}) >= {FormatValue(safeValue)}",
-                    "on-or-before" => $"DATEADD(hour, {_utcOffsetHours}, {columnRef}) <= {FormatValue(safeValue)}",
+                    "on" => $"CAST({GetDateComparableColumnRef(columnRef, attribute)} AS DATE) = CAST({FormatValue(safeValue)} AS DATE)",
+                    "on-or-after" => $"{GetDateComparableColumnRef(columnRef, attribute)} >= {FormatValue(safeValue)}",
+                    "on-or-before" => $"{GetDateComparableColumnRef(columnRef, attribute)} <= {FormatValue(safeValue)}",
                     
                     // User context operators (not supported in FabricLink or Import mode)
                     "eq-userid" => (_isFabricLink || _isImportMode) ? UnsupportedUserContextOp("eq-userid", attribute) : $"{columnRef} = CURRENT_USER",
@@ -311,12 +319,12 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             }
         }
 
-        private string ConvertDateOperator(string columnRef, string dateOperator)
+        private string ConvertDateOperator(string columnRef, string? attribute, string dateOperator)
         {
             // Convert FetchXML date operators to SQL equivalents
             // Using GETUTCDATE() with timezone adjustment for current date/time
             var adjustedNow = $"DATEADD(hour, {_utcOffsetHours}, GETUTCDATE())";
-            var adjustedColumn = $"DATEADD(hour, {_utcOffsetHours}, {columnRef})";
+            var adjustedColumn = GetDateComparableColumnRef(columnRef, attribute);
             
             return dateOperator switch
             {
@@ -328,9 +336,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 "last-week" => $"DATEPART(week, {adjustedColumn}) = DATEPART(week, DATEADD(week, -1, {adjustedNow})) AND DATEPART(year, {adjustedColumn}) = DATEPART(year, DATEADD(week, -1, {adjustedNow}))",
                 "next-week" => $"DATEPART(week, {adjustedColumn}) = DATEPART(week, DATEADD(week, 1, {adjustedNow})) AND DATEPART(year, {adjustedColumn}) = DATEPART(year, DATEADD(week, 1, {adjustedNow}))",
                 
-                "this-month" => $"DATEPART(month, {adjustedColumn}) = DATEPART(month, {adjustedNow}) AND DATEPART(year, {adjustedColumn}) = DATEPART(year, {adjustedNow})",
-                "last-month" => $"DATEPART(month, {adjustedColumn}) = DATEPART(month, DATEADD(month, -1, {adjustedNow})) AND DATEPART(year, {adjustedColumn}) = DATEPART(year, DATEADD(month, -1, {adjustedNow}))",
-                "next-month" => $"DATEPART(month, {adjustedColumn}) = DATEPART(month, DATEADD(month, 1, {adjustedNow})) AND DATEPART(year, {adjustedColumn}) = DATEPART(year, DATEADD(month, 1, {adjustedNow}))",
+                "this-month" => $"({adjustedColumn} >= DATEADD(month, DATEDIFF(month, 0, {adjustedNow}), 0) AND {adjustedColumn} < DATEADD(month, DATEDIFF(month, 0, {adjustedNow}) + 1, 0))",
+                "last-month" => $"({adjustedColumn} >= DATEADD(month, DATEDIFF(month, 0, {adjustedNow}) - 1, 0) AND {adjustedColumn} < DATEADD(month, DATEDIFF(month, 0, {adjustedNow}), 0))",
+                "next-month" => $"({adjustedColumn} >= DATEADD(month, DATEDIFF(month, 0, {adjustedNow}) + 1, 0) AND {adjustedColumn} < DATEADD(month, DATEDIFF(month, 0, {adjustedNow}) + 2, 0))",
                 
                 "this-year" => $"DATEPART(year, {adjustedColumn}) = DATEPART(year, {adjustedNow})",
                 "last-year" => $"DATEPART(year, {adjustedColumn}) = DATEPART(year, DATEADD(year, -1, {adjustedNow}))",
@@ -340,7 +348,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             };
         }
 
-        private string ConvertRelativeDateOperator(string columnRef, string datepart, string? value, int direction)
+        private string ConvertRelativeDateOperator(string columnRef, string? attribute, string datepart, string? value, int direction)
         {
             // direction: -1 for "last", 1 for "next"
             if (string.IsNullOrWhiteSpace(value) || !int.TryParse(value, out int units))
@@ -350,7 +358,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             }
 
             // Apply timezone adjustment to both column and current time
-            var adjustedColumn = $"DATEADD(hour, {_utcOffsetHours}, {columnRef})";
+            var adjustedColumn = GetDateComparableColumnRef(columnRef, attribute);
             var adjustedNow = $"DATEADD(hour, {_utcOffsetHours}, GETUTCDATE())";
             
             // Create range queries with both lower and upper bounds
@@ -376,7 +384,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             }
         }
 
-        private string ConvertOlderThanOperator(string columnRef, string datepart, string? value)
+        private string ConvertOlderThanOperator(string columnRef, string? attribute, string datepart, string? value)
         {
             if (string.IsNullOrWhiteSpace(value) || !int.TryParse(value, out int units))
             {
@@ -385,7 +393,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             }
 
             // Apply timezone adjustment
-            var adjustedColumn = $"DATEADD(hour, {_utcOffsetHours}, {columnRef})";
+            var adjustedColumn = GetDateComparableColumnRef(columnRef, attribute);
             var adjustedNow = $"DATEADD(hour, {_utcOffsetHours}, GETUTCDATE())";
             
             // older-x-months: < start of x months ago
@@ -555,6 +563,32 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             }
             
             return clauses;
+        }
+
+        private string GetDateComparableColumnRef(string columnRef, string? attribute)
+        {
+            if (!ShouldApplyTimezoneAdjustment(attribute))
+            {
+                return columnRef;
+            }
+
+            return $"DATEADD(hour, {_utcOffsetHours}, {columnRef})";
+        }
+
+        private bool ShouldApplyTimezoneAdjustment(string? attribute)
+        {
+            if (string.IsNullOrWhiteSpace(attribute))
+            {
+                return true;
+            }
+
+            if (!_dateTimeBehaviors.TryGetValue(attribute, out var behavior) || string.IsNullOrWhiteSpace(behavior))
+            {
+                return true;
+            }
+
+            return !behavior.Equals("DateOnly", StringComparison.OrdinalIgnoreCase)
+                && !behavior.Equals("TimeZoneIndependent", StringComparison.OrdinalIgnoreCase);
         }
 
         private void LogUnsupported(string feature)

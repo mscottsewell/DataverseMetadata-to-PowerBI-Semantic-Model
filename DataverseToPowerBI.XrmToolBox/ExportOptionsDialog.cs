@@ -242,6 +242,9 @@ namespace DataverseToPowerBI.XrmToolBox
                     SelectedViewIds = settings.SelectedViewIds
                         .Where(kv => tables.Contains(kv.Key))
                         .ToDictionary(kv => kv.Key, kv => kv.Value),
+                    SelectedFieldViewIds = settings.SelectedFieldViewIds
+                        .Where(kv => tables.Contains(kv.Key))
+                        .ToDictionary(kv => kv.Key, kv => kv.Value),
                     Relationships = settings.Relationships
                         .Where(r => tables.Contains(r.SourceTable ?? "") && tables.Contains(r.TargetTable ?? ""))
                         .Select(r => new SerializedRelationship

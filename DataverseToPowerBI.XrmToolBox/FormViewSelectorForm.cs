@@ -42,13 +42,16 @@ namespace DataverseToPowerBI.XrmToolBox
         #region Fields
 
         private ComboBox cboView = null!;
+        private ComboBox cboFieldView = null!;
         private ComboBox cboForm = null!;
         private RadioButton radioUseView = null!;
+        private RadioButton radioUseDifferentView = null!;
         private RadioButton radioSelectForm = null!;
         private RadioButton radioAddCustom = null!;
         private Button btnOk = null!;
         private Button btnCancel = null!;
         private Label lblViewColumns = null!;
+        private Label lblFieldViewColumns = null!;
         private Label lblFormFields = null!;
         private GroupBox grpFieldSelection = null!;
 
@@ -64,6 +67,9 @@ namespace DataverseToPowerBI.XrmToolBox
 
         /// <summary>Selected view ID (null if "All records").</summary>
         public string? SelectedViewId { get; private set; }
+
+        /// <summary>Selected field-source view ID (null if using row filter view or not in different-view mode).</summary>
+        public string? SelectedFieldViewId { get; private set; }
 
         /// <summary>The chosen field selection mode.</summary>
         public FieldSelectionMode FieldSelectionMode { get; private set; }
@@ -81,12 +87,14 @@ namespace DataverseToPowerBI.XrmToolBox
             List<ViewMetadata> views,
             string? currentFormId,
             string? currentViewId,
+            string? currentFieldViewId,
             FieldSelectionMode currentMode = FieldSelectionMode.View)
         {
             _forms = forms;
             _views = views;
             SelectedFormId = currentFormId;
             SelectedViewId = currentViewId;
+            SelectedFieldViewId = currentFieldViewId;
             FieldSelectionMode = currentMode;
 
             InitializeComponent(tableName);
@@ -116,6 +124,7 @@ namespace DataverseToPowerBI.XrmToolBox
             var hintTexts = new[]
             {
                 "Selects fields based on the columns defined in the view above.",
+                "Selects fields based on the columns defined in a different Dataverse view.",
                 "Selects fields based on the fields displayed on a Dataverse form.",
                 "No automatic field selection. Select fields manually from the list."
             };
@@ -171,7 +180,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
             radioUseView = new RadioButton
             {
-                Text = "Use View Columns",
+                Text = "Use Row Filter View's Columns",
                 Location = new Point(12, gy),
                 AutoSize = true
             };
@@ -184,6 +193,42 @@ namespace DataverseToPowerBI.XrmToolBox
                 Location = new Point(innerPad, gy),
                 AutoSize = true,
                 ForeColor = Color.Gray
+            };
+            gy += hintLineHeight + spacing + 2;
+
+            radioUseDifferentView = new RadioButton
+            {
+                Text = "Use a Different View's Columns",
+                Location = new Point(12, gy),
+                AutoSize = true
+            };
+            radioUseDifferentView.CheckedChanged += RadioMode_CheckedChanged;
+            gy += radioHeight + spacing;
+
+            var lblDifferentViewHint = new Label
+            {
+                Text = hintTexts[1],
+                Location = new Point(innerPad, gy),
+                AutoSize = true,
+                ForeColor = Color.Gray
+            };
+            gy += hintLineHeight + spacing;
+
+            cboFieldView = new ComboBox
+            {
+                Location = new Point(innerPad, gy),
+                Size = new Size(grpWidth - innerPad - 16, comboHeight),
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            cboFieldView.SelectedIndexChanged += CboFieldView_SelectedIndexChanged;
+            gy += comboHeight + spacing;
+
+            lblFieldViewColumns = new Label
+            {
+                AutoSize = true,
+                Location = new Point(innerPad, gy),
+                ForeColor = Color.Gray,
+                Text = ""
             };
             gy += hintLineHeight + spacing + 2;
 
@@ -245,6 +290,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
             grpFieldSelection.Controls.AddRange(new Control[] {
                 radioUseView, lblViewHint,
+                radioUseDifferentView, lblDifferentViewHint, cboFieldView, lblFieldViewColumns,
                 radioSelectForm, lblFormHint, cboForm, lblFormFields,
                 radioAddCustom, lblCustomHint
             });
@@ -298,6 +344,7 @@ namespace DataverseToPowerBI.XrmToolBox
             {
                 var suffix = view.IsDefault ? " (Default)" : "";
                 cboView.Items.Add(new ViewItem(view, view.Name + suffix));
+                cboFieldView.Items.Add(new ViewItem(view, view.Name + suffix));
             }
 
             if (personalViews.Any())
@@ -306,12 +353,18 @@ namespace DataverseToPowerBI.XrmToolBox
                 foreach (var view in personalViews)
                 {
                     cboView.Items.Add(new ViewItem(view, $"[Personal] {view.Name}"));
+                    cboFieldView.Items.Add(new ViewItem(view, $"[Personal] {view.Name}"));
                 }
             }
 
             // Select current view
-            if (!string.IsNullOrEmpty(SelectedViewId))
+            if (SelectedViewId != null)
             {
+                if (SelectedViewId.Length == 0)
+                {
+                    cboView.SelectedIndex = 0;
+                }
+
                 for (int i = 1; i < cboView.Items.Count; i++)
                 {
                     if (cboView.Items[i] is ViewItem vi && vi.View?.ViewId == SelectedViewId)
@@ -334,6 +387,49 @@ namespace DataverseToPowerBI.XrmToolBox
                 }
                 if (cboView.SelectedIndex < 0)
                     cboView.SelectedIndex = 0;
+            }
+
+            // --- Field Source Views (always require an actual view) ---
+            if (!string.IsNullOrEmpty(SelectedFieldViewId))
+            {
+                for (int i = 0; i < cboFieldView.Items.Count; i++)
+                {
+                    if (cboFieldView.Items[i] is ViewItem vi && vi.View?.ViewId == SelectedFieldViewId)
+                    {
+                        cboFieldView.SelectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            if (cboFieldView.SelectedIndex < 0)
+            {
+                var fallbackViewId = SelectedViewId;
+                if (!string.IsNullOrEmpty(fallbackViewId))
+                {
+                    for (int i = 0; i < cboFieldView.Items.Count; i++)
+                    {
+                        if (cboFieldView.Items[i] is ViewItem vi && vi.View?.ViewId == fallbackViewId)
+                        {
+                            cboFieldView.SelectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (cboFieldView.SelectedIndex < 0)
+            {
+                var defaultFieldView = _views.FirstOrDefault(v => v.IsDefault) ?? _views.FirstOrDefault();
+                if (defaultFieldView != null)
+                {
+                    for (int i = 0; i < cboFieldView.Items.Count; i++)
+                    {
+                        if (cboFieldView.Items[i] is ViewItem vi && vi.View?.ViewId == defaultFieldView.ViewId)
+                        {
+                            cboFieldView.SelectedIndex = i;
+                            break;
+                        }
+                    }
+                }
             }
 
             // --- Forms ---
@@ -366,6 +462,9 @@ namespace DataverseToPowerBI.XrmToolBox
                 case FieldSelectionMode.View:
                     radioUseView.Checked = true;
                     break;
+                case FieldSelectionMode.DifferentView:
+                    radioUseDifferentView.Checked = true;
+                    break;
                 case FieldSelectionMode.Form:
                     radioSelectForm.Checked = true;
                     break;
@@ -388,8 +487,21 @@ namespace DataverseToPowerBI.XrmToolBox
         private void UpdateFormDropdownState()
         {
             bool formMode = radioSelectForm.Checked;
+            bool differentViewMode = radioUseDifferentView.Checked;
+
             cboForm.Enabled = formMode;
             lblFormFields.Visible = formMode;
+            cboFieldView.Enabled = differentViewMode;
+            lblFieldViewColumns.Visible = differentViewMode;
+
+            if (differentViewMode && cboFieldView.SelectedItem is ViewItem vi)
+            {
+                SelectedFieldViewId = vi.View?.ViewId;
+            }
+            else if (!differentViewMode)
+            {
+                SelectedFieldViewId = null;
+            }
         }
 
         private void CboView_SelectedIndexChanged(object sender, EventArgs e)
@@ -423,10 +535,38 @@ namespace DataverseToPowerBI.XrmToolBox
             }
         }
 
+        private void CboFieldView_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (cboFieldView.SelectedItem is ViewItem vi)
+            {
+                SelectedFieldViewId = vi.View?.ViewId;
+                if (vi.View != null)
+                {
+                    var colCount = vi.View.Columns.Count;
+                    var linkedCount = vi.View.LinkedColumns.Count;
+                    lblFieldViewColumns.Text = linkedCount > 0
+                        ? $"{colCount} columns, {linkedCount} from related tables"
+                        : $"{colCount} columns";
+                }
+                else
+                {
+                    lblFieldViewColumns.Text = "";
+                }
+            }
+        }
+
         private void BtnOk_Click(object sender, EventArgs e)
         {
+            if (cboView.SelectedItem is ViewItem selectedFilterView)
+                SelectedViewId = selectedFilterView.View?.ViewId;
+
+            if (cboFieldView.SelectedItem is ViewItem selectedFieldView)
+                SelectedFieldViewId = selectedFieldView.View?.ViewId;
+
             if (radioUseView.Checked)
                 FieldSelectionMode = FieldSelectionMode.View;
+            else if (radioUseDifferentView.Checked)
+                FieldSelectionMode = FieldSelectionMode.DifferentView;
             else if (radioSelectForm.Checked)
                 FieldSelectionMode = FieldSelectionMode.Form;
             else

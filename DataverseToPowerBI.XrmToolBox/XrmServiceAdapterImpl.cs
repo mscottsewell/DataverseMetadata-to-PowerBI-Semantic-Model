@@ -426,6 +426,12 @@ namespace DataverseToPowerBI.XrmToolBox
                     string? virtualAttributeName = null;
                     bool? isGlobal = null;
                     string? optionSetName = null;
+                    string? dateTimeBehavior = null;
+
+                    if (attr is DateTimeAttributeMetadata dateTimeAttr)
+                    {
+                        dateTimeBehavior = dateTimeAttr.DateTimeBehavior?.Value;
+                    }
 
                     if (attr is PicklistAttributeMetadata || attr is MultiSelectPicklistAttributeMetadata ||
                         attr is BooleanAttributeMetadata ||
@@ -536,6 +542,7 @@ namespace DataverseToPowerBI.XrmToolBox
                         IsCustomAttribute = isCustomAttribute,
                         IsRequired = isRequired,
                         Targets = targets.Count > 0 ? targets : null,
+                        DateTimeBehavior = dateTimeBehavior,
                         VirtualAttributeName = virtualAttributeName,
                         IsGlobal = isGlobal,
                         OptionSetName = optionSetName
