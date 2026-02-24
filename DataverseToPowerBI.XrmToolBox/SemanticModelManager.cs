@@ -467,7 +467,9 @@ namespace DataverseToPowerBI.XrmToolBox
                             Targets = a.Targets?.ToList(),
                             VirtualAttributeName = a.VirtualAttributeName,
                             IsGlobal = a.IsGlobal,
-                            OptionSetName = a.OptionSetName
+                            OptionSetName = a.OptionSetName,
+                            IncludeInModel = a.IncludeInModel,
+                            IsHidden = a.IsHidden
                         }).ToList() ?? new List<SerializedExpandedLookupAttribute>()
                     }).ToList() ?? new List<SerializedExpandedLookup>()
                 ) ?? new Dictionary<string, List<SerializedExpandedLookup>>(),
@@ -496,7 +498,8 @@ namespace DataverseToPowerBI.XrmToolBox
                         IncludeLabelField = cfg.IncludeLabelField,
                         LabelFieldHidden = cfg.LabelFieldHidden
                     }).ToList() ?? new List<SerializedChoiceSubColumnConfig>()
-                ) ?? new Dictionary<string, List<SerializedChoiceSubColumnConfig>>()
+                ) ?? new Dictionary<string, List<SerializedChoiceSubColumnConfig>>(),
+                CollapsedLookupGroups = source.CollapsedLookupGroups?.ToList() ?? new List<string>()
             };
         }
     }

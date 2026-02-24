@@ -54,3 +54,13 @@ The PBIP format is a folder-based project that's perfect for:
 - [Power BI Project Files Overview](https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-overview)
 - [Working with PBIP in Power BI Desktop](https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-build)
 - [Power BI Desktop Developer Mode](https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-overview#developer-mode)
+
+## Attribute Grid Behavior (Configuration UI)
+
+The table configuration pane in the plugin includes grouped behavior for lookup and choice fields.
+
+- **Show: Selected mode:** Selecting a grouped parent row shows all child rows for that parent, including both included and excluded child fields.
+- **Group expansion defaults:** Groups are collapsed by default. Use **Open all groups** and **Collapse all groups** for bulk control.
+- **Persisted group state:** Group open/collapse state is saved in the semantic model configuration and restored on reopen.
+- **Expanded child controls:** Expanded lookup child rows support **Include** and **Hidden** toggles directly in the main grid.
+- **Include/Hidden rule:** **Hidden** implies **Include**. If Include is turned off for an expanded child row, the row remains visible but is excluded from generated output.

@@ -63,8 +63,8 @@ This tool eliminates all of that complexity:
 | **Dual Connection Support** | Choose between **Dataverse TDS** (direct to Dataverse) or **FabricLink** (via Fabric Lakehouse) — see [Connection Modes](#-connection-modes-tds-vs-fabriclink) |
 | **Storage Mode Control** | DirectQuery, Import, Dual (All), or Dual (Select) — set globally or per-table. See [Storage Modes](#-storage-modes) |
 | **Smart Column Selection** | Uses your Dataverse forms and views to include only relevant fields |
-| **Lookup Sub-Column Controls** | Per-lookup Include/Hidden toggles for ID/Name and polymorphic Type/Yomi (Owner/Customer), with smart defaults tied to relationship usage |
-| **Collapsible Lookup Groups** | Lookup attributes render as expandable groups so sub-columns are easy to inspect without clutter |
+| **Lookup Sub-Column Controls** | Per-lookup Include/Hidden toggles for ID/Name and polymorphic Type/Yomi (Owner/Customer), including expanded-child Include/Hidden controls |
+| **Collapsible Lookup Groups** | Lookup attributes render as expandable groups (collapsed by default), with persisted open/collapse state and bulk Open/Collapse actions |
 | **Friendly Field Names** | Automatically renames columns to their display names (no more "cai_accountid"!) |
 | **Display Name Customization** | Override display names per-attribute with inline double-click editing; automatic conflict detection prevents duplicate names |
 | **TMDL Preview** | See the exact TMDL code that will be generated before building, with copy/save capabilities for individual tables or entire model |
@@ -151,6 +151,9 @@ For the most up-to-date release details, see [CHANGELOG.md](CHANGELOG.md).
 - Check/Uncheck Attributes in the right column to include/exclude fields from the query.
 - Lookup attributes can be expanded into sub-columns with per-sub-column **Include**/**Hidden** toggles.
 - Owner/Customer lookups support additional **Type** and **Yomi** sub-columns.
+- In **Show: Selected** mode, selecting a grouped parent shows all child sub-rows for that parent (included and excluded), so configuration stays visible.
+- Lookup groups are collapsed by default; use **Open all groups** / **Collapse all groups** for bulk control. Your group open/collapse state is saved with the model configuration.
+- Expanded lookup child rows now have the same **Include**/**Hidden** controls in the main grid. Turning Include off keeps the row visible but excludes it from generation.
 
 > <img width="600" alt="Expanded lookup sub-column controls (ID/Name/Type/Yomi) with Include/Hidden states." src="https://github.com/user-attachments/assets/a858a00f-c431-4cde-80c9-34909282521c" />
 

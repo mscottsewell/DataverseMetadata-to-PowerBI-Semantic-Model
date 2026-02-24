@@ -75,6 +75,8 @@ namespace DataverseToPowerBI.XrmToolBox
             this.btnSelectAll = new System.Windows.Forms.Button();
             this.btnDeselectAll = new System.Windows.Forms.Button();
             this.btnSelectFromForm = new System.Windows.Forms.Button();
+            this.btnOpenAllGroups = new System.Windows.Forms.Button();
+            this.btnCollapseAllGroups = new System.Windows.Forms.Button();
             this.panelAttrWarning = new System.Windows.Forms.Panel();
             this.lblAttrWarning = new System.Windows.Forms.Label();
 
@@ -470,7 +472,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
             // colAttrType
             this.colAttrType.Text = "Type";
-            this.colAttrType.Width = 90;
+            this.colAttrType.Width = 78;
 
             // colAttrInclude
             this.colAttrInclude.Text = "Include";
@@ -483,13 +485,15 @@ namespace DataverseToPowerBI.XrmToolBox
             this.colAttrHidden.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
 
             // colAttrExpand
-            this.colAttrExpand.Text = "";
-            this.colAttrExpand.Width = 72;
+            this.colAttrExpand.Text = "Expanded";
+            this.colAttrExpand.Width = 104;
 
             // panelAttrButtons
             this.panelAttrButtons.Controls.Add(this.btnSelectAll);
             this.panelAttrButtons.Controls.Add(this.btnDeselectAll);
             this.panelAttrButtons.Controls.Add(this.btnSelectFromForm);
+            this.panelAttrButtons.Controls.Add(this.btnOpenAllGroups);
+            this.panelAttrButtons.Controls.Add(this.btnCollapseAllGroups);
             this.panelAttrButtons.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.panelAttrButtons.Location = new System.Drawing.Point(5, 480);
             this.panelAttrButtons.Name = "panelAttrButtons";
@@ -522,6 +526,24 @@ namespace DataverseToPowerBI.XrmToolBox
             this.btnSelectFromForm.Text = "Match Default Selection";
             this.btnSelectFromForm.UseVisualStyleBackColor = true;
             this.btnSelectFromForm.Click += new System.EventHandler(this.BtnSelectFromForm_Click);
+
+            // btnOpenAllGroups
+            this.btnOpenAllGroups.Location = new System.Drawing.Point(363, 3);
+            this.btnOpenAllGroups.Name = "btnOpenAllGroups";
+            this.btnOpenAllGroups.Size = new System.Drawing.Size(97, 28);
+            this.btnOpenAllGroups.TabIndex = 3;
+            this.btnOpenAllGroups.Text = "Open all groups";
+            this.btnOpenAllGroups.UseVisualStyleBackColor = true;
+            this.btnOpenAllGroups.Click += new System.EventHandler(this.BtnOpenAllGroups_Click);
+
+            // btnCollapseAllGroups
+            this.btnCollapseAllGroups.Location = new System.Drawing.Point(466, 3);
+            this.btnCollapseAllGroups.Name = "btnCollapseAllGroups";
+            this.btnCollapseAllGroups.Size = new System.Drawing.Size(110, 28);
+            this.btnCollapseAllGroups.TabIndex = 4;
+            this.btnCollapseAllGroups.Text = "Collapse all groups";
+            this.btnCollapseAllGroups.UseVisualStyleBackColor = true;
+            this.btnCollapseAllGroups.Click += new System.EventHandler(this.BtnCollapseAllGroups_Click);
 
             // panelAttrWarning
             this.panelAttrWarning.Controls.Add(this.lblAttrWarning);
@@ -670,6 +692,8 @@ namespace DataverseToPowerBI.XrmToolBox
         private System.Windows.Forms.Button btnSelectAll;
         private System.Windows.Forms.Button btnDeselectAll;
         private System.Windows.Forms.Button btnSelectFromForm;
+        private System.Windows.Forms.Button btnOpenAllGroups;
+        private System.Windows.Forms.Button btnCollapseAllGroups;
         private System.Windows.Forms.Panel panelAttrWarning;
         private System.Windows.Forms.Label lblAttrWarning;
 

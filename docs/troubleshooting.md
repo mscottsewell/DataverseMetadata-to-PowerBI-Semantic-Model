@@ -96,3 +96,17 @@ In View mode, expanded child rows in the **Default** column are now marked only 
 This means:
 - Child rows added manually in Expand Lookup are still selected, but are not shown as **Default** unless they exactly match the selected view's linked column definition.
 - Previously saved placeholder names for expanded fields are auto-normalized from metadata on load/revalidation.
+
+### "In Selected view, why do I see unchecked child rows under a selected lookup?"
+This is expected. In **Show: Selected** mode, selecting a grouped parent lookup now shows all of its child sub-rows (both included and excluded) so you can review and adjust configuration in one place.
+
+Also expected behavior:
+- Turning **Include** off for an expanded child row keeps the row visible but excludes it from model generation.
+- **Hidden** implies **Include**. Enabling Hidden automatically enables Include.
+
+### "Why are lookup groups collapsed when I reopen the model?"
+Lookup groups are collapsed by default to reduce clutter, and your open/collapse state is persisted per model configuration.
+
+Use:
+- **Open all groups** to expand everything quickly
+- **Collapse all groups** to reset the view

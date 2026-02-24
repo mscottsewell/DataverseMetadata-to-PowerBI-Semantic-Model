@@ -459,7 +459,8 @@ namespace DataverseToPowerBI.XrmToolBox
                         Targets = attr.Targets,
                         VirtualAttributeName = attr.VirtualAttributeName,
                         IsGlobal = attr.IsGlobal,
-                        OptionSetName = attr.OptionSetName
+                        OptionSetName = attr.OptionSetName,
+                        IncludeInModel = true
                     };
                 })
                 .ToList();

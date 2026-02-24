@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization.Json;
 using System.Text;
+using DataverseToPowerBI.Core.Models;
 using DataverseToPowerBI.XrmToolBox;
 using Xunit;
 
@@ -76,6 +77,89 @@ namespace DataverseToPowerBI.Tests
             Assert.True(cfg.ValueFieldHidden);
             Assert.True(cfg.IncludeLabelField);
             Assert.False(cfg.LabelFieldHidden);
+        }
+
+        [Fact]
+        public void PluginSettings_RoundTrip_PreservesCollapsedLookupGroups()
+        {
+            var settings = new PluginSettings
+            {
+                CollapsedLookupGroups = new List<string>
+                {
+                    "account.statecode",
+                    "contact.statuscode"
+                }
+            };
+
+            var roundTripped = RoundTrip(settings);
+
+            Assert.Equal(2, roundTripped.CollapsedLookupGroups.Count);
+            Assert.Contains("account.statecode", roundTripped.CollapsedLookupGroups);
+            Assert.Contains("contact.statuscode", roundTripped.CollapsedLookupGroups);
+        }
+
+        [Fact]
+        public void PluginSettings_RoundTrip_PreservesExpandedLookupAttributeHiddenFlag()
+        {
+            var settings = new PluginSettings
+            {
+                ExpandedLookups = new Dictionary<string, List<SerializedExpandedLookup>>
+                {
+                    ["account"] = new List<SerializedExpandedLookup>
+                    {
+                        new SerializedExpandedLookup
+                        {
+                            LookupAttributeName = "ownerid",
+                            TargetTableLogicalName = "systemuser",
+                            TargetTablePrimaryKey = "systemuserid",
+                            Attributes = new List<SerializedExpandedLookupAttribute>
+                            {
+                                new SerializedExpandedLookupAttribute
+                                {
+                                    LogicalName = "fullname",
+                                    DisplayName = "Full Name",
+                                    IsHidden = true
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var roundTripped = RoundTrip(settings);
+
+            Assert.True(roundTripped.ExpandedLookups.ContainsKey("account"));
+            var attr = roundTripped.ExpandedLookups["account"][0].Attributes[0];
+            Assert.Equal("fullname", attr.LogicalName);
+            Assert.True(attr.IsHidden);
+        }
+
+        [Fact]
+        public void GetChoiceValueFieldDisplayName_UsesSchemaName_WhenPresent()
+        {
+            var attr = new AttributeMetadata
+            {
+                LogicalName = "statuscode",
+                SchemaName = "StatusCode"
+            };
+
+            var result = PluginControl.GetChoiceValueFieldDisplayName(attr);
+
+            Assert.Equal("StatusCode", result);
+        }
+
+        [Fact]
+        public void GetChoiceValueFieldDisplayName_FallsBackToLogicalName_WhenSchemaNameMissing()
+        {
+            var attr = new AttributeMetadata
+            {
+                LogicalName = "statecode",
+                SchemaName = null
+            };
+
+            var result = PluginControl.GetChoiceValueFieldDisplayName(attr);
+
+            Assert.Equal("statecode", result);
         }
 
         private static PluginSettings RoundTrip(PluginSettings source)

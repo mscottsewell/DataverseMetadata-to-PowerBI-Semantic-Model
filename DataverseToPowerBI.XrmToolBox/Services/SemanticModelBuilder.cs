@@ -2779,8 +2779,12 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     
                     foreach (var expAttr in expand.Attributes)
                     {
+                        if (!(expAttr.IncludeInModel ?? true))
+                            continue;
+
                         var colKey = $"{expand.LookupAttributeName}_{expAttr.LogicalName}";
                         if (processedColumns.Contains(colKey)) continue;
+                        var expandedHidden = expAttr.IsHidden ?? false;
                         
                         var expDisplayName = expAttr.DisplayName ?? expAttr.LogicalName;
                         var targetPrefix = expand.TargetTableDisplayName ?? expand.TargetTableLogicalName;
@@ -2800,7 +2804,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         {
                             // Lookup: select the name column (available in both TDS and FabricLink)
                             var nameColumn = expAttr.LogicalName + "name";
-                            sqlFields.Add(ApplySqlAlias($"{joinAlias}.{nameColumn}", prefixedDisplayName, colKey, false));
+                            sqlFields.Add(ApplySqlAlias($"{joinAlias}.{nameColumn}", prefixedDisplayName, colKey, expandedHidden));
                         }
                         else if (isExpChoice || isExpBoolean)
                         {
@@ -2824,7 +2828,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                     joinClauses.Add($"LEFT JOIN [{metadataTable}] {metadataJoinAlias} ON {metadataJoinAlias}.[OptionSetName]='{optionSetName}' AND {metadataJoinAlias}.[EntityName]='{expand.TargetTableLogicalName}' AND {metadataJoinAlias}.[LocalizedLabelLanguageCode]={_languageCode} AND {metadataJoinAlias}.[Option]={joinAlias}.{expAttr.LogicalName}");
                                 }
                                 
-                                var fabricAlias = _useDisplayNameAliasesInSql && !prefixedDisplayName.Equals(colKey, StringComparison.OrdinalIgnoreCase)
+                                var fabricAlias = _useDisplayNameAliasesInSql && !expandedHidden && !prefixedDisplayName.Equals(colKey, StringComparison.OrdinalIgnoreCase)
                                     ? $"{metadataJoinAlias}.[LocalizedLabel] AS {EscapeSqlIdentifier(prefixedDisplayName)}"
                                     : $"{metadataJoinAlias}.[LocalizedLabel] {colKey}";
                                 sqlFields.Add(fabricAlias);
@@ -2833,7 +2837,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             {
                                 // TDS: use the virtual name column
                                 var nameColumn = expAttr.VirtualAttributeName ?? (expAttr.LogicalName + "name");
-                                sqlFields.Add(ApplySqlAlias($"{joinAlias}.{nameColumn}", prefixedDisplayName, colKey, false));
+                                sqlFields.Add(ApplySqlAlias($"{joinAlias}.{nameColumn}", prefixedDisplayName, colKey, expandedHidden));
                             }
                         }
                         else if (isExpMultiSelect)
@@ -2849,19 +2853,19 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                 var metadataTable = ResolveFabricOptionSetMetadataTable(expAttrType, expAttr.LogicalName, optionSetName, isGlobal, expand.TargetTableLogicalName);
 
                                 joinClauses.Add($"OUTER APPLY (SELECT STRING_AGG({metaAlias}.[LocalizedLabel], ', ') AS {nameColumn} FROM STRING_SPLIT(CAST({joinAlias}.{expAttr.LogicalName} AS VARCHAR(4000)), ';') AS split JOIN [{metadataTable}] AS {metaAlias} ON {metaAlias}.[OptionSetName]='{optionSetName}' AND {metaAlias}.[EntityName]='{expand.TargetTableLogicalName}' AND {metaAlias}.[LocalizedLabelLanguageCode]={_languageCode} AND {metaAlias}.[Option]=CAST(LTRIM(RTRIM(split.value)) AS INT) WHERE {joinAlias}.{expAttr.LogicalName} IS NOT NULL) {applyAlias}");
-                                sqlFields.Add(ApplySqlAlias($"{applyAlias}.{nameColumn}", prefixedDisplayName, colKey, false));
+                                sqlFields.Add(ApplySqlAlias($"{applyAlias}.{nameColumn}", prefixedDisplayName, colKey, expandedHidden));
                             }
                             else
                             {
                                 // TDS: use the virtual name column
                                 var nameColumn = expAttr.VirtualAttributeName ?? (expAttr.LogicalName + "name");
-                                sqlFields.Add(ApplySqlAlias($"{joinAlias}.{nameColumn}", prefixedDisplayName, colKey, false));
+                                sqlFields.Add(ApplySqlAlias($"{joinAlias}.{nameColumn}", prefixedDisplayName, colKey, expandedHidden));
                             }
                         }
                         else
                         {
                             // Regular column - keep as-is
-                            sqlFields.Add(ApplySqlAlias($"{joinAlias}.{expAttr.LogicalName}", prefixedDisplayName, colKey, false));
+                            sqlFields.Add(ApplySqlAlias($"{joinAlias}.{expAttr.LogicalName}", prefixedDisplayName, colKey, expandedHidden));
                         }
                         processedColumns.Add(colKey);
                     }
@@ -4787,8 +4791,12 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     
                     foreach (var expAttr in expand.Attributes)
                     {
+                        if (!(expAttr.IncludeInModel ?? true))
+                            continue;
+
                         var colKey = $"{expand.LookupAttributeName}_{expAttr.LogicalName}";
                         if (processedColumns.Contains(colKey)) continue;
+                        var expandedHidden = expAttr.IsHidden ?? false;
                         
                         var expDisplayName = expAttr.DisplayName ?? expAttr.LogicalName;
                         var targetPrefix = expand.TargetTableDisplayName ?? expand.TargetTableLogicalName;
@@ -4805,7 +4813,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         var isExpBoolean = expAttrType.Equals("Boolean", StringComparison.OrdinalIgnoreCase);
                         var isExpMultiSelect = expAttrType.Equals("MultiSelectPicklist", StringComparison.OrdinalIgnoreCase);
                         
-                        var sourceCol = _useDisplayNameAliasesInSql ? prefixedDisplayName : colKey;
+                        var sourceCol = _useDisplayNameAliasesInSql && !expandedHidden ? prefixedDisplayName : colKey;
                         
                         if (isExpLookup)
                         {
@@ -4816,11 +4824,11 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                 LogicalName = colKey,
                                 DisplayName = prefixedDisplayName,
                                 SourceColumn = sourceCol,
-                                IsHidden = false,
+                                IsHidden = expandedHidden,
                                 Description = description,
                                 AttributeType = "string"
                             });
-                            sqlFields.Add(ApplySqlAlias($"{joinAlias}.{nameColumn}", prefixedDisplayName, colKey, false));
+                            sqlFields.Add(ApplySqlAlias($"{joinAlias}.{nameColumn}", prefixedDisplayName, colKey, expandedHidden));
                         }
                         else if (isExpChoice || isExpBoolean)
                         {
@@ -4854,7 +4862,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                         $"\t\t\t\t            AND {metadataJoinAlias}.[Option] = {joinAlias}.{expAttr.LogicalName}");
                                 }
                                 
-                                var fabricAlias = _useDisplayNameAliasesInSql && !prefixedDisplayName.Equals(colKey, StringComparison.OrdinalIgnoreCase)
+                                var fabricAlias = _useDisplayNameAliasesInSql && !expandedHidden && !prefixedDisplayName.Equals(colKey, StringComparison.OrdinalIgnoreCase)
                                     ? $"{metadataJoinAlias}.[LocalizedLabel] AS {EscapeSqlIdentifier(prefixedDisplayName)}"
                                     : $"{metadataJoinAlias}.[LocalizedLabel] {colKey}";
                                 sqlFields.Add(fabricAlias);
@@ -4863,7 +4871,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             {
                                 // TDS: use the virtual name column
                                 var nameColumn = expAttr.VirtualAttributeName ?? (expAttr.LogicalName + "name");
-                                sqlFields.Add(ApplySqlAlias($"{joinAlias}.{nameColumn}", prefixedDisplayName, colKey, false));
+                                sqlFields.Add(ApplySqlAlias($"{joinAlias}.{nameColumn}", prefixedDisplayName, colKey, expandedHidden));
                             }
                             
                             columns.Add(new ColumnInfo
@@ -4871,7 +4879,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                 LogicalName = colKey,
                                 DisplayName = prefixedDisplayName,
                                 SourceColumn = sourceCol,
-                                IsHidden = false,
+                                IsHidden = expandedHidden,
                                 Description = description,
                                 AttributeType = "string"
                             });
@@ -4899,13 +4907,13 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                     $"\t\t\t\t            AND {metaAlias}.[Option] = CAST(LTRIM(RTRIM(split.value)) AS INT)\r\n" +
                                     $"\t\t\t\t        WHERE {joinAlias}.{expAttr.LogicalName} IS NOT NULL\r\n" +
                                     $"\t\t\t\t    ) {applyAlias}");
-                                sqlFields.Add(ApplySqlAlias($"{applyAlias}.{nameColumn}", prefixedDisplayName, colKey, false));
+                                sqlFields.Add(ApplySqlAlias($"{applyAlias}.{nameColumn}", prefixedDisplayName, colKey, expandedHidden));
                             }
                             else
                             {
                                 // TDS: use the virtual name column
                                 var nameColumn = expAttr.VirtualAttributeName ?? (expAttr.LogicalName + "name");
-                                sqlFields.Add(ApplySqlAlias($"{joinAlias}.{nameColumn}", prefixedDisplayName, colKey, false));
+                                sqlFields.Add(ApplySqlAlias($"{joinAlias}.{nameColumn}", prefixedDisplayName, colKey, expandedHidden));
                             }
                             
                             columns.Add(new ColumnInfo
@@ -4913,7 +4921,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                 LogicalName = colKey,
                                 DisplayName = prefixedDisplayName,
                                 SourceColumn = sourceCol,
-                                IsHidden = false,
+                                IsHidden = expandedHidden,
                                 Description = description,
                                 AttributeType = "string"
                             });
@@ -4926,11 +4934,11 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                 LogicalName = colKey,
                                 DisplayName = prefixedDisplayName,
                                 SourceColumn = sourceCol,
-                                IsHidden = false,
+                                IsHidden = expandedHidden,
                                 Description = description,
                                 AttributeType = expAttr.AttributeType ?? "string"
                             });
-                            sqlFields.Add(ApplySqlAlias($"{joinAlias}.{expAttr.LogicalName}", prefixedDisplayName, colKey, false));
+                            sqlFields.Add(ApplySqlAlias($"{joinAlias}.{expAttr.LogicalName}", prefixedDisplayName, colKey, expandedHidden));
                         }
                         processedColumns.Add(colKey);
                     }

@@ -292,7 +292,9 @@ namespace DataverseToPowerBI.XrmToolBox
                                 Targets = a.Targets?.ToList(),
                                 VirtualAttributeName = a.VirtualAttributeName,
                                 IsGlobal = a.IsGlobal,
-                                OptionSetName = a.OptionSetName
+                                OptionSetName = a.OptionSetName,
+                                IncludeInModel = a.IncludeInModel,
+                                IsHidden = a.IsHidden
                             }).ToList()
                         }).ToList()),
                     LookupSubColumnConfigs = settings.LookupSubColumnConfigs
@@ -318,7 +320,17 @@ namespace DataverseToPowerBI.XrmToolBox
                             ValueFieldHidden = cfg.ValueFieldHidden,
                             IncludeLabelField = cfg.IncludeLabelField,
                             LabelFieldHidden = cfg.LabelFieldHidden
-                        }).ToList())
+                        }).ToList()),
+                    CollapsedLookupGroups = settings.CollapsedLookupGroups
+                        .Where(v => !string.IsNullOrWhiteSpace(v))
+                        .Where(v =>
+                        {
+                            var separator = v.IndexOf('.');
+                            if (separator <= 0) return false;
+                            var tableName = v.Substring(0, separator);
+                            return tables.Contains(tableName);
+                        })
+                        .ToList()
                 }
             };
 

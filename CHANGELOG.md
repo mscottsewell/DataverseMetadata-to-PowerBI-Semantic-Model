@@ -12,6 +12,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2026.5.125] - 2026-02-24
+
+### Added
+
+- **Expanded Child In-Grid Controls** — Expanded lookup child rows now expose interactive `Include` and `Hidden` toggles directly in the main attribute grid (in addition to the Expand dialog). This enables rapid include/hide adjustments without reopening the picker dialog.
+
+- **Bulk Group Expansion Controls** — Added `Open all groups` and `Collapse all groups` actions to the attribute pane for faster visual navigation of grouped lookup/choice sections.
+
+### Changed
+
+- **Selected View Group Visibility** — In `Show: Selected` mode, grouped lookup/choice child rows now remain visible under selected parent groups even when individual child fields are currently not included. This supports quick include-on-demand workflows.
+
+- **Group Default State and Persistence** — Lookup/choice groups now default to collapsed when first shown, and per-group open/collapse state is persisted in semantic model settings and restored on reload.
+
+- **Expanded Column UX** — The expand-action column now has a header (`Expanded`) and row labels now show item counts when present (`▶ Expand (n)`). Column widths were rebalanced (reduced `Type`, widened `Expanded`) to prevent truncation/wrapping.
+
+- **Choice Value Include Default** — For choice fields, enabling `Include` on the numeric/value sub-column now auto-sets `Hidden = true` by default (still user-toggleable).
+
+- **Expanded Include Semantics** — Unchecking `Include` on an expanded child now behaves as an exclusion toggle while keeping the row visible (unchecked) in the grid. It no longer immediately removes the row from the current display.
+
+### Fixed
+
+- **Expanded Field Hidden Propagation** — Hidden state for expanded child attributes is now serialized, cloned, filtered for CSV export model copies, and honored during semantic model generation.
+
+- **Expanded Field Build Output Control** — Semantic model generation now respects expanded child `Include` state (excluded children are omitted from output) and `Hidden` state (included hidden children are emitted as hidden columns).
+
+---
+
 ## [1.2026.5.110] - 2026-02-21
 
 ### Fixed

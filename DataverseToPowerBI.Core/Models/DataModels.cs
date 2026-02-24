@@ -1407,6 +1407,16 @@ namespace DataverseToPowerBI.Core.Models
         /// For Choice attributes (FabricLink mode), the optionset logical name.
         /// </summary>
         public string? OptionSetName { get; set; }
+
+        /// <summary>
+        /// Whether this expanded attribute is included in the semantic model output.
+        /// </summary>
+        public bool? IncludeInModel { get; set; }
+
+        /// <summary>
+        /// Whether this expanded attribute should be hidden in the report field list.
+        /// </summary>
+        public bool? IsHidden { get; set; }
     }
 
     #endregion

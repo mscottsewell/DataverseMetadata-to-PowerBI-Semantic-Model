@@ -111,6 +111,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private int _relationshipsSortColumn = -1;
         private bool _relationshipsSortAscending = true;
         private readonly ToolTip _versionToolTip = new ToolTip();
+        private string? _activeAttributeListTable;
 
         // Pre-sorted attribute cache per table (built during metadata load)
         private Dictionary<string, List<AttributeMetadata>> _sortedAttributeCache = new Dictionary<string, List<AttributeMetadata>>();
@@ -694,7 +695,9 @@ namespace DataverseToPowerBI.XrmToolBox
                             Targets = a.Targets?.ToList(),
                             VirtualAttributeName = a.VirtualAttributeName,
                             IsGlobal = a.IsGlobal,
-                            OptionSetName = a.OptionSetName
+                            OptionSetName = a.OptionSetName,
+                            IncludeInModel = a.IncludeInModel ?? true,
+                            IsHidden = a.IsHidden
                         }).ToList()
                     }).ToList();
                 }
@@ -755,6 +758,11 @@ namespace DataverseToPowerBI.XrmToolBox
                         _choiceSubColumnConfigs[kvp.Key] = tableConfig;
                 }
             }
+
+            _collapsedLookupGroups = settings.CollapsedLookupGroups != null
+                ? new HashSet<string>(settings.CollapsedLookupGroups
+                    .Where(v => !string.IsNullOrWhiteSpace(v)), StringComparer.OrdinalIgnoreCase)
+                : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             
             // Restore relationships
             _relationships.Clear();
@@ -934,7 +942,9 @@ namespace DataverseToPowerBI.XrmToolBox
                             Targets = a.Targets,
                             VirtualAttributeName = a.VirtualAttributeName,
                             IsGlobal = a.IsGlobal,
-                            OptionSetName = a.OptionSetName
+                            OptionSetName = a.OptionSetName,
+                            IncludeInModel = a.IncludeInModel,
+                            IsHidden = a.IsHidden
                         }).ToList()
                     }).ToList();
                 }
@@ -976,6 +986,11 @@ namespace DataverseToPowerBI.XrmToolBox
                             LabelFieldHidden = cfg.LabelFieldHidden
                         }).ToList();
                 }
+
+                settings.CollapsedLookupGroups = _collapsedLookupGroups
+                    .Where(v => !string.IsNullOrWhiteSpace(v))
+                    .OrderBy(v => v, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
                 
                 _currentModel.PluginSettings = settings;
                 _modelManager.SaveModel(_currentModel);
@@ -2307,6 +2322,12 @@ namespace DataverseToPowerBI.XrmToolBox
             };
         }
 
+        internal static string GetChoiceValueFieldDisplayName(AttributeMetadata attr)
+        {
+            if (attr == null) throw new ArgumentNullException(nameof(attr));
+            return attr.SchemaName ?? attr.LogicalName;
+        }
+
         private void RecalculateLookupDefaults()
         {
             if (listViewSelectedTables.SelectedItems.Count > 0)
@@ -2377,6 +2398,11 @@ namespace DataverseToPowerBI.XrmToolBox
             return !string.IsNullOrEmpty(tag) && tag.StartsWith("__subchoice__", StringComparison.OrdinalIgnoreCase);
         }
 
+        private static bool IsExpandedSubRowTag(string? tag)
+        {
+            return !string.IsNullOrEmpty(tag) && tag.StartsWith("__expanded__", StringComparison.OrdinalIgnoreCase);
+        }
+
         private static bool TryParseLookupSubRowTag(string tag, out string parentLookup, out string subType)
         {
             parentLookup = "";
@@ -2410,9 +2436,124 @@ namespace DataverseToPowerBI.XrmToolBox
             subType = parts[2];
             return true;
         }
-        
-        private void UpdateAttributesDisplay(string logicalName)
+
+        private static bool TryParseExpandedSubRowTag(string tag, out string parentLookup, out string expandedAttribute)
         {
+            parentLookup = "";
+            expandedAttribute = "";
+
+            if (!IsExpandedSubRowTag(tag))
+                return false;
+
+            var parts = tag.Split(new[] { "__" }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 3)
+                return false;
+
+            parentLookup = parts[1];
+            expandedAttribute = parts[2];
+            return true;
+        }
+
+        private sealed class AttributeListViewState
+        {
+            public string? TopTag { get; set; }
+            public string? FocusTag { get; set; }
+        }
+
+        private AttributeListViewState CaptureAttributeListViewState(string logicalName, string? preferredFocusTag)
+        {
+            if (!string.Equals(_activeAttributeListTable, logicalName, StringComparison.OrdinalIgnoreCase))
+            {
+                return new AttributeListViewState
+                {
+                    FocusTag = preferredFocusTag
+                };
+            }
+
+            return new AttributeListViewState
+            {
+                TopTag = listViewAttributes.TopItem?.Tag as string,
+                FocusTag = preferredFocusTag
+                    ?? (listViewAttributes.FocusedItem?.Tag as string)
+                    ?? (listViewAttributes.SelectedItems.Count > 0 ? listViewAttributes.SelectedItems[0].Tag as string : null)
+            };
+        }
+
+        private void RestoreAttributeListViewState(AttributeListViewState? state)
+        {
+            if (state == null || listViewAttributes.Items.Count == 0)
+                return;
+
+            var topItem = FindAttributeListItemByTag(state.TopTag);
+            if (topItem != null)
+            {
+                try
+                {
+                    listViewAttributes.TopItem = topItem;
+                }
+                catch
+                {
+                }
+            }
+
+            var focusItem = FindBestFocusItem(state.FocusTag) ?? topItem;
+            if (focusItem != null)
+            {
+                listViewAttributes.SelectedItems.Clear();
+                focusItem.Selected = true;
+                focusItem.Focused = true;
+                focusItem.EnsureVisible();
+            }
+        }
+
+        private ListViewItem? FindBestFocusItem(string? focusTag)
+        {
+            var exact = FindAttributeListItemByTag(focusTag);
+            if (exact != null)
+                return exact;
+
+            if (!string.IsNullOrEmpty(focusTag) &&
+                TryParseLookupSubRowTag(focusTag, out var lookupParent, out _))
+            {
+                return FindAttributeListItemByTag(lookupParent);
+            }
+
+            if (!string.IsNullOrEmpty(focusTag) &&
+                TryParseChoiceSubRowTag(focusTag, out var choiceParent, out _))
+            {
+                return FindAttributeListItemByTag(choiceParent);
+            }
+
+            if (!string.IsNullOrEmpty(focusTag) &&
+                focusTag.StartsWith("__expanded__", StringComparison.OrdinalIgnoreCase))
+            {
+                var parts = focusTag.Split(new[] { "__" }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 2)
+                {
+                    return FindAttributeListItemByTag(parts[1]);
+                }
+            }
+
+            return null;
+        }
+
+        private ListViewItem? FindAttributeListItemByTag(string? tag)
+        {
+            if (string.IsNullOrEmpty(tag))
+                return null;
+
+            foreach (ListViewItem item in listViewAttributes.Items)
+            {
+                if (string.Equals(item.Tag as string, tag, StringComparison.OrdinalIgnoreCase))
+                    return item;
+            }
+
+            return null;
+        }
+        
+        private void UpdateAttributesDisplay(string logicalName, string? preferredFocusTag = null)
+        {
+            var viewState = CaptureAttributeListViewState(logicalName, preferredFocusTag);
             listViewAttributes.Items.Clear();
 
             var tableDisplay = _selectedTables.ContainsKey(logicalName)
@@ -2420,7 +2561,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 : logicalName;
             groupBoxAttributes.Text = $"Attributes - {tableDisplay}";
 
-            colAttrExpand.Width = 72;
+            colAttrExpand.Width = 104;
             colAttrInclude.Width = 50;
             colAttrHidden.Width = 50;
             
@@ -2533,7 +2674,7 @@ namespace DataverseToPowerBI.XrmToolBox
                     var hasAnyIncluded = includeCount > 0;
 
                     var collapsedKey = $"{logicalName}.{attr.LogicalName}";
-                    var isCollapsed = _collapsedLookupGroups.Contains(collapsedKey);
+                    var isCollapsed = !_collapsedLookupGroups.Contains(collapsedKey);
 
                     var headerText = $"{(isCollapsed ? "▶" : "▼")} {attr.DisplayName ?? attr.LogicalName}";
                     var headerItem = new ListViewItem
@@ -2549,7 +2690,10 @@ namespace DataverseToPowerBI.XrmToolBox
                     headerItem.SubItems.Add(attr.AttributeType ?? "Lookup");
                     headerItem.SubItems.Add("");
                     headerItem.SubItems.Add("");
-                    headerItem.SubItems.Add(hasExpand && expandConfig!.Attributes.Count > 0 ? $"✏ Edit ({expandConfig.Attributes.Count})" : "▶ Expand");
+                    var expandedCount = hasExpand
+                        ? expandConfig!.Attributes.Count(a => a.IncludeInModel ?? true)
+                        : 0;
+                    headerItem.SubItems.Add(expandedCount > 0 ? $"▶ Expand ({expandedCount})" : "▶ Expand");
                     headerItem.ForeColor = hasAnyIncluded ? Color.Black : Color.Gray;
 
                     if (!string.IsNullOrEmpty(searchText) &&
@@ -2585,7 +2729,6 @@ namespace DataverseToPowerBI.XrmToolBox
 
                         foreach (var row in displayRows)
                         {
-                            if (showSelected && !row.Include) continue;
                             if (!string.IsNullOrEmpty(searchText) &&
                                 !(row.DisplayName.ToLower().Contains(searchText) || row.LogicalName.ToLower().Contains(searchText)))
                                 continue;
@@ -2643,12 +2786,15 @@ namespace DataverseToPowerBI.XrmToolBox
                                 childItem.SubItems.Add($"    ↳ {targetDisplayPrefix} : {expAttr.DisplayName ?? expAttr.LogicalName}");
                                 childItem.SubItems.Add($"{expandConfig.TargetTableLogicalName}.{expAttr.LogicalName}");
                                 childItem.SubItems.Add(expAttr.AttributeType ?? "");
-                                childItem.SubItems.Add("");
-                                childItem.SubItems.Add("");
+                                var includeExpanded = expAttr.IncludeInModel ?? true;
+                                childItem.SubItems.Add(includeExpanded ? "☑" : "☐");
+                                childItem.SubItems.Add((expAttr.IsHidden ?? false) ? "☑" : "☐");
                                 childItem.SubItems.Add("");
                                 childItem.Tag = $"__expanded__{attr.LogicalName}__{expAttr.LogicalName}";
                                 childItem.ForeColor = Color.FromArgb(80, 80, 160);
                                 childItem.BackColor = Color.FromArgb(245, 245, 255);
+                                if (!includeExpanded)
+                                    childItem.SubItems[6].ForeColor = Color.Gray;
                                 items.Add(childItem);
                             }
                         }
@@ -2673,7 +2819,7 @@ namespace DataverseToPowerBI.XrmToolBox
                     var hasAnyIncluded = includeCount > 0;
 
                     var collapsedKey = $"{logicalName}.{attr.LogicalName}";
-                    var isCollapsed = _collapsedLookupGroups.Contains(collapsedKey);
+                    var isCollapsed = !_collapsedLookupGroups.Contains(collapsedKey);
 
                     var headerText = $"{(isCollapsed ? "▶" : "▼")} {attr.DisplayName ?? attr.LogicalName}";
                     var headerItem = new ListViewItem
@@ -2707,16 +2853,16 @@ namespace DataverseToPowerBI.XrmToolBox
                             ? overrides[attr.LogicalName]
                             : (attr.DisplayName ?? attr.LogicalName);
                         var labelLogicalName = attr.VirtualAttributeName ?? (attr.LogicalName + "name");
+                        var valueDisplayName = GetChoiceValueFieldDisplayName(attr);
 
                         var displayRows = new List<(string SubType, string LogicalName, string DisplayName, string Type, bool Include, bool Hidden)>
                         {
-                            ("value", attr.LogicalName, (attr.DisplayName ?? attr.LogicalName) + " Value", attr.AttributeType ?? "Choice", includeValue, resolvedChoice.ValueFieldHidden ?? false),
+                            ("value", attr.LogicalName, valueDisplayName, attr.AttributeType ?? "Choice", includeValue, resolvedChoice.ValueFieldHidden ?? false),
                             ("label", labelLogicalName, labelDisplayValue, "String", includeLabel, resolvedChoice.LabelFieldHidden ?? false)
                         };
 
                         foreach (var row in displayRows)
                         {
-                            if (showSelected && !row.Include) continue;
                             if (!string.IsNullOrEmpty(searchText) &&
                                 !(row.DisplayName.ToLower().Contains(searchText) || row.LogicalName.ToLower().Contains(searchText)))
                                 continue;
@@ -2815,6 +2961,8 @@ namespace DataverseToPowerBI.XrmToolBox
             finally
             {
                 listViewAttributes.EndUpdate();
+                _activeAttributeListTable = logicalName;
+                RestoreAttributeListViewState(viewState);
             }
         }
 
@@ -2978,7 +3126,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
                     UpdateSelectedTableRow(logicalName);
                     SaveSettings();
-                    UpdateAttributesDisplay(logicalName);
+                    UpdateAttributesDisplay(logicalName, attrName);
                     return;
                 }
 
@@ -3008,7 +3156,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
                     UpdateSelectedTableRow(logicalName);
                     SaveSettings();
-                    UpdateAttributesDisplay(logicalName);
+                    UpdateAttributesDisplay(logicalName, attrName);
                     return;
                 }
             }
@@ -3140,6 +3288,52 @@ namespace DataverseToPowerBI.XrmToolBox
             
             UpdateSelectedTableRow(logicalName);
             SaveSettings();
+        }
+
+        private void BtnOpenAllGroups_Click(object sender, EventArgs e)
+        {
+            SetVisibleGroupExpansion(expand: true);
+        }
+
+        private void BtnCollapseAllGroups_Click(object sender, EventArgs e)
+        {
+            SetVisibleGroupExpansion(expand: false);
+        }
+
+        private void SetVisibleGroupExpansion(bool expand)
+        {
+            if (listViewSelectedTables.SelectedItems.Count == 0)
+                return;
+
+            var logicalName = listViewSelectedTables.SelectedItems[0].Name;
+            var groupKeys = new List<string>();
+
+            foreach (ListViewItem item in listViewAttributes.Items)
+            {
+                var tag = item.Tag as string;
+                if (string.IsNullOrEmpty(tag) || tag.StartsWith("__", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (item.SubItems.Count <= 2)
+                    continue;
+
+                var headerText = item.SubItems[2].Text?.TrimStart() ?? string.Empty;
+                if (!(headerText.StartsWith("▶ ", StringComparison.Ordinal) ||
+                      headerText.StartsWith("▼ ", StringComparison.Ordinal)))
+                    continue;
+
+                groupKeys.Add($"{logicalName}.{tag}");
+            }
+
+            foreach (var groupKey in groupKeys)
+            {
+                if (expand)
+                    _collapsedLookupGroups.Add(groupKey);
+                else
+                    _collapsedLookupGroups.Remove(groupKey);
+            }
+
+            UpdateAttributesDisplay(logicalName);
         }
         
         private void BtnSelectFromForm_Click(object sender, EventArgs e)
@@ -3536,7 +3730,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
                 _lookupSubColumnConfigs[tableName][parentLookup] = resolved;
                 SaveSettings();
-                UpdateAttributesDisplay(tableName);
+                UpdateAttributesDisplay(tableName, parentLookup);
                 return;
             }
 
@@ -3564,7 +3758,10 @@ namespace DataverseToPowerBI.XrmToolBox
                         if (subItemIndex == 5)
                         {
                             include = !include;
-                            if (!include) hidden = false;
+                            if (include)
+                                hidden = true;
+                            else
+                                hidden = false;
                         }
                         else
                         {
@@ -3596,7 +3793,50 @@ namespace DataverseToPowerBI.XrmToolBox
 
                 _choiceSubColumnConfigs[tableName][parentAttribute] = resolved;
                 SaveSettings();
-                UpdateAttributesDisplay(tableName);
+                UpdateAttributesDisplay(tableName, parentAttribute);
+                return;
+            }
+
+            if (TryParseExpandedSubRowTag(itemTag, out var expandedParentLookup, out var expandedAttribute))
+            {
+                if (subItemIndex != 5 && subItemIndex != 6)
+                    return;
+
+                if (!_expandedLookups.ContainsKey(tableName))
+                    return;
+
+                var expandedConfig = _expandedLookups[tableName].FirstOrDefault(e =>
+                    e.LookupAttributeName.Equals(expandedParentLookup, StringComparison.OrdinalIgnoreCase));
+                if (expandedConfig == null)
+                    return;
+
+                var expandedAttr = expandedConfig.Attributes.FirstOrDefault(a =>
+                    a.LogicalName.Equals(expandedAttribute, StringComparison.OrdinalIgnoreCase));
+                if (expandedAttr == null)
+                    return;
+
+                if (subItemIndex == 5)
+                {
+                    var include = expandedAttr.IncludeInModel ?? true;
+                    include = !include;
+                    expandedAttr.IncludeInModel = include;
+                    if (!include)
+                        expandedAttr.IsHidden = false;
+                }
+                else
+                {
+                    var include = expandedAttr.IncludeInModel ?? true;
+                    var isHidden = expandedAttr.IsHidden ?? false;
+                    isHidden = !isHidden;
+                    if (isHidden)
+                        include = true;
+
+                    expandedAttr.IncludeInModel = include;
+                    expandedAttr.IsHidden = isHidden;
+                }
+
+                SaveSettings();
+                UpdateAttributesDisplay(tableName, expandedParentLookup);
                 return;
             }
 
@@ -3610,7 +3850,7 @@ namespace DataverseToPowerBI.XrmToolBox
                         _collapsedLookupGroups.Remove(collapsedKey);
                     else
                         _collapsedLookupGroups.Add(collapsedKey);
-                    UpdateAttributesDisplay(tableName);
+                    UpdateAttributesDisplay(tableName, itemTag);
                     return;
                 }
             }
@@ -3707,6 +3947,20 @@ namespace DataverseToPowerBI.XrmToolBox
                             
                             if (dialog.SelectedAttributes.Count > 0)
                             {
+                                var existingHiddenMap = existingConfig?.Attributes?
+                                    .ToDictionary(a => a.LogicalName, a => a.IsHidden, StringComparer.OrdinalIgnoreCase)
+                                    ?? new Dictionary<string, bool?>(StringComparer.OrdinalIgnoreCase);
+
+                                var selectedWithHidden = dialog.SelectedAttributes
+                                    .Select(a =>
+                                    {
+                                        a.IncludeInModel = true;
+                                        if (existingHiddenMap.TryGetValue(a.LogicalName, out var hidden))
+                                            a.IsHidden = hidden;
+                                        return a;
+                                    })
+                                    .ToList();
+
                                 _expandedLookups[sourceTableName].Add(new ExpandedLookupConfig
                                 {
                                     LookupAttributeName = lookupAttr.LogicalName,
@@ -3714,7 +3968,7 @@ namespace DataverseToPowerBI.XrmToolBox
                                     TargetTableDisplayName = tableMeta?.DisplayName ?? targetTableLogicalName,
                                     TargetTablePrimaryKey = tableMeta?.PrimaryIdAttribute ?? (targetTableLogicalName + "id"),
                                     FormId = dialog.SelectedFormId,
-                                    Attributes = dialog.SelectedAttributes
+                                    Attributes = selectedWithHidden
                                 });
                             }
                             
@@ -3760,10 +4014,10 @@ namespace DataverseToPowerBI.XrmToolBox
             // Fixed-width columns: Sel, Form, Type, Include, Hidden, Expand
             const int selWidth = 40;
             const int formWidth = 45;
-            const int typeWidth = 90;
+            const int typeWidth = 78;
             const int includeWidth = 50;
             const int hiddenWidth = 50;
-            const int expandWidth = 72;
+            const int expandWidth = 104;
             const int scrollBarWidth = 20;
             colAttrExpand.Width = expandWidth;
             colAttrInclude.Width = includeWidth;
@@ -4267,7 +4521,8 @@ namespace DataverseToPowerBI.XrmToolBox
                         AttributeType = targetAttr?.AttributeType,
                         SchemaName = targetAttr?.SchemaName,
                         Targets = targetAttr?.Targets?.ToList(),
-                        VirtualAttributeName = targetAttr?.VirtualAttributeName
+                        VirtualAttributeName = targetAttr?.VirtualAttributeName,
+                        IncludeInModel = true
                     };
                 }).ToList();
 
@@ -5361,6 +5616,12 @@ namespace DataverseToPowerBI.XrmToolBox
         [System.Runtime.Serialization.DataMember]
         public Dictionary<string, List<SerializedChoiceSubColumnConfig>> ChoiceSubColumnConfigs { get; set; } = new Dictionary<string, List<SerializedChoiceSubColumnConfig>>();
         /// <summary>
+        /// Collapsed attribute group keys in format "{tableLogicalName}.{attributeLogicalName}".
+        /// Groups not present in this list are treated as expanded.
+        /// </summary>
+        [System.Runtime.Serialization.DataMember]
+        public List<string> CollapsedLookupGroups { get; set; } = new List<string>();
+        /// <summary>
         /// Per-table field selection mode (Form, View, or Custom).
         /// Key = table logical name, Value = mode string.
         /// </summary>
@@ -5436,6 +5697,10 @@ namespace DataverseToPowerBI.XrmToolBox
         public bool? IsGlobal { get; set; }
         [System.Runtime.Serialization.DataMember]
         public string? OptionSetName { get; set; }
+        [System.Runtime.Serialization.DataMember]
+        public bool? IncludeInModel { get; set; }
+        [System.Runtime.Serialization.DataMember]
+        public bool? IsHidden { get; set; }
     }
 
     [System.Runtime.Serialization.DataContract]
