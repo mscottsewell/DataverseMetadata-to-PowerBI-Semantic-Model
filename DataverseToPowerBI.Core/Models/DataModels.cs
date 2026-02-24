@@ -1169,6 +1169,13 @@ namespace DataverseToPowerBI.Core.Models
         /// Null config or missing key means defaults should be resolved by the caller.
         /// </summary>
         public Dictionary<string, LookupSubColumnConfig>? LookupSubColumnConfigs { get; set; }
+
+        /// <summary>
+        /// Per-choice sub-column configurations. Keyed by attribute logical name for
+        /// picklist/state/status/boolean/multiselect attributes.
+        /// Null config or missing key means defaults should be resolved by the caller.
+        /// </summary>
+        public Dictionary<string, ChoiceSubColumnConfig>? ChoiceSubColumnConfigs { get; set; }
     }
 
     /// <summary>
@@ -1322,6 +1329,38 @@ namespace DataverseToPowerBI.Core.Models
         /// Hide the generated polymorphic yomi column in report field list.
         /// </summary>
         public bool? YomiFieldHidden { get; set; }
+    }
+
+    /// <summary>
+    /// Per-sub-column configuration for a choice-style field's generated columns.
+    /// Null values mean caller should use defaults.
+    /// </summary>
+    public class ChoiceSubColumnConfig
+    {
+        /// <summary>
+        /// Logical name of the parent attribute (e.g., "statuscode").
+        /// </summary>
+        public string AttributeLogicalName { get; set; } = "";
+
+        /// <summary>
+        /// Include the numeric/raw value column for the attribute.
+        /// </summary>
+        public bool? IncludeValueField { get; set; }
+
+        /// <summary>
+        /// Hide the numeric/raw value column in report field list.
+        /// </summary>
+        public bool? ValueFieldHidden { get; set; }
+
+        /// <summary>
+        /// Include the generated label/name column ({attribute}name).
+        /// </summary>
+        public bool? IncludeLabelField { get; set; }
+
+        /// <summary>
+        /// Hide the generated label/name column in report field list.
+        /// </summary>
+        public bool? LabelFieldHidden { get; set; }
     }
 
     /// <summary>

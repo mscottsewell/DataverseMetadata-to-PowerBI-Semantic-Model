@@ -97,6 +97,8 @@ namespace DataverseToPowerBI.XrmToolBox
         // Lookup sub-column configs: key = table logical name, value = lookup logical name -> config
         private Dictionary<string, Dictionary<string, LookupSubColumnConfig>> _lookupSubColumnConfigs =
             new Dictionary<string, Dictionary<string, LookupSubColumnConfig>>(StringComparer.OrdinalIgnoreCase);
+        private Dictionary<string, Dictionary<string, ChoiceSubColumnConfig>> _choiceSubColumnConfigs =
+            new Dictionary<string, Dictionary<string, ChoiceSubColumnConfig>>(StringComparer.OrdinalIgnoreCase);
         private HashSet<string> _collapsedLookupGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, List<AttributeMetadata>> _relatedTableAttributesCache = new Dictionary<string, List<AttributeMetadata>>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, string> _relatedTableDisplayNameCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -457,6 +459,7 @@ namespace DataverseToPowerBI.XrmToolBox
                             DataverseUrl = _currentEnvironmentUrl ?? "",
                             WorkingFolder = dialog.WorkingFolder,
                             TemplatePath = dialog.TemplatePath,
+                            IncludeChoiceNumericValueAsHiddenAttributes = dialog.IncludeChoiceNumericValueAsHiddenAttributes,
                             LastUsed = DateTime.Now,
                             CreatedDate = DateTime.Now,
                             PluginSettings = new PluginSettings()  // Explicitly initialize with empty settings
@@ -603,6 +606,7 @@ namespace DataverseToPowerBI.XrmToolBox
             _relationships.Clear();
             _expandedLookups.Clear();
             _lookupSubColumnConfigs.Clear();
+            _choiceSubColumnConfigs.Clear();
             _collapsedLookupGroups.Clear();
             _currentSolutionName = null;
             _currentSolutionId = null;
@@ -723,6 +727,32 @@ namespace DataverseToPowerBI.XrmToolBox
 
                     if (tableConfig.Count > 0)
                         _lookupSubColumnConfigs[kvp.Key] = tableConfig;
+                }
+            }
+
+            _choiceSubColumnConfigs.Clear();
+            if (settings.ChoiceSubColumnConfigs != null)
+            {
+                foreach (var kvp in settings.ChoiceSubColumnConfigs)
+                {
+                    var tableConfig = new Dictionary<string, ChoiceSubColumnConfig>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var cfg in kvp.Value)
+                    {
+                        if (string.IsNullOrWhiteSpace(cfg.AttributeLogicalName))
+                            continue;
+
+                        tableConfig[cfg.AttributeLogicalName] = new ChoiceSubColumnConfig
+                        {
+                            AttributeLogicalName = cfg.AttributeLogicalName,
+                            IncludeValueField = cfg.IncludeValueField,
+                            ValueFieldHidden = cfg.ValueFieldHidden,
+                            IncludeLabelField = cfg.IncludeLabelField,
+                            LabelFieldHidden = cfg.LabelFieldHidden
+                        };
+                    }
+
+                    if (tableConfig.Count > 0)
+                        _choiceSubColumnConfigs[kvp.Key] = tableConfig;
                 }
             }
             
@@ -927,6 +957,23 @@ namespace DataverseToPowerBI.XrmToolBox
                             TypeFieldHidden = cfg.TypeFieldHidden,
                             IncludeYomiField = cfg.IncludeYomiField,
                             YomiFieldHidden = cfg.YomiFieldHidden
+                        }).ToList();
+                }
+
+                settings.ChoiceSubColumnConfigs = new Dictionary<string, List<SerializedChoiceSubColumnConfig>>();
+                foreach (var tableEntry in _choiceSubColumnConfigs)
+                {
+                    if (tableEntry.Value.Count == 0)
+                        continue;
+
+                    settings.ChoiceSubColumnConfigs[tableEntry.Key] = tableEntry.Value.Values.Select(cfg =>
+                        new SerializedChoiceSubColumnConfig
+                        {
+                            AttributeLogicalName = cfg.AttributeLogicalName,
+                            IncludeValueField = cfg.IncludeValueField,
+                            ValueFieldHidden = cfg.ValueFieldHidden,
+                            IncludeLabelField = cfg.IncludeLabelField,
+                            LabelFieldHidden = cfg.LabelFieldHidden
                         }).ToList();
                 }
                 
@@ -2150,6 +2197,18 @@ namespace DataverseToPowerBI.XrmToolBox
                    attrType?.Equals("Customer", StringComparison.OrdinalIgnoreCase) == true;
         }
 
+        private static bool IsChoiceType(string? attrType)
+        {
+            return attrType?.Equals("Picklist", StringComparison.OrdinalIgnoreCase) == true ||
+                   attrType?.Equals("State", StringComparison.OrdinalIgnoreCase) == true ||
+                   attrType?.Equals("Status", StringComparison.OrdinalIgnoreCase) == true ||
+                   attrType?.Equals("Boolean", StringComparison.OrdinalIgnoreCase) == true ||
+                   attrType?.Equals("MultiSelectPicklist", StringComparison.OrdinalIgnoreCase) == true;
+        }
+
+        private bool GetIncludeChoiceNumericDefault() =>
+            _currentModel?.IncludeChoiceNumericValueAsHiddenAttributes == true;
+
         private static bool IsPolymorphicLookupType(string? attrType)
         {
             return attrType?.Equals("Owner", StringComparison.OrdinalIgnoreCase) == true ||
@@ -2224,6 +2283,30 @@ namespace DataverseToPowerBI.XrmToolBox
             };
         }
 
+        private ChoiceSubColumnConfig ResolveChoiceDefaults(string attributeLogicalName, ChoiceSubColumnConfig? stored)
+        {
+            var includeValueDefault = GetIncludeChoiceNumericDefault();
+            var includeValue = stored?.IncludeValueField ?? includeValueDefault;
+            var valueHidden = stored?.ValueFieldHidden ?? includeValueDefault;
+            var includeLabel = stored?.IncludeLabelField ?? true;
+            var labelHidden = stored?.LabelFieldHidden ?? false;
+
+            if (valueHidden && !includeValue) includeValue = true;
+            if (labelHidden && !includeLabel) includeLabel = true;
+
+            if (!includeValue) valueHidden = false;
+            if (!includeLabel) labelHidden = false;
+
+            return new ChoiceSubColumnConfig
+            {
+                AttributeLogicalName = attributeLogicalName,
+                IncludeValueField = includeValue,
+                ValueFieldHidden = valueHidden,
+                IncludeLabelField = includeLabel,
+                LabelFieldHidden = labelHidden
+            };
+        }
+
         private void RecalculateLookupDefaults()
         {
             if (listViewSelectedTables.SelectedItems.Count > 0)
@@ -2289,6 +2372,11 @@ namespace DataverseToPowerBI.XrmToolBox
             return !string.IsNullOrEmpty(tag) && tag.StartsWith("__sublookup__", StringComparison.OrdinalIgnoreCase);
         }
 
+        private static bool IsChoiceSubRowTag(string? tag)
+        {
+            return !string.IsNullOrEmpty(tag) && tag.StartsWith("__subchoice__", StringComparison.OrdinalIgnoreCase);
+        }
+
         private static bool TryParseLookupSubRowTag(string tag, out string parentLookup, out string subType)
         {
             parentLookup = "";
@@ -2302,6 +2390,23 @@ namespace DataverseToPowerBI.XrmToolBox
                 return false;
 
             parentLookup = parts[1];
+            subType = parts[2];
+            return true;
+        }
+
+        private static bool TryParseChoiceSubRowTag(string tag, out string parentAttribute, out string subType)
+        {
+            parentAttribute = "";
+            subType = "";
+
+            if (!IsChoiceSubRowTag(tag))
+                return false;
+
+            var parts = tag.Split(new[] { "__" }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 3)
+                return false;
+
+            parentAttribute = parts[1];
             subType = parts[2];
             return true;
         }
@@ -2552,6 +2657,94 @@ namespace DataverseToPowerBI.XrmToolBox
                     continue;
                 }
 
+                var isChoiceType = IsChoiceType(attr.AttributeType);
+                if (isChoiceType && (isSelected || isRequired))
+                {
+                    if (!_choiceSubColumnConfigs.ContainsKey(logicalName))
+                        _choiceSubColumnConfigs[logicalName] = new Dictionary<string, ChoiceSubColumnConfig>(StringComparer.OrdinalIgnoreCase);
+
+                    var tableChoiceConfigs = _choiceSubColumnConfigs[logicalName];
+                    var resolvedChoice = ResolveChoiceDefaults(attr.LogicalName,
+                        tableChoiceConfigs.ContainsKey(attr.LogicalName) ? tableChoiceConfigs[attr.LogicalName] : null);
+
+                    var includeValue = resolvedChoice.IncludeValueField ?? false;
+                    var includeLabel = resolvedChoice.IncludeLabelField ?? true;
+                    var includeCount = (includeValue ? 1 : 0) + (includeLabel ? 1 : 0);
+                    var hasAnyIncluded = includeCount > 0;
+
+                    var collapsedKey = $"{logicalName}.{attr.LogicalName}";
+                    var isCollapsed = _collapsedLookupGroups.Contains(collapsedKey);
+
+                    var headerText = $"{(isCollapsed ? "▶" : "▼")} {attr.DisplayName ?? attr.LogicalName}";
+                    var headerItem = new ListViewItem
+                    {
+                        Text = "",
+                        Checked = hasAnyIncluded,
+                        Name = attr.LogicalName,
+                        Tag = attr.LogicalName
+                    };
+                    headerItem.SubItems.Add("");
+                    headerItem.SubItems.Add(headerText);
+                    headerItem.SubItems.Add(attr.LogicalName);
+                    headerItem.SubItems.Add(attr.AttributeType ?? "Choice");
+                    headerItem.SubItems.Add("");
+                    headerItem.SubItems.Add("");
+                    headerItem.SubItems.Add("");
+                    headerItem.ForeColor = hasAnyIncluded ? Color.Black : Color.Gray;
+
+                    if (!string.IsNullOrEmpty(searchText) &&
+                        !(headerText.ToLower().Contains(searchText) || attr.LogicalName.ToLower().Contains(searchText)))
+                    {
+                        continue;
+                    }
+
+                    if (!showSelected || hasAnyIncluded)
+                        items.Add(headerItem);
+
+                    if (!isCollapsed)
+                    {
+                        var labelDisplayValue = useAliases && overrides.ContainsKey(attr.LogicalName)
+                            ? overrides[attr.LogicalName]
+                            : (attr.DisplayName ?? attr.LogicalName);
+                        var labelLogicalName = attr.VirtualAttributeName ?? (attr.LogicalName + "name");
+
+                        var displayRows = new List<(string SubType, string LogicalName, string DisplayName, string Type, bool Include, bool Hidden)>
+                        {
+                            ("value", attr.LogicalName, (attr.DisplayName ?? attr.LogicalName) + " Value", attr.AttributeType ?? "Choice", includeValue, resolvedChoice.ValueFieldHidden ?? false),
+                            ("label", labelLogicalName, labelDisplayValue, "String", includeLabel, resolvedChoice.LabelFieldHidden ?? false)
+                        };
+
+                        foreach (var row in displayRows)
+                        {
+                            if (showSelected && !row.Include) continue;
+                            if (!string.IsNullOrEmpty(searchText) &&
+                                !(row.DisplayName.ToLower().Contains(searchText) || row.LogicalName.ToLower().Contains(searchText)))
+                                continue;
+
+                            var childItem = new ListViewItem
+                            {
+                                Text = "",
+                                Checked = false,
+                                Name = $"__subchoice__{attr.LogicalName}__{row.SubType}",
+                                Tag = $"__subchoice__{attr.LogicalName}__{row.SubType}"
+                            };
+                            childItem.SubItems.Add("");
+                            childItem.SubItems.Add($"    ↳ {row.DisplayName}");
+                            childItem.SubItems.Add(row.LogicalName);
+                            childItem.SubItems.Add(row.Type);
+                            childItem.SubItems.Add(row.Include ? "☑" : "☐");
+                            childItem.SubItems.Add(row.Hidden ? "☑" : "☐");
+                            childItem.SubItems.Add("");
+                            childItem.BackColor = Color.FromArgb(240, 245, 255);
+                            if (!row.Include)
+                                childItem.SubItems[6].ForeColor = Color.Gray;
+                            items.Add(childItem);
+                        }
+                    }
+
+                    continue;
+                }
+
                 if (showSelected && !isSelected && !isRequired) continue;
                 if (!string.IsNullOrEmpty(searchText))
                 {
@@ -2613,7 +2806,7 @@ namespace DataverseToPowerBI.XrmToolBox
             for (int i = 0; i < listViewAttributes.Items.Count; i++)
             {
                 var tag = listViewAttributes.Items[i].Tag as string;
-                if (IsLookupSubRowTag(tag) || (tag != null && tag.StartsWith("__expanded__")))
+                if (IsLookupSubRowTag(tag) || IsChoiceSubRowTag(tag) || (tag != null && tag.StartsWith("__expanded__")))
                 {
                     HideCheckBox(listViewAttributes, i);
                 }
@@ -2726,7 +2919,7 @@ namespace DataverseToPowerBI.XrmToolBox
             var attrName = e.Item.Tag as string;
             if (attrName == null) return;
 
-            if (IsLookupSubRowTag(attrName))
+            if (IsLookupSubRowTag(attrName) || IsChoiceSubRowTag(attrName))
             {
                 _isLoading = true;
                 e.Item.Checked = false;
@@ -2781,6 +2974,36 @@ namespace DataverseToPowerBI.XrmToolBox
                         _lookupSubColumnConfigs[logicalName].Remove(attrName);
                         if (_lookupSubColumnConfigs[logicalName].Count == 0)
                             _lookupSubColumnConfigs.Remove(logicalName);
+                    }
+
+                    UpdateSelectedTableRow(logicalName);
+                    SaveSettings();
+                    UpdateAttributesDisplay(logicalName);
+                    return;
+                }
+
+                var choiceAttr = tableAttrs.FirstOrDefault(a =>
+                    a.LogicalName.Equals(attrName, StringComparison.OrdinalIgnoreCase) && IsChoiceType(a.AttributeType));
+
+                if (choiceAttr != null)
+                {
+                    if (!_selectedAttributes.ContainsKey(logicalName))
+                        _selectedAttributes[logicalName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                    if (e.Item.Checked)
+                    {
+                        _selectedAttributes[logicalName].Add(attrName);
+                    }
+                    else
+                    {
+                        _selectedAttributes[logicalName].Remove(attrName);
+                    }
+
+                    if (_choiceSubColumnConfigs.ContainsKey(logicalName))
+                    {
+                        _choiceSubColumnConfigs[logicalName].Remove(attrName);
+                        if (_choiceSubColumnConfigs[logicalName].Count == 0)
+                            _choiceSubColumnConfigs.Remove(logicalName);
                     }
 
                     UpdateSelectedTableRow(logicalName);
@@ -3312,6 +3535,66 @@ namespace DataverseToPowerBI.XrmToolBox
                 }
 
                 _lookupSubColumnConfigs[tableName][parentLookup] = resolved;
+                SaveSettings();
+                UpdateAttributesDisplay(tableName);
+                return;
+            }
+
+            if (TryParseChoiceSubRowTag(itemTag, out var parentAttribute, out var choiceSubType))
+            {
+                if (subItemIndex != 5 && subItemIndex != 6)
+                    return;
+
+                if (!_choiceSubColumnConfigs.ContainsKey(tableName))
+                    _choiceSubColumnConfigs[tableName] = new Dictionary<string, ChoiceSubColumnConfig>(StringComparer.OrdinalIgnoreCase);
+
+                var existing = _choiceSubColumnConfigs[tableName].ContainsKey(parentAttribute)
+                    ? _choiceSubColumnConfigs[tableName][parentAttribute]
+                    : null;
+                var resolved = ResolveChoiceDefaults(parentAttribute, existing);
+
+                bool include;
+                bool hidden;
+
+                switch (choiceSubType.ToLowerInvariant())
+                {
+                    case "value":
+                        include = resolved.IncludeValueField ?? false;
+                        hidden = resolved.ValueFieldHidden ?? false;
+                        if (subItemIndex == 5)
+                        {
+                            include = !include;
+                            if (!include) hidden = false;
+                        }
+                        else
+                        {
+                            hidden = !hidden;
+                            if (hidden) include = true;
+                        }
+                        resolved.IncludeValueField = include;
+                        resolved.ValueFieldHidden = hidden;
+                        break;
+                    case "label":
+                        include = resolved.IncludeLabelField ?? true;
+                        hidden = resolved.LabelFieldHidden ?? false;
+                        if (subItemIndex == 5)
+                        {
+                            include = !include;
+                            if (!include) hidden = false;
+                        }
+                        else
+                        {
+                            hidden = !hidden;
+                            if (hidden) include = true;
+                        }
+                        resolved.IncludeLabelField = include;
+                        resolved.LabelFieldHidden = hidden;
+                        break;
+                    default:
+                        return;
+                }
+
+                _choiceSubColumnConfigs[tableName][parentAttribute] = resolved;
                 SaveSettings();
                 UpdateAttributesDisplay(tableName);
                 return;
@@ -4511,7 +4794,11 @@ namespace DataverseToPowerBI.XrmToolBox
                 var tableConfigs = _lookupSubColumnConfigs.ContainsKey(t.LogicalName)
                     ? _lookupSubColumnConfigs[t.LogicalName]
                     : new Dictionary<string, LookupSubColumnConfig>(StringComparer.OrdinalIgnoreCase);
+                var tableChoiceConfigs = _choiceSubColumnConfigs.ContainsKey(t.LogicalName)
+                    ? _choiceSubColumnConfigs[t.LogicalName]
+                    : new Dictionary<string, ChoiceSubColumnConfig>(StringComparer.OrdinalIgnoreCase);
                 table.LookupSubColumnConfigs = new Dictionary<string, LookupSubColumnConfig>(StringComparer.OrdinalIgnoreCase);
+                table.ChoiceSubColumnConfigs = new Dictionary<string, ChoiceSubColumnConfig>(StringComparer.OrdinalIgnoreCase);
 
                 foreach (var attr in table.Attributes ?? new List<AttributeMetadata>())
                 {
@@ -4536,6 +4823,18 @@ namespace DataverseToPowerBI.XrmToolBox
                     }
 
                     table.LookupSubColumnConfigs[attr.LogicalName] = resolved;
+                }
+
+                foreach (var attr in table.Attributes ?? new List<AttributeMetadata>())
+                {
+                    if (!IsChoiceType(attr.AttributeType)) continue;
+
+                    var storedChoice = tableChoiceConfigs.ContainsKey(attr.LogicalName)
+                        ? tableChoiceConfigs[attr.LogicalName]
+                        : null;
+
+                    var resolvedChoice = ResolveChoiceDefaults(attr.LogicalName, storedChoice);
+                    table.ChoiceSubColumnConfigs[attr.LogicalName] = resolvedChoice;
                 }
                 
                 return table;
@@ -5059,6 +5358,8 @@ namespace DataverseToPowerBI.XrmToolBox
         public Dictionary<string, List<SerializedExpandedLookup>> ExpandedLookups { get; set; } = new Dictionary<string, List<SerializedExpandedLookup>>();
         [System.Runtime.Serialization.DataMember]
         public Dictionary<string, List<SerializedLookupSubColumnConfig>> LookupSubColumnConfigs { get; set; } = new Dictionary<string, List<SerializedLookupSubColumnConfig>>();
+        [System.Runtime.Serialization.DataMember]
+        public Dictionary<string, List<SerializedChoiceSubColumnConfig>> ChoiceSubColumnConfigs { get; set; } = new Dictionary<string, List<SerializedChoiceSubColumnConfig>>();
         /// <summary>
         /// Per-table field selection mode (Form, View, or Custom).
         /// Key = table logical name, Value = mode string.
@@ -5159,6 +5460,21 @@ namespace DataverseToPowerBI.XrmToolBox
         [System.Runtime.Serialization.DataMember]
         public bool? YomiFieldHidden { get; set; }
     }
+
+    [System.Runtime.Serialization.DataContract]
+    public class SerializedChoiceSubColumnConfig
+    {
+        [System.Runtime.Serialization.DataMember]
+        public string AttributeLogicalName { get; set; } = "";
+        [System.Runtime.Serialization.DataMember]
+        public bool? IncludeValueField { get; set; }
+        [System.Runtime.Serialization.DataMember]
+        public bool? ValueFieldHidden { get; set; }
+        [System.Runtime.Serialization.DataMember]
+        public bool? IncludeLabelField { get; set; }
+        [System.Runtime.Serialization.DataMember]
+        public bool? LabelFieldHidden { get; set; }
+    }
     
     [System.Runtime.Serialization.DataContract]
     public class ExportData
@@ -5208,6 +5524,8 @@ namespace DataverseToPowerBI.XrmToolBox
         public List<ExpandedLookupConfig> ExpandedLookups { get; set; } = new List<ExpandedLookupConfig>();
         [System.Runtime.Serialization.DataMember]
         public Dictionary<string, LookupSubColumnConfig>? LookupSubColumnConfigs { get; set; }
+        [System.Runtime.Serialization.DataMember]
+        public Dictionary<string, ChoiceSubColumnConfig>? ChoiceSubColumnConfigs { get; set; }
     }
     
     [System.Runtime.Serialization.DataContract]

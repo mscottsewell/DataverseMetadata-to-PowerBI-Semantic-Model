@@ -272,6 +272,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 FabricLinkSQLDatabase = source.FabricLinkSQLDatabase,
                 WorkingFolder = source.WorkingFolder,
                 TemplatePath = source.TemplatePath,
+                    IncludeChoiceNumericValueAsHiddenAttributes = source.IncludeChoiceNumericValueAsHiddenAttributes,
                 CreatedDate = DateTime.Now,
                 LastUsed = DateTime.Now,
                 PluginSettings = ClonePluginSettings(source.PluginSettings)
@@ -469,7 +470,33 @@ namespace DataverseToPowerBI.XrmToolBox
                             OptionSetName = a.OptionSetName
                         }).ToList() ?? new List<SerializedExpandedLookupAttribute>()
                     }).ToList() ?? new List<SerializedExpandedLookup>()
-                ) ?? new Dictionary<string, List<SerializedExpandedLookup>>()
+                ) ?? new Dictionary<string, List<SerializedExpandedLookup>>(),
+                LookupSubColumnConfigs = source.LookupSubColumnConfigs?.ToDictionary(
+                    k => k.Key,
+                    v => v.Value?.Select(cfg => new SerializedLookupSubColumnConfig
+                    {
+                        LookupAttributeLogicalName = cfg.LookupAttributeLogicalName,
+                        IncludeIdField = cfg.IncludeIdField,
+                        IdFieldHidden = cfg.IdFieldHidden,
+                        IncludeNameField = cfg.IncludeNameField,
+                        NameFieldHidden = cfg.NameFieldHidden,
+                        IncludeTypeField = cfg.IncludeTypeField,
+                        TypeFieldHidden = cfg.TypeFieldHidden,
+                        IncludeYomiField = cfg.IncludeYomiField,
+                        YomiFieldHidden = cfg.YomiFieldHidden
+                    }).ToList() ?? new List<SerializedLookupSubColumnConfig>()
+                ) ?? new Dictionary<string, List<SerializedLookupSubColumnConfig>>(),
+                ChoiceSubColumnConfigs = source.ChoiceSubColumnConfigs?.ToDictionary(
+                    k => k.Key,
+                    v => v.Value?.Select(cfg => new SerializedChoiceSubColumnConfig
+                    {
+                        AttributeLogicalName = cfg.AttributeLogicalName,
+                        IncludeValueField = cfg.IncludeValueField,
+                        ValueFieldHidden = cfg.ValueFieldHidden,
+                        IncludeLabelField = cfg.IncludeLabelField,
+                        LabelFieldHidden = cfg.LabelFieldHidden
+                    }).ToList() ?? new List<SerializedChoiceSubColumnConfig>()
+                ) ?? new Dictionary<string, List<SerializedChoiceSubColumnConfig>>()
             };
         }
     }
@@ -497,6 +524,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private void SetDefaults(StreamingContext context)
         {
             UseDisplayNameAliasesInSql = true;
+            IncludeChoiceNumericValueAsHiddenAttributes = false;
         }
 
         [DataMember]
@@ -550,6 +578,13 @@ namespace DataverseToPowerBI.XrmToolBox
         /// </summary>
         [DataMember]
         public string StorageMode { get; set; } = "DirectQuery";
+
+        /// <summary>
+        /// When true, default behavior for choice-style attributes includes the raw
+        /// numeric value as a hidden field.
+        /// </summary>
+        [DataMember]
+        public bool IncludeChoiceNumericValueAsHiddenAttributes { get; set; } = false;
 
         /// <summary>
         /// Embedded plugin settings for this model

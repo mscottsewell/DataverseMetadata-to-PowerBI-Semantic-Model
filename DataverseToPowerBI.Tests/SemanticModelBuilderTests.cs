@@ -1373,6 +1373,172 @@ namespace DataverseToPowerBI.Tests
             Assert.Contains("isHidden", tmdl);
         }
 
+        [Fact]
+        public void GenerateTableTmdl_ChoiceValueColumns_UseSummarizeByNone_ForPicklistStateStatusBoolean()
+        {
+            var table = new ExportTable
+            {
+                LogicalName = "incident",
+                DisplayName = "Incident",
+                PrimaryIdAttribute = "incidentid",
+                PrimaryNameAttribute = "title",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "prioritycode",
+                        DisplayName = "Priority",
+                        AttributeType = "Picklist",
+                        VirtualAttributeName = "prioritycodename"
+                    },
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "statecode",
+                        DisplayName = "Status",
+                        AttributeType = "State",
+                        VirtualAttributeName = "statecodename"
+                    },
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "statuscode",
+                        DisplayName = "Status Reason",
+                        AttributeType = "Status",
+                        VirtualAttributeName = "statuscodename"
+                    },
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "donotemail",
+                        DisplayName = "Do Not Email",
+                        AttributeType = "Boolean",
+                        VirtualAttributeName = "donotemailname"
+                    }
+                },
+                ChoiceSubColumnConfigs = new Dictionary<string, DataverseToPowerBI.Core.Models.ChoiceSubColumnConfig>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["prioritycode"] = new DataverseToPowerBI.Core.Models.ChoiceSubColumnConfig
+                    {
+                        AttributeLogicalName = "prioritycode",
+                        IncludeValueField = true,
+                        ValueFieldHidden = true,
+                        IncludeLabelField = true,
+                        LabelFieldHidden = false
+                    },
+                    ["statecode"] = new DataverseToPowerBI.Core.Models.ChoiceSubColumnConfig
+                    {
+                        AttributeLogicalName = "statecode",
+                        IncludeValueField = true,
+                        ValueFieldHidden = true,
+                        IncludeLabelField = true,
+                        LabelFieldHidden = false
+                    },
+                    ["statuscode"] = new DataverseToPowerBI.Core.Models.ChoiceSubColumnConfig
+                    {
+                        AttributeLogicalName = "statuscode",
+                        IncludeValueField = true,
+                        ValueFieldHidden = true,
+                        IncludeLabelField = true,
+                        LabelFieldHidden = false
+                    },
+                    ["donotemail"] = new DataverseToPowerBI.Core.Models.ChoiceSubColumnConfig
+                    {
+                        AttributeLogicalName = "donotemail",
+                        IncludeValueField = true,
+                        ValueFieldHidden = true,
+                        IncludeLabelField = true,
+                        LabelFieldHidden = false
+                    }
+                }
+            };
+
+            var info = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["incident"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["prioritycode"] = new AttributeDisplayInfo { LogicalName = "prioritycode", DisplayName = "Priority", AttributeType = "Picklist", VirtualAttributeName = "prioritycodename" },
+                    ["statecode"] = new AttributeDisplayInfo { LogicalName = "statecode", DisplayName = "Status", AttributeType = "State", VirtualAttributeName = "statecodename" },
+                    ["statuscode"] = new AttributeDisplayInfo { LogicalName = "statuscode", DisplayName = "Status Reason", AttributeType = "Status", VirtualAttributeName = "statuscodename" },
+                    ["donotemail"] = new AttributeDisplayInfo { LogicalName = "donotemail", DisplayName = "Do Not Email", AttributeType = "Boolean", VirtualAttributeName = "donotemailname" }
+                }
+            };
+
+            var tmdl = _builder.GenerateTableTmdl(table, info, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+
+            AssertColumnUsesSummarizeByNone(tmdl, "prioritycode");
+            AssertColumnUsesSummarizeByNone(tmdl, "statecode");
+            AssertColumnUsesSummarizeByNone(tmdl, "statuscode");
+            AssertColumnUsesSummarizeByNone(tmdl, "donotemail");
+        }
+
+        [Fact]
+        public void GenerateTableTmdl_MultiSelectChoiceValueColumn_UsesSummarizeByNone()
+        {
+            var table = new ExportTable
+            {
+                LogicalName = "account",
+                DisplayName = "Account",
+                PrimaryIdAttribute = "accountid",
+                PrimaryNameAttribute = "name",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "preferredcontactmethods",
+                        DisplayName = "Preferred Contact Methods",
+                        AttributeType = "MultiSelectPicklist",
+                        VirtualAttributeName = "preferredcontactmethodsname"
+                    }
+                },
+                ChoiceSubColumnConfigs = new Dictionary<string, DataverseToPowerBI.Core.Models.ChoiceSubColumnConfig>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["preferredcontactmethods"] = new DataverseToPowerBI.Core.Models.ChoiceSubColumnConfig
+                    {
+                        AttributeLogicalName = "preferredcontactmethods",
+                        IncludeValueField = true,
+                        ValueFieldHidden = true,
+                        IncludeLabelField = true,
+                        LabelFieldHidden = false
+                    }
+                }
+            };
+
+            var info = new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["account"] = new Dictionary<string, AttributeDisplayInfo>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["preferredcontactmethods"] = new AttributeDisplayInfo
+                    {
+                        LogicalName = "preferredcontactmethods",
+                        DisplayName = "Preferred Contact Methods",
+                        AttributeType = "MultiSelectPicklist",
+                        VirtualAttributeName = "preferredcontactmethodsname"
+                    }
+                }
+            };
+
+            var tmdl = _builder.GenerateTableTmdl(table, info, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+            AssertColumnUsesSummarizeByNone(tmdl, "preferredcontactmethods");
+        }
+
+        private static void AssertColumnUsesSummarizeByNone(string tmdl, string columnName)
+        {
+            var marker = $"\tcolumn {columnName}";
+            var start = tmdl.IndexOf(marker, StringComparison.Ordinal);
+            Assert.True(start >= 0, $"Column '{columnName}' was not found in generated TMDL.");
+
+            var end = tmdl.IndexOf("\n\tcolumn ", start + marker.Length, StringComparison.Ordinal);
+            if (end < 0)
+            {
+                end = tmdl.IndexOf("\n\tpartition ", start + marker.Length, StringComparison.Ordinal);
+            }
+            if (end < 0)
+            {
+                end = tmdl.Length;
+            }
+
+            var block = tmdl.Substring(start, end - start);
+            Assert.Contains("summarizeBy: none", block);
+        }
+
         #endregion
 
         #region Auto-Measure Cleanup Tests

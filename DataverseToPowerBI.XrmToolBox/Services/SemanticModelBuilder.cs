@@ -1084,6 +1084,29 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             return (includeId, idHidden, includeName, nameHidden, includeType, typeHidden, includeYomi, yomiHidden);
         }
 
+        private (bool includeValue, bool valueHidden, bool includeLabel, bool labelHidden)
+            ResolveChoiceSubColumnFlags(ExportTable table, AttributeMetadata attr)
+        {
+            ChoiceSubColumnConfig? config = null;
+            if (table.ChoiceSubColumnConfigs != null)
+            {
+                table.ChoiceSubColumnConfigs.TryGetValue(attr.LogicalName, out config);
+            }
+
+            var includeValue = config?.IncludeValueField ?? false;
+            var valueHidden = config?.ValueFieldHidden ?? false;
+            var includeLabel = config?.IncludeLabelField ?? true;
+            var labelHidden = config?.LabelFieldHidden ?? false;
+
+            if (valueHidden && !includeValue) includeValue = true;
+            if (labelHidden && !includeLabel) includeLabel = true;
+
+            if (!includeValue) valueHidden = false;
+            if (!includeLabel) labelHidden = false;
+
+            return (includeValue, valueHidden, includeLabel, labelHidden);
+        }
+
         /// <summary>
         /// Wraps a SQL field expression with an AS [alias] clause when display name aliasing is enabled.
         /// For hidden columns (primary keys, lookup FK IDs), no alias is added.
@@ -2233,6 +2256,28 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     }
                     else if (isChoice || isBoolean)
                     {
+                        var (includeValue, _, includeLabel, _) = ResolveChoiceSubColumnFlags(table, attr);
+
+                        if (includeValue && !processedColumns.Contains(attr.LogicalName))
+                        {
+                            var (valueDataType, valueFormatString, _, _) = MapDataType(attr.AttributeType);
+                            columns[attr.LogicalName] = new ColumnDefinition
+                            {
+                                DisplayName = attr.LogicalName,
+                                LogicalName = attr.LogicalName,
+                                DataType = valueDataType,
+                                SourceColumn = attr.LogicalName,
+                                FormatString = valueFormatString
+                            };
+                        }
+
+                        if (!includeLabel)
+                        {
+                            processedColumns.Add(attr.LogicalName);
+                            processedColumns.Add(attr.LogicalName + "name");
+                            continue;
+                        }
+
                         if (IsFabricLink)
                         {
                             // FabricLink: JOINs to metadata tables produce a string label column
@@ -2282,6 +2327,28 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     }
                     else if (isMultiSelectChoice)
                     {
+                        var (includeValue, _, includeLabel, _) = ResolveChoiceSubColumnFlags(table, attr);
+
+                        if (includeValue && !processedColumns.Contains(attr.LogicalName))
+                        {
+                            var (valueDataType, valueFormatString, _, _) = MapDataType(attr.AttributeType);
+                            columns[attr.LogicalName] = new ColumnDefinition
+                            {
+                                DisplayName = attr.LogicalName,
+                                LogicalName = attr.LogicalName,
+                                DataType = valueDataType,
+                                SourceColumn = attr.LogicalName,
+                                FormatString = valueFormatString
+                            };
+                        }
+
+                        if (!includeLabel)
+                        {
+                            processedColumns.Add(attr.LogicalName);
+                            processedColumns.Add(attr.LogicalName + "name");
+                            continue;
+                        }
+
                         // Multi-select choice: produces a string label column
                         // FabricLink: uses {attributename}name pattern; TDS: uses actual VirtualAttributeName
                         var nameColumn = IsFabricLink ? (attr.LogicalName + "name") 
@@ -2532,6 +2599,20 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     }
                     else if (isChoice || isBoolean)
                     {
+                        var (includeValue, _, includeLabel, _) = ResolveChoiceSubColumnFlags(table, attr);
+
+                        if (includeValue && !processedColumns.Contains(attr.LogicalName))
+                        {
+                            sqlFields.Add($"Base.{attr.LogicalName}");
+                        }
+
+                        if (!includeLabel)
+                        {
+                            processedColumns.Add(attr.LogicalName);
+                            processedColumns.Add(attr.LogicalName + "name");
+                            continue;
+                        }
+
                         if (IsFabricLink)
                         {
                             // FabricLink: JOIN to metadata table, select LocalizedLabel
@@ -2596,6 +2677,20 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     }
                     else if (isMultiSelectChoice)
                     {
+                        var (includeValue, _, includeLabel, _) = ResolveChoiceSubColumnFlags(table, attr);
+
+                        if (includeValue && !processedColumns.Contains(attr.LogicalName))
+                        {
+                            sqlFields.Add($"Base.{attr.LogicalName}");
+                        }
+
+                        if (!includeLabel)
+                        {
+                            processedColumns.Add(attr.LogicalName);
+                            processedColumns.Add(attr.LogicalName + "name");
+                            continue;
+                        }
+
                         // FabricLink: uses {attributename}name pattern; TDS: uses actual VirtualAttributeName
                         string nameColumn;
 
@@ -4382,6 +4477,30 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 }
                 else if (isChoice || isBoolean)
                 {
+                    var (includeValue, valueHidden, includeLabel, labelHidden) = ResolveChoiceSubColumnFlags(table, attr);
+
+                    if (includeValue && !processedColumns.Contains(attr.LogicalName))
+                    {
+                        columns.Add(new ColumnInfo
+                        {
+                            LogicalName = attr.LogicalName,
+                            DisplayName = attr.LogicalName,
+                            SourceColumn = attr.LogicalName,
+                            IsHidden = valueHidden,
+                            Description = description,
+                            AttributeType = attrType,
+                            ForceSummarizeByNone = true
+                        });
+                        sqlFields.Add($"Base.{attr.LogicalName}");
+                    }
+
+                    if (!includeLabel)
+                    {
+                        processedColumns.Add(attr.LogicalName);
+                        processedColumns.Add(attr.LogicalName + "name");
+                        continue;
+                    }
+
                     if (IsFabricLink)
                     {
                         // FabricLink: choice/boolean virtual name columns don't exist in Lakehouse SQL
@@ -4459,7 +4578,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                 LogicalName = nameColumn,
                                 DisplayName = effectiveName,
                                 SourceColumn = fabricChoiceSourceCol,
-                                IsHidden = false,
+                                IsHidden = labelHidden,
                                 IsRowLabel = isPrimaryName,
                                 Description = description,
                                 AttributeType = "string"  // Localized label is always a string
@@ -4504,7 +4623,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             LogicalName = nameColumn,
                             DisplayName = effectiveName,
                             SourceColumn = tdsChoiceSourceCol,
-                            IsHidden = false,
+                            IsHidden = labelHidden,
                             IsRowLabel = isPrimaryName,
                             Description = description,
                             AttributeType = "string"  // Choice/Boolean name columns are always strings
@@ -4517,6 +4636,30 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 }
                 else if (isMultiSelectChoice)
                 {
+                    var (includeValue, valueHidden, includeLabel, labelHidden) = ResolveChoiceSubColumnFlags(table, attr);
+
+                    if (includeValue && !processedColumns.Contains(attr.LogicalName))
+                    {
+                        columns.Add(new ColumnInfo
+                        {
+                            LogicalName = attr.LogicalName,
+                            DisplayName = attr.LogicalName,
+                            SourceColumn = attr.LogicalName,
+                            IsHidden = valueHidden,
+                            Description = description,
+                            AttributeType = attrType,
+                            ForceSummarizeByNone = true
+                        });
+                        sqlFields.Add($"Base.{attr.LogicalName}");
+                    }
+
+                    if (!includeLabel)
+                    {
+                        processedColumns.Add(attr.LogicalName);
+                        processedColumns.Add(attr.LogicalName + "name");
+                        continue;
+                    }
+
                     // Multi-select choice fields store semicolon-separated integer values
                     // FabricLink: uses {attributename}name pattern; TDS: uses actual VirtualAttributeName
                     string nameColumn;
@@ -4569,7 +4712,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             LogicalName = nameColumn,
                             DisplayName = effectiveName,
                             SourceColumn = msSourceCol,
-                            IsHidden = false,
+                            IsHidden = labelHidden,
                             IsRowLabel = isPrimaryName,
                             Description = description,
                             AttributeType = "string"  // Multi-select labels are always strings
@@ -4824,6 +4967,11 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 {
                     if (existingCol.FormatString != null) formatString = existingCol.FormatString;
                     if (existingCol.SummarizeBy != null) summarizeBy = existingCol.SummarizeBy;
+                }
+
+                if (col.ForceSummarizeByNone)
+                {
+                    summarizeBy = "none";
                 }
 
                 // Add column description as TMDL doc comment (/// syntax)
@@ -5470,6 +5618,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             public string? AttributeType { get; set; }  // Dataverse attribute type for data type mapping
             public bool IsKey { get; set; }  // Marks this as the key column (Primary ID)
             public bool IsRowLabel { get; set; }  // Marks this as the row label (Primary Name)
+            public bool ForceSummarizeByNone { get; set; }  // Force summarizeBy: none regardless of numeric data type
         }
 
         /// <summary>

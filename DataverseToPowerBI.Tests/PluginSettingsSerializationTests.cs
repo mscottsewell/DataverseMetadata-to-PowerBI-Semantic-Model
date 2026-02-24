@@ -45,6 +45,39 @@ namespace DataverseToPowerBI.Tests
             Assert.Equal("{another-field-view-id}", roundTripped.SelectedFieldViewIds["contact"]);
         }
 
+        [Fact]
+        public void PluginSettings_RoundTrip_PreservesChoiceSubColumnConfigs()
+        {
+            var settings = new PluginSettings
+            {
+                ChoiceSubColumnConfigs = new Dictionary<string, List<SerializedChoiceSubColumnConfig>>
+                {
+                    ["account"] = new List<SerializedChoiceSubColumnConfig>
+                    {
+                        new SerializedChoiceSubColumnConfig
+                        {
+                            AttributeLogicalName = "statuscode",
+                            IncludeValueField = true,
+                            ValueFieldHidden = true,
+                            IncludeLabelField = true,
+                            LabelFieldHidden = false
+                        }
+                    }
+                }
+            };
+
+            var roundTripped = RoundTrip(settings);
+
+            Assert.True(roundTripped.ChoiceSubColumnConfigs.ContainsKey("account"));
+            Assert.Single(roundTripped.ChoiceSubColumnConfigs["account"]);
+            var cfg = roundTripped.ChoiceSubColumnConfigs["account"][0];
+            Assert.Equal("statuscode", cfg.AttributeLogicalName);
+            Assert.True(cfg.IncludeValueField);
+            Assert.True(cfg.ValueFieldHidden);
+            Assert.True(cfg.IncludeLabelField);
+            Assert.False(cfg.LabelFieldHidden);
+        }
+
         private static PluginSettings RoundTrip(PluginSettings source)
         {
             using (var ms = new MemoryStream())

@@ -221,6 +221,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 FabricLinkSQLEndpoint = source.FabricLinkSQLEndpoint,
                 FabricLinkSQLDatabase = source.FabricLinkSQLDatabase,
                 UseDisplayNameAliasesInSql = source.UseDisplayNameAliasesInSql,
+                IncludeChoiceNumericValueAsHiddenAttributes = source.IncludeChoiceNumericValueAsHiddenAttributes,
                 StorageMode = source.StorageMode,
                 PluginSettings = new PluginSettings
                 {
@@ -293,6 +294,30 @@ namespace DataverseToPowerBI.XrmToolBox
                                 IsGlobal = a.IsGlobal,
                                 OptionSetName = a.OptionSetName
                             }).ToList()
+                        }).ToList()),
+                    LookupSubColumnConfigs = settings.LookupSubColumnConfigs
+                        .Where(kv => tables.Contains(kv.Key))
+                        .ToDictionary(kv => kv.Key, kv => kv.Value.Select(cfg => new SerializedLookupSubColumnConfig
+                        {
+                            LookupAttributeLogicalName = cfg.LookupAttributeLogicalName,
+                            IncludeIdField = cfg.IncludeIdField,
+                            IdFieldHidden = cfg.IdFieldHidden,
+                            IncludeNameField = cfg.IncludeNameField,
+                            NameFieldHidden = cfg.NameFieldHidden,
+                            IncludeTypeField = cfg.IncludeTypeField,
+                            TypeFieldHidden = cfg.TypeFieldHidden,
+                            IncludeYomiField = cfg.IncludeYomiField,
+                            YomiFieldHidden = cfg.YomiFieldHidden
+                        }).ToList()),
+                    ChoiceSubColumnConfigs = settings.ChoiceSubColumnConfigs
+                        .Where(kv => tables.Contains(kv.Key))
+                        .ToDictionary(kv => kv.Key, kv => kv.Value.Select(cfg => new SerializedChoiceSubColumnConfig
+                        {
+                            AttributeLogicalName = cfg.AttributeLogicalName,
+                            IncludeValueField = cfg.IncludeValueField,
+                            ValueFieldHidden = cfg.ValueFieldHidden,
+                            IncludeLabelField = cfg.IncludeLabelField,
+                            LabelFieldHidden = cfg.LabelFieldHidden
                         }).ToList())
                 }
             };

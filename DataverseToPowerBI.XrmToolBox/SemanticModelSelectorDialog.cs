@@ -59,6 +59,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private Label lblFabricEndpoint = null!;
         private Label lblFabricDatabase = null!;
         private CheckBox chkUseDisplayNameAliases = null!;
+        private CheckBox chkIncludeChoiceNumericValues = null!;
         private ComboBox cboStorageMode = null!;
         private Label lblStorageMode = null!;
         private TextBox txtWorkingFolder = null!;
@@ -340,14 +341,14 @@ namespace DataverseToPowerBI.XrmToolBox
             lblFabricEndpoint = new Label
             {
                 Text = "FabricLink SQL Endpoint:",
-                Location = new Point(15, 365),
+                Location = new Point(15, 355),
                 AutoSize = true,
                 Visible = false
             };
 
             txtFabricEndpoint = new TextBox
             {
-                Location = new Point(15, 385),
+                Location = new Point(15, 375),
                 Size = new Size(365, 23),
                 Visible = false
             };
@@ -356,14 +357,14 @@ namespace DataverseToPowerBI.XrmToolBox
             lblFabricDatabase = new Label
             {
                 Text = "FabricLink Lakehouse:",
-                Location = new Point(15, 425),
+                Location = new Point(15, 405),
                 AutoSize = true,
                 Visible = false
             };
 
             txtFabricDatabase = new TextBox
             {
-                Location = new Point(15, 445),
+                Location = new Point(15, 425),
                 Size = new Size(365, 23),
                 Visible = false
             };
@@ -373,11 +374,20 @@ namespace DataverseToPowerBI.XrmToolBox
             chkUseDisplayNameAliases = new CheckBox
             {
                 Text = "Use display name aliases in SQL queries",
-                Location = new Point(15, 475),
+                Location = new Point(15, 455),
                 Size = new Size(365, 20),
                 Checked = true
             };
             chkUseDisplayNameAliases.CheckedChanged += ChkUseDisplayNameAliases_CheckedChanged;
+
+            chkIncludeChoiceNumericValues = new CheckBox
+            {
+                Text = "Include numeric value of selected options as hidden attributes",
+                Location = new Point(15, 475),
+                Size = new Size(365, 20),
+                Checked = false
+            };
+            chkIncludeChoiceNumericValues.CheckedChanged += ChkIncludeChoiceNumericValues_CheckedChanged;
 
             groupDetails.Controls.Add(lblName);
             groupDetails.Controls.Add(txtName);
@@ -398,6 +408,7 @@ namespace DataverseToPowerBI.XrmToolBox
             groupDetails.Controls.Add(lblFabricDatabase);
             groupDetails.Controls.Add(txtFabricDatabase);
             groupDetails.Controls.Add(chkUseDisplayNameAliases);
+            groupDetails.Controls.Add(chkIncludeChoiceNumericValues);
 
             // Bottom buttons
             btnSelect = new Button
@@ -630,6 +641,7 @@ namespace DataverseToPowerBI.XrmToolBox
             txtWorkingFolder.Text = model.WorkingFolder ?? "";
             txtTemplatePath.Text = model.TemplatePath ?? "";
             chkUseDisplayNameAliases.Checked = model.UseDisplayNameAliasesInSql;
+            chkIncludeChoiceNumericValues.Checked = model.IncludeChoiceNumericValueAsHiddenAttributes;
 
             // Indicate if model is from different environment
             bool isCurrentEnv = NormalizeUrl(model.DataverseUrl ?? "") == _currentEnvironmentUrl;
@@ -648,6 +660,7 @@ namespace DataverseToPowerBI.XrmToolBox
             txtWorkingFolder.Text = "";
             txtTemplatePath.Text = "";
             chkUseDisplayNameAliases.Checked = true;
+            chkIncludeChoiceNumericValues.Checked = false;
         }
 
         private void CboConnectionType_SelectedIndexChanged(object sender, EventArgs e)
@@ -686,6 +699,16 @@ namespace DataverseToPowerBI.XrmToolBox
             if (_selectedModel != null)
             {
                 _selectedModel.UseDisplayNameAliasesInSql = chkUseDisplayNameAliases.Checked;
+                _modelManager.SaveModel(_selectedModel);
+                ConfigurationsChanged = true;
+            }
+        }
+
+        private void ChkIncludeChoiceNumericValues_CheckedChanged(object sender, EventArgs e)
+        {
+            if (_selectedModel != null)
+            {
+                _selectedModel.IncludeChoiceNumericValueAsHiddenAttributes = chkIncludeChoiceNumericValues.Checked;
                 _modelManager.SaveModel(_selectedModel);
                 ConfigurationsChanged = true;
             }
@@ -836,6 +859,7 @@ namespace DataverseToPowerBI.XrmToolBox
                             WorkingFolder = dialog.WorkingFolder,
                             TemplatePath = dialog.TemplatePath,
                             UseDisplayNameAliasesInSql = dialog.UseDisplayNameAliasesInSql,
+                            IncludeChoiceNumericValueAsHiddenAttributes = dialog.IncludeChoiceNumericValueAsHiddenAttributes,
                             LastUsed = DateTime.Now,
                             CreatedDate = DateTime.Now,
                             PluginSettings = new PluginSettings()  // Explicitly initialize with empty settings
@@ -1317,6 +1341,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private Label lblFabricEndpoint = null!;
         private Label lblFabricDatabase = null!;
         private CheckBox chkUseDisplayNameAliases = null!;
+        private CheckBox chkIncludeChoiceNumericValues = null!;
         private TextBox txtFolder = null!;
         private TextBox txtTemplate = null!;
         private Button btnChangeFolder = null!;
@@ -1334,6 +1359,7 @@ namespace DataverseToPowerBI.XrmToolBox
         public string WorkingFolder { get; private set; } = "";
         public string TemplatePath { get; private set; } = "";
         public bool UseDisplayNameAliasesInSql { get; private set; } = true;
+        public bool IncludeChoiceNumericValueAsHiddenAttributes { get; private set; } = false;
 
         public NewSemanticModelDialogXrm(string defaultFolder, string environmentUrl, string defaultTemplate)
         {
@@ -1518,10 +1544,18 @@ namespace DataverseToPowerBI.XrmToolBox
                 Checked = true
             };
 
+            chkIncludeChoiceNumericValues = new CheckBox
+            {
+                Text = "Include numeric value of selected options as hidden attributes",
+                Location = new Point(20, 555),
+                Size = new Size(460, 20),
+                Checked = false
+            };
+
             btnCreate = new Button
             {
                 Text = "Create",
-                Location = new Point(310, 565),
+                Location = new Point(310, 585),
                 Size = new Size(80, 28),
                 DialogResult = DialogResult.OK,
                 Enabled = false
@@ -1531,7 +1565,7 @@ namespace DataverseToPowerBI.XrmToolBox
             btnCancelDlg = new Button
             {
                 Text = "Cancel",
-                Location = new Point(400, 565),
+                Location = new Point(400, 585),
                 Size = new Size(80, 28),
                 DialogResult = DialogResult.Cancel
             };
@@ -1556,6 +1590,7 @@ namespace DataverseToPowerBI.XrmToolBox
             this.Controls.Add(lblFabricDatabase);
             this.Controls.Add(txtFabricDatabase);
             this.Controls.Add(chkUseDisplayNameAliases);
+            this.Controls.Add(chkIncludeChoiceNumericValues);
             this.Controls.Add(btnCreate);
             this.Controls.Add(btnCancelDlg);
 
@@ -1657,6 +1692,7 @@ namespace DataverseToPowerBI.XrmToolBox
             WorkingFolder = txtFolder.Text.Trim();
             TemplatePath = txtTemplate.Text.Trim();
             UseDisplayNameAliasesInSql = chkUseDisplayNameAliases.Checked;
+            IncludeChoiceNumericValueAsHiddenAttributes = chkIncludeChoiceNumericValues.Checked;
 
             if (string.IsNullOrWhiteSpace(SemanticModelName))
             {
