@@ -5088,27 +5088,36 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             // Partition name matches table display name (PBI Desktop requires this for DirectQuery evaluation)
             var partitionName = displayName;
 
-            // Auto-generate measures for fact tables
-            if (table.Role == "Fact")
+            var includeRecordLinkMeasure = table.IncludeRecordLinkMeasure ?? string.Equals(table.Role, "Fact", StringComparison.OrdinalIgnoreCase);
+            var includeCountMeasure = table.IncludeCountMeasure ?? string.Equals(table.Role, "Fact", StringComparison.OrdinalIgnoreCase);
+
+            // Auto-generate measures based on per-table options (fact tables default to both enabled)
+            if (includeRecordLinkMeasure || includeCountMeasure)
             {
                 var entityLogicalName = table.LogicalName;
                 var factPrimaryKey = table.PrimaryIdAttribute ?? (table.LogicalName + "id");
 
-                // Link measure: builds a URL to open the record in Dynamics 365
-                sb.AppendLine($"\tmeasure 'Link to {displayName}' = ```");
-                sb.AppendLine($"\t\t\t");
-                sb.AppendLine($"\t\t\t\"https://\" & DataverseURL & \"/main.aspx?pagetype=entityrecord&etn={entityLogicalName}&id=\" ");
-                sb.AppendLine($"\t\t\t\t& SELECTEDVALUE('{displayName}'[{factPrimaryKey}], BLANK())");
-                sb.AppendLine($"\t\t\t```");
-                sb.AppendLine($"\t\tlineageTag: {GetOrNewLineageTag(existingLineageTags, $"measure:Link to {displayName}")}");
-                sb.AppendLine($"\t\tdataCategory: WebUrl");
-                sb.AppendLine();
+                if (includeRecordLinkMeasure)
+                {
+                    // Link measure: builds a URL to open the record in Dynamics 365
+                    sb.AppendLine($"\tmeasure 'Link to {displayName}' = ```");
+                    sb.AppendLine($"\t\t\t");
+                    sb.AppendLine($"\t\t\t\"https://\" & DataverseURL & \"/main.aspx?pagetype=entityrecord&etn={entityLogicalName}&id=\" ");
+                    sb.AppendLine($"\t\t\t\t& SELECTEDVALUE('{displayName}'[{factPrimaryKey}], BLANK())");
+                    sb.AppendLine($"\t\t\t```");
+                    sb.AppendLine($"\t\tlineageTag: {GetOrNewLineageTag(existingLineageTags, $"measure:Link to {displayName}")}");
+                    sb.AppendLine($"\t\tdataCategory: WebUrl");
+                    sb.AppendLine();
+                }
 
-                // Count measure: counts rows in the fact table
-                sb.AppendLine($"\tmeasure '{displayName} Count' = COUNTROWS('{displayName}')");
-                sb.AppendLine($"\t\tformatString: 0");
-                sb.AppendLine($"\t\tlineageTag: {GetOrNewLineageTag(existingLineageTags, $"measure:{displayName} Count")}");
-                sb.AppendLine();
+                if (includeCountMeasure)
+                {
+                    // Count measure: counts rows in the table
+                    sb.AppendLine($"\tmeasure '{displayName} Count' = COUNTROWS('{displayName}')");
+                    sb.AppendLine($"\t\tformatString: 0");
+                    sb.AppendLine($"\t\tlineageTag: {GetOrNewLineageTag(existingLineageTags, $"measure:{displayName} Count")}");
+                    sb.AppendLine();
+                }
             }
 
             sb.AppendLine($"\tpartition {QuoteTmdlName(partitionName)} = m");

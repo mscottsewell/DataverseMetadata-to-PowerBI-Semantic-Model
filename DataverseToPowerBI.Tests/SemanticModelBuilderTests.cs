@@ -1541,6 +1541,60 @@ namespace DataverseToPowerBI.Tests
             Assert.Contains("summarizeBy: none", block);
         }
 
+        [Fact]
+        public void GenerateTableTmdl_DimensionTable_DefaultAutoMeasuresDisabled()
+        {
+            var table = new ExportTable
+            {
+                LogicalName = "account",
+                DisplayName = "Account",
+                SchemaName = "Account",
+                PrimaryIdAttribute = "accountid",
+                PrimaryNameAttribute = "name",
+                Role = "Dimension",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata { LogicalName = "accountid", DisplayName = "Account", AttributeType = "Uniqueidentifier" }
+                }
+            };
+
+            var tmdl = _builder.GenerateTableTmdl(
+                table,
+                new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase),
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+
+            Assert.DoesNotContain("measure 'Link to Account'", tmdl);
+            Assert.DoesNotContain("measure 'Account Count'", tmdl);
+        }
+
+        [Fact]
+        public void GenerateTableTmdl_DimensionTable_WithMeasureOptions_RespectsSelectedMeasures()
+        {
+            var table = new ExportTable
+            {
+                LogicalName = "account",
+                DisplayName = "Account",
+                SchemaName = "Account",
+                PrimaryIdAttribute = "accountid",
+                PrimaryNameAttribute = "name",
+                Role = "Dimension",
+                IncludeCountMeasure = true,
+                IncludeRecordLinkMeasure = false,
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata { LogicalName = "accountid", DisplayName = "Account", AttributeType = "Uniqueidentifier" }
+                }
+            };
+
+            var tmdl = _builder.GenerateTableTmdl(
+                table,
+                new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(StringComparer.OrdinalIgnoreCase),
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+
+            Assert.Contains("measure 'Account Count'", tmdl);
+            Assert.DoesNotContain("measure 'Link to Account'", tmdl);
+        }
+
         #endregion
 
         #region Auto-Measure Cleanup Tests

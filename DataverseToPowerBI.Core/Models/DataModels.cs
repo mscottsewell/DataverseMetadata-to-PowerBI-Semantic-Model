@@ -1137,6 +1137,18 @@ namespace DataverseToPowerBI.Core.Models
         public string Role { get; set; } = "Dimension";
 
         /// <summary>
+        /// Whether to auto-generate the table count measure ({TableName} Count).
+        /// Null means use role-based default behavior.
+        /// </summary>
+        public bool? IncludeCountMeasure { get; set; }
+
+        /// <summary>
+        /// Whether to auto-generate the Dataverse record link measure (Link to {TableName}).
+        /// Null means use role-based default behavior.
+        /// </summary>
+        public bool? IncludeRecordLinkMeasure { get; set; }
+
+        /// <summary>
         /// Whether the table has a statecode attribute.
         /// Used to add "Exclude Inactive" filter to queries.
         /// </summary>

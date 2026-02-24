@@ -83,6 +83,8 @@ namespace DataverseToPowerBI.XrmToolBox
         private Dictionary<string, string> _selectedFieldViewIds = new Dictionary<string, string>();
         private Dictionary<string, FieldSelectionMode> _fieldSelectionModes = new Dictionary<string, FieldSelectionMode>();
         private Dictionary<string, string> _tableStorageModes = new Dictionary<string, string>();
+        private Dictionary<string, bool> _tableIncludeCountMeasures = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        private Dictionary<string, bool> _tableIncludeRecordLinkMeasures = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         private Dictionary<string, bool> _loadingStates = new Dictionary<string, bool>();
         
         // Star-schema state
@@ -249,6 +251,9 @@ namespace DataverseToPowerBI.XrmToolBox
             
             // Paste attributes button tooltip
             _versionToolTip.SetToolTip(btnPasteAttributes, "Paste attribute names from clipboard");
+            _versionToolTip.SetToolTip(
+                listViewSelectedTables,
+                "Tip: Click the Count or Link column for a dimension table to toggle auto-generated measures.");
             
             // Initialize toolbar icons
             btnRefreshMetadata.Image = RibbonIcons.RefreshIcon;
@@ -609,6 +614,8 @@ namespace DataverseToPowerBI.XrmToolBox
             _lookupSubColumnConfigs.Clear();
             _choiceSubColumnConfigs.Clear();
             _collapsedLookupGroups.Clear();
+            _tableIncludeCountMeasures.Clear();
+            _tableIncludeRecordLinkMeasures.Clear();
             _currentSolutionName = null;
             _currentSolutionId = null;
             _solutionTables.Clear();
@@ -653,6 +660,12 @@ namespace DataverseToPowerBI.XrmToolBox
             _selectedViewIds = settings.SelectedViewIds ?? new Dictionary<string, string>();
             _selectedFieldViewIds = settings.SelectedFieldViewIds ?? new Dictionary<string, string>();
             _tableStorageModes = settings.TableStorageModes ?? new Dictionary<string, string>();
+            _tableIncludeCountMeasures = settings.TableIncludeCountMeasures != null
+                ? new Dictionary<string, bool>(settings.TableIncludeCountMeasures, StringComparer.OrdinalIgnoreCase)
+                : new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+            _tableIncludeRecordLinkMeasures = settings.TableIncludeRecordLinkMeasures != null
+                ? new Dictionary<string, bool>(settings.TableIncludeRecordLinkMeasures, StringComparer.OrdinalIgnoreCase)
+                : new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
 
             // Restore field selection modes
             _fieldSelectionModes.Clear();
@@ -836,6 +849,8 @@ namespace DataverseToPowerBI.XrmToolBox
                         PrimaryNameAttribute = displayInfo?.PrimaryNameAttribute
                     };
                 }
+
+                SyncTableMeasureOptionsWithSelectedTables();
                 
                 RefreshTableListDisplay();
                 UpdateTableCount();
@@ -916,6 +931,9 @@ namespace DataverseToPowerBI.XrmToolBox
 
                 // Save per-table storage mode overrides
                 settings.TableStorageModes = new Dictionary<string, string>(_tableStorageModes);
+
+                settings.TableIncludeCountMeasures = new Dictionary<string, bool>(_tableIncludeCountMeasures, StringComparer.OrdinalIgnoreCase);
+                settings.TableIncludeRecordLinkMeasures = new Dictionary<string, bool>(_tableIncludeRecordLinkMeasures, StringComparer.OrdinalIgnoreCase);
 
                 // Save field selection modes
                 settings.FieldSelectionModes = new Dictionary<string, string>();
@@ -1237,6 +1255,8 @@ namespace DataverseToPowerBI.XrmToolBox
                         if (!_selectedAttributes.ContainsKey(table.LogicalName))
                             _selectedAttributes[table.LogicalName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     }
+
+                            SyncTableMeasureOptionsWithSelectedTables();
 
                     // Ensure relationship-required lookup columns are selected
                     foreach (var rel in _relationships)
@@ -1841,6 +1861,8 @@ namespace DataverseToPowerBI.XrmToolBox
             var roleText = isFact ? "⭐ Fact" : (isSnowflake2 ? "Dim ❄️❄️" : (isSnowflake ? "Dim ❄️" : "Dim"));
             var formText = GetFormDisplayText(logicalName);
             var viewText = GetViewDisplayText(logicalName);
+            var countMeasureText = GetMeasureToggleDisplayText(IsCountMeasureEnabledForTable(logicalName, isFact));
+            var linkMeasureText = GetMeasureToggleDisplayText(IsRecordLinkMeasureEnabledForTable(logicalName, isFact));
             var attrCount = _selectedAttributes.ContainsKey(logicalName)
                 ? _selectedAttributes[logicalName].Count.ToString()
                 : "0";
@@ -1853,6 +1875,8 @@ namespace DataverseToPowerBI.XrmToolBox
             item.SubItems.Add(GetTableModeDisplayText(logicalName, isFact));
             item.SubItems.Add(formText);
             item.SubItems.Add(viewText);
+            item.SubItems.Add(countMeasureText);
+            item.SubItems.Add(linkMeasureText);
             item.SubItems.Add(attrCount);
 
             var (isFilterPartial, _) = GetViewFilterSupportStatus(logicalName);
@@ -1888,7 +1912,9 @@ namespace DataverseToPowerBI.XrmToolBox
                 item.SubItems[3].Text = GetTableModeDisplayText(logicalName, isFact);
                 item.SubItems[4].Text = GetFormDisplayText(logicalName);
                 item.SubItems[5].Text = GetViewDisplayText(logicalName);
-                item.SubItems[6].Text = _selectedAttributes.ContainsKey(logicalName)
+                item.SubItems[6].Text = GetMeasureToggleDisplayText(IsCountMeasureEnabledForTable(logicalName, isFact));
+                item.SubItems[7].Text = GetMeasureToggleDisplayText(IsRecordLinkMeasureEnabledForTable(logicalName, isFact));
+                item.SubItems[8].Text = _selectedAttributes.ContainsKey(logicalName)
                     ? _selectedAttributes[logicalName].Count.ToString()
                     : "0";
 
@@ -2059,6 +2085,38 @@ namespace DataverseToPowerBI.XrmToolBox
             }
         }
 
+        private bool IsCountMeasureEnabledForTable(string logicalName, bool isFact)
+        {
+            if (isFact) return true;
+            return _tableIncludeCountMeasures.TryGetValue(logicalName, out var enabled) && enabled;
+        }
+
+        private bool IsRecordLinkMeasureEnabledForTable(string logicalName, bool isFact)
+        {
+            if (isFact) return true;
+            return _tableIncludeRecordLinkMeasures.TryGetValue(logicalName, out var enabled) && enabled;
+        }
+
+        private static string GetMeasureToggleDisplayText(bool enabled)
+        {
+            return enabled ? "✓" : "";
+        }
+
+        private void SyncTableMeasureOptionsWithSelectedTables()
+        {
+            var selectedNames = new HashSet<string>(_selectedTables.Keys, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var stale in _tableIncludeCountMeasures.Keys.Where(k => !selectedNames.Contains(k)).ToList())
+            {
+                _tableIncludeCountMeasures.Remove(stale);
+            }
+
+            foreach (var stale in _tableIncludeRecordLinkMeasures.Keys.Where(k => !selectedNames.Contains(k)).ToList())
+            {
+                _tableIncludeRecordLinkMeasures.Remove(stale);
+            }
+        }
+
         private void UpdateModeColumnVisibility()
         {
             colMode.Width = 90;
@@ -2085,9 +2143,12 @@ namespace DataverseToPowerBI.XrmToolBox
                     dateItem.Name = "__DateTable";
                     dateItem.SubItems.Add("Dim");
                     dateItem.SubItems.Add("Date Table");
-                    dateItem.SubItems.Add("");  // No form
-                    dateItem.SubItems.Add(yearRange);  // Year range in Filter column
-                    dateItem.SubItems.Add("365+");  // Approximate row count
+                    dateItem.SubItems.Add("");
+                    dateItem.SubItems.Add("Calendar");
+                    dateItem.SubItems.Add(yearRange);
+                    dateItem.SubItems.Add("");
+                    dateItem.SubItems.Add("");
+                    dateItem.SubItems.Add("365+");
                     dateItem.ForeColor = System.Drawing.Color.DarkGreen;
                     
                     // Insert after Fact table (position 1) if there is a fact, otherwise at position 0
@@ -4065,12 +4126,14 @@ namespace DataverseToPowerBI.XrmToolBox
             // Fixed-width columns
             const int editWidth = 30;
             const int roleWidth = 55;
+            const int countMeasureWidth = 52;
+            const int linkMeasureWidth = 52;
             const int attrsWidth = 50;
             const int scrollBarWidth = 20;
             
             var modeWidth = colMode.Width; // 0 when hidden, 90 when visible
             
-            var availableWidth = listViewSelectedTables.Width - editWidth - roleWidth - modeWidth - attrsWidth - scrollBarWidth;
+            var availableWidth = listViewSelectedTables.Width - editWidth - roleWidth - modeWidth - countMeasureWidth - linkMeasureWidth - attrsWidth - scrollBarWidth;
             if (availableWidth <= 0) return;
             
             // Distribute remaining: Table (20%), Default Fields (40%), Filter (40%)
@@ -4087,6 +4150,8 @@ namespace DataverseToPowerBI.XrmToolBox
                 colMode.Width = modeWidth;
                 colForm.Width = formWidth;
                 colView.Width = filterWidth;
+                colCountMeasure.Width = countMeasureWidth;
+                colLinkMeasure.Width = linkMeasureWidth;
                 colAttrs.Width = attrsWidth;
             }
             finally
@@ -4181,6 +4246,28 @@ namespace DataverseToPowerBI.XrmToolBox
                         RefreshTableListDisplay();
                         SaveSettings();
                     }
+                }
+                else if (colIndex == 6 || colIndex == 7)
+                {
+                    var logicalName = info.Item.Name;
+                    if (logicalName == "__DateTable") return;
+
+                    var isFact = logicalName == _factTable;
+                    if (isFact) return;
+
+                    if (colIndex == 6)
+                    {
+                        var current = _tableIncludeCountMeasures.TryGetValue(logicalName, out var enabled) && enabled;
+                        _tableIncludeCountMeasures[logicalName] = !current;
+                    }
+                    else
+                    {
+                        var current = _tableIncludeRecordLinkMeasures.TryGetValue(logicalName, out var enabled) && enabled;
+                        _tableIncludeRecordLinkMeasures[logicalName] = !current;
+                    }
+
+                    UpdateSelectedTableRow(logicalName);
+                    SaveSettings();
                 }
             }
         }
@@ -5002,6 +5089,8 @@ namespace DataverseToPowerBI.XrmToolBox
                     PrimaryNameAttribute = t.PrimaryNameAttribute ?? "",
                     ObjectTypeCode = t.ObjectTypeCode,
                     Role = (t.LogicalName == _factTable) ? "Fact" : "Dimension",
+                    IncludeCountMeasure = IsCountMeasureEnabledForTable(t.LogicalName, t.LogicalName == _factTable),
+                    IncludeRecordLinkMeasure = IsRecordLinkMeasureEnabledForTable(t.LogicalName, t.LogicalName == _factTable),
                     Attributes = new List<AttributeMetadata>()
                 };
 
@@ -5632,6 +5721,10 @@ namespace DataverseToPowerBI.XrmToolBox
         /// </summary>
         [System.Runtime.Serialization.DataMember]
         public Dictionary<string, string> FieldSelectionModes { get; set; } = new Dictionary<string, string>();
+        [System.Runtime.Serialization.DataMember]
+        public Dictionary<string, bool> TableIncludeCountMeasures { get; set; } = new Dictionary<string, bool>();
+        [System.Runtime.Serialization.DataMember]
+        public Dictionary<string, bool> TableIncludeRecordLinkMeasures { get; set; } = new Dictionary<string, bool>();
     }
     
     [System.Runtime.Serialization.DataContract]
@@ -5784,6 +5877,10 @@ namespace DataverseToPowerBI.XrmToolBox
         public int ObjectTypeCode { get; set; }
         [System.Runtime.Serialization.DataMember]
         public string Role { get; set; } = "Dimension";  // "Fact" or "Dimension"
+        [System.Runtime.Serialization.DataMember]
+        public bool? IncludeCountMeasure { get; set; }
+        [System.Runtime.Serialization.DataMember]
+        public bool? IncludeRecordLinkMeasure { get; set; }
         [System.Runtime.Serialization.DataMember]
         public bool HasStateCode { get; set; } = false;  // True if table has a statecode attribute
         [System.Runtime.Serialization.DataMember]

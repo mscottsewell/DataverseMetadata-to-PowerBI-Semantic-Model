@@ -143,7 +143,7 @@ namespace DataverseToPowerBI.Tests
                 SchemaName = "StatusCode"
             };
 
-            var result = PluginControl.GetChoiceValueFieldDisplayName(attr);
+            var result = ChoiceFieldNaming.GetValueDisplayName(attr);
 
             Assert.Equal("StatusCode", result);
         }
@@ -157,7 +157,7 @@ namespace DataverseToPowerBI.Tests
                 SchemaName = null
             };
 
-            var result = PluginControl.GetChoiceValueFieldDisplayName(attr);
+            var result = ChoiceFieldNaming.GetValueDisplayName(attr);
 
             Assert.Equal("statecode", result);
         }
@@ -176,6 +176,36 @@ namespace DataverseToPowerBI.Tests
             var result = PluginControl.GetExpandedLookupFieldDisplayName("Manager", null, "internalemailaddress");
 
             Assert.Equal("Manager : internalemailaddress", result);
+        }
+
+        [Fact]
+        public void PluginSettings_RoundTrip_PreservesPerTableMeasureOptions()
+        {
+            var settings = new PluginSettings
+            {
+                TableIncludeCountMeasures = new Dictionary<string, bool>
+                {
+                    ["account"] = true,
+                    ["contact"] = false
+                },
+                TableIncludeRecordLinkMeasures = new Dictionary<string, bool>
+                {
+                    ["account"] = false,
+                    ["contact"] = true
+                }
+            };
+
+            var roundTripped = RoundTrip(settings);
+
+            Assert.True(roundTripped.TableIncludeCountMeasures.ContainsKey("account"));
+            Assert.True(roundTripped.TableIncludeCountMeasures["account"]);
+            Assert.True(roundTripped.TableIncludeCountMeasures.ContainsKey("contact"));
+            Assert.False(roundTripped.TableIncludeCountMeasures["contact"]);
+
+            Assert.True(roundTripped.TableIncludeRecordLinkMeasures.ContainsKey("account"));
+            Assert.False(roundTripped.TableIncludeRecordLinkMeasures["account"]);
+            Assert.True(roundTripped.TableIncludeRecordLinkMeasures.ContainsKey("contact"));
+            Assert.True(roundTripped.TableIncludeRecordLinkMeasures["contact"]);
         }
 
         private static PluginSettings RoundTrip(PluginSettings source)

@@ -43,6 +43,8 @@ namespace DataverseToPowerBI.XrmToolBox
             this.colMode = new System.Windows.Forms.ColumnHeader();
             this.colForm = new System.Windows.Forms.ColumnHeader();
             this.colView = new System.Windows.Forms.ColumnHeader();
+            this.colCountMeasure = new System.Windows.Forms.ColumnHeader();
+            this.colLinkMeasure = new System.Windows.Forms.ColumnHeader();
             this.colAttrs = new System.Windows.Forms.ColumnHeader();
             this.panelTableInfo = new System.Windows.Forms.Panel();
             this.lblTableCount = new System.Windows.Forms.Label();
@@ -255,6 +257,8 @@ namespace DataverseToPowerBI.XrmToolBox
                 this.colMode,
                 this.colForm,
                 this.colView,
+                this.colCountMeasure,
+                this.colLinkMeasure,
                 this.colAttrs});
             this.listViewSelectedTables.Dock = System.Windows.Forms.DockStyle.Fill;
             this.listViewSelectedTables.FullRowSelect = true;
@@ -295,6 +299,16 @@ namespace DataverseToPowerBI.XrmToolBox
             // colView
             this.colView.Text = "Filter";
             this.colView.Width = 100;
+
+            // colCountMeasure
+            this.colCountMeasure.Text = "Count";
+            this.colCountMeasure.Width = 50;
+            this.colCountMeasure.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+
+            // colLinkMeasure
+            this.colLinkMeasure.Text = "Link";
+            this.colLinkMeasure.Width = 50;
+            this.colLinkMeasure.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
 
             // colAttrs
             this.colAttrs.Text = "Attrs";
@@ -662,6 +676,8 @@ namespace DataverseToPowerBI.XrmToolBox
         private System.Windows.Forms.ColumnHeader colMode;
         private System.Windows.Forms.ColumnHeader colForm;
         private System.Windows.Forms.ColumnHeader colView;
+        private System.Windows.Forms.ColumnHeader colCountMeasure;
+        private System.Windows.Forms.ColumnHeader colLinkMeasure;
         private System.Windows.Forms.ColumnHeader colAttrs;
         private System.Windows.Forms.Panel panelTableInfo;
 
