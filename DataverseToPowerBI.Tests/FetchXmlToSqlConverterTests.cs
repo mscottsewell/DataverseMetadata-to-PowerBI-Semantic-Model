@@ -183,6 +183,80 @@ namespace DataverseToPowerBI.Tests
         }
 
         [Fact]
+        public void ConvertToWhereClause_LinkEntityTimeZoneIndependentBehavior_DoesNotApplyTimezoneAdjustmentToColumn()
+        {
+            var behaviors = new System.Collections.Generic.Dictionary<string, string>
+            {
+                ["contact.birthdate"] = "TimeZoneIndependent"
+            };
+
+            var xml = @"<fetch><entity name=""account"">
+                <link-entity name=""contact"" from=""parentcustomerid"" to=""accountid"" alias=""c"">
+                    <filter><condition attribute=""birthdate"" operator=""last-month"" /></filter>
+                </link-entity>
+            </entity></fetch>";
+
+            var result = new FetchXmlToSqlConverter(utcOffsetHours: -6, dateTimeBehaviors: behaviors).ConvertToWhereClause(xml);
+
+            Assert.DoesNotContain("DATEADD(hour, -6, [c].[birthdate])", result.SqlWhereClause);
+            Assert.Contains("[c].[birthdate]", result.SqlWhereClause);
+            Assert.True(result.IsFullySupported);
+        }
+
+        [Fact]
+        public void ConvertToWhereClause_BaseEntityQualifiedDateOnlyBehavior_DoesNotApplyTimezoneAdjustmentToColumn()
+        {
+            var behaviors = new System.Collections.Generic.Dictionary<string, string>
+            {
+                ["account.createdon"] = "DateOnly"
+            };
+
+            var result = new FetchXmlToSqlConverter(utcOffsetHours: -6, dateTimeBehaviors: behaviors).ConvertToWhereClause(
+                @"<fetch><entity name=""account""><filter><condition attribute=""createdon"" operator=""today"" /></filter></entity></fetch>");
+
+            Assert.DoesNotContain("DATEADD(hour, -6, [Base].[createdon])", result.SqlWhereClause);
+            Assert.Contains("[Base].[createdon]", result.SqlWhereClause);
+            Assert.True(result.IsFullySupported);
+        }
+
+        [Fact]
+        public void ConvertToWhereClause_DateOnlyBehavior_DoesNotApplyTimezoneAdjustmentToNowBoundary()
+        {
+            var behaviors = new System.Collections.Generic.Dictionary<string, string>
+            {
+                ["account.createdon"] = "DateOnly"
+            };
+
+            var result = new FetchXmlToSqlConverter(utcOffsetHours: -6, dateTimeBehaviors: behaviors).ConvertToWhereClause(
+                @"<fetch><entity name=""account""><filter><condition attribute=""createdon"" operator=""last-month"" /></filter></entity></fetch>");
+
+            Assert.DoesNotContain("DATEADD(hour, -6, GETUTCDATE())", result.SqlWhereClause);
+            Assert.Contains("GETUTCDATE()", result.SqlWhereClause);
+            Assert.True(result.IsFullySupported);
+        }
+
+        [Fact]
+        public void ConvertToWhereClause_LinkEntityTimeZoneIndependentBehavior_DoesNotApplyTimezoneAdjustmentToNowBoundary()
+        {
+            var behaviors = new System.Collections.Generic.Dictionary<string, string>
+            {
+                ["contact.birthdate"] = "TimeZoneIndependent"
+            };
+
+            var xml = @"<fetch><entity name=""account"">
+                <link-entity name=""contact"" from=""parentcustomerid"" to=""accountid"" alias=""c"">
+                    <filter><condition attribute=""birthdate"" operator=""last-month"" /></filter>
+                </link-entity>
+            </entity></fetch>";
+
+            var result = new FetchXmlToSqlConverter(utcOffsetHours: -6, dateTimeBehaviors: behaviors).ConvertToWhereClause(xml);
+
+            Assert.DoesNotContain("DATEADD(hour, -6, GETUTCDATE())", result.SqlWhereClause);
+            Assert.Contains("GETUTCDATE()", result.SqlWhereClause);
+            Assert.True(result.IsFullySupported);
+        }
+
+        [Fact]
         public void ConvertToWhereClause_OnOperator_UsesDateCast()
         {
             var result = new FetchXmlToSqlConverter().ConvertToWhereClause(

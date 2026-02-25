@@ -105,12 +105,17 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
         /// <summary>Column definition pattern for <see cref="ParseExistingColumns"/>.</summary>
         private static readonly Regex ColumnDefinitionRegex = new Regex(
-            @"(?:///\s*([^\r\n]+)\r?\n)?\s*column\s+(?:'([^']+)'|""([^""]+)""|([^\r\n]+))\r?\n((?:\t[^\r\n]+\r?\n)+)",
+            @"(?://\/[^\r\n]*\r?\n)?\s*column\s+(?:'([^']+)'|""([^""]+)""|([^\r\n]+))\r?\n((?:(?!^\s*(?:column|measure|partition)\s).*(?:\r?\n|$))*)",
             RegexOptions.Multiline | RegexOptions.Compiled, RegexTimeout);
 
         /// <summary>Measure block pattern for <see cref="ExtractUserMeasuresSection"/>.</summary>
         private static readonly Regex MeasureBlockRegex = new Regex(
             @"(^\s*(?:///[^\r\n]*\r?\n)*\s*measure\s+([^\r\n]+)\r?\n(?:.*?\r?\n)*?(?=^\s*(?:measure|column|partition|annotation)\s|\z))",
+            RegexOptions.Multiline | RegexOptions.Compiled, RegexTimeout);
+
+        /// <summary>Hierarchy block pattern for <see cref="ExtractUserHierarchiesSection"/>.</summary>
+        private static readonly Regex HierarchyBlockRegex = new Regex(
+            @"(^\thierarchy\s+[^\r\n]+\r?\n(?:\t\t.*\r?\n|\s*\r?\n)*)",
             RegexOptions.Multiline | RegexOptions.Compiled, RegexTimeout);
 
         /// <summary>Relationship start-line counter.</summary>
@@ -349,6 +354,8 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     var dtMatch = Regex.Match(block, @"dataType:\s*(.+)$", RegexOptions.Multiline);
                     if (dtMatch.Success) info.DataType = dtMatch.Groups[1].Value.Trim();
 
+                    info.IsHidden = Regex.IsMatch(block, @"^\s*isHidden\s*$", RegexOptions.Multiline);
+
                     // Extract annotations (key = value pairs)
                     var annotMatches = Regex.Matches(block, @"annotation\s+(\S+)\s*=\s*(.+)$", RegexOptions.Multiline);
                     foreach (Match ann in annotMatches)
@@ -386,7 +393,60 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             public string? FormatString { get; set; }
             public string? SummarizeBy { get; set; }
             public string? DataType { get; set; }
+            public bool IsHidden { get; set; }
             public Dictionary<string, string> Annotations { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        }
+
+        private sealed class ExistingTablePreservationInfo
+        {
+            public Dictionary<string, string> LineageTags { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+            public Dictionary<string, ExistingColumnInfo> ColumnMetadata { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+            public string? UserMeasuresSection { get; set; }
+            public string? UserHierarchiesSection { get; set; }
+        }
+
+        /// <summary>
+        /// Captures existing per-table artifacts that should survive a full rebuild.
+        /// Keyed by source table logical name from the generated "/// Source:" header.
+        /// </summary>
+        private Dictionary<string, ExistingTablePreservationInfo> CaptureExistingTablePreservationData(string pbipFolder, string projectName)
+        {
+            var result = new Dictionary<string, ExistingTablePreservationInfo>(StringComparer.OrdinalIgnoreCase);
+            var tablesFolder = Path.Combine(pbipFolder, $"{projectName}.SemanticModel", "definition", "tables");
+
+            if (!Directory.Exists(tablesFolder))
+                return result;
+
+            foreach (var tablePath in Directory.GetFiles(tablesFolder, "*.tmdl"))
+            {
+                try
+                {
+                    var sourceComment = File.ReadLines(tablePath)
+                        .Take(5)
+                        .FirstOrDefault(l => l.StartsWith("/// Source:", StringComparison.Ordinal));
+
+                    if (string.IsNullOrWhiteSpace(sourceComment))
+                        continue;
+
+                    var logicalName = sourceComment.Substring("/// Source:".Length).Trim();
+                    if (string.IsNullOrWhiteSpace(logicalName))
+                        continue;
+
+                    result[logicalName] = new ExistingTablePreservationInfo
+                    {
+                        LineageTags = ParseExistingLineageTags(tablePath),
+                        ColumnMetadata = ParseExistingColumnMetadata(tablePath),
+                        UserMeasuresSection = ExtractUserMeasuresSection(tablePath),
+                        UserHierarchiesSection = ExtractUserHierarchiesSection(tablePath)
+                    };
+                }
+                catch (Exception ex)
+                {
+                    DebugLogger.Log($"Warning: Could not capture preservation data for {tablePath}: {ex.Message}");
+                }
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -1358,8 +1418,10 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
             // Always start fresh to avoid corruption
             SetStatus("Preparing project folder...");
+            var existingTablePreservationData = new Dictionary<string, ExistingTablePreservationInfo>(StringComparer.OrdinalIgnoreCase);
             if (Directory.Exists(pbipFolder))
             {
+                existingTablePreservationData = CaptureExistingTablePreservationData(pbipFolder, projectName);
                 Directory.Delete(pbipFolder, true);
             }
             
@@ -1416,7 +1478,28 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 var requiredLookupColumns = relationshipColumnsPerTable.ContainsKey(table.LogicalName)
                     ? relationshipColumnsPerTable[table.LogicalName]
                     : new HashSet<string>();
-                var tableTmdl = GenerateTableTmdl(table, attributeDisplayInfo, requiredLookupColumns, dateTableConfig, outputFolder);
+
+                existingTablePreservationData.TryGetValue(table.LogicalName, out var preservationInfo);
+
+                var tableTmdl = GenerateTableTmdl(
+                    table,
+                    attributeDisplayInfo,
+                    requiredLookupColumns,
+                    dateTableConfig,
+                    outputFolder,
+                    preservationInfo?.LineageTags,
+                    preservationInfo?.ColumnMetadata);
+
+                if (!string.IsNullOrEmpty(preservationInfo?.UserHierarchiesSection))
+                {
+                    tableTmdl = InsertUserHierarchies(tableTmdl, preservationInfo.UserHierarchiesSection!);
+                }
+
+                if (!string.IsNullOrEmpty(preservationInfo?.UserMeasuresSection))
+                {
+                    tableTmdl = InsertUserMeasures(tableTmdl, preservationInfo.UserMeasuresSection!);
+                }
+
                 var tableFileName = SanitizeFileName(table.DisplayName ?? table.SchemaName ?? table.LogicalName) + ".tmdl";
                 WriteTmdlFile(Path.Combine(tablesFolder, tableFileName), tableTmdl);
             }
@@ -2116,23 +2199,28 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
             foreach (Match match in matches)
             {
-                var logicalName = match.Groups[1].Success ? match.Groups[1].Value.Trim() : null;
-                var displayName = match.Groups[2].Success ? match.Groups[2].Value :
-                                 match.Groups[3].Success ? match.Groups[3].Value :
-                                 match.Groups[4].Value.Trim();
-                var properties = match.Groups[5].Value;
+                var displayName = match.Groups[1].Success ? match.Groups[1].Value :
+                                 match.Groups[2].Success ? match.Groups[2].Value :
+                                 match.Groups[3].Value.Trim();
+                var properties = match.Groups[4].Value;
 
                 // Parse properties - dataType is the word after "dataType:"
                 var dataTypeMatch = Regex.Match(properties, @"\bdataType:\s*([^\r\n]+)");
                 var sourceColumnMatch = Regex.Match(properties, @"\bsourceColumn:\s*([^\r\n]+)");
                 var formatStringMatch = Regex.Match(properties, @"\bformatString:\s*([^\r\n]+)");
+                var logicalAnnotationMatch = Regex.Match(properties, @"\bannotation\s+DataverseToPowerBI_LogicalName\s*=\s*([^\r\n]+)");
+
+                var sourceColumn = sourceColumnMatch.Success ? sourceColumnMatch.Groups[1].Value.Trim() : null;
+                var logicalName = logicalAnnotationMatch.Success
+                    ? logicalAnnotationMatch.Groups[1].Value.Trim()
+                    : sourceColumn;
 
                 columns[displayName] = new ColumnDefinition
                 {
                     DisplayName = displayName,
                     LogicalName = logicalName,
                     DataType = dataTypeMatch.Success ? dataTypeMatch.Groups[1].Value.Trim() : null,
-                    SourceColumn = sourceColumnMatch.Success ? sourceColumnMatch.Groups[1].Value.Trim() : null,
+                    SourceColumn = sourceColumn,
                     FormatString = formatStringMatch.Success ? formatStringMatch.Groups[1].Value.Trim() : null
                 };
             }
@@ -2941,6 +3029,11 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         !string.IsNullOrWhiteSpace(attr.DateTimeBehavior))
                     {
                         result[attr.LogicalName] = attr.DateTimeBehavior;
+
+                        if (!string.IsNullOrWhiteSpace(table.LogicalName))
+                        {
+                            result[$"{table.LogicalName}.{attr.LogicalName}"] = attr.DateTimeBehavior;
+                        }
                     }
                 }
             }
@@ -2954,6 +3047,29 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         !result.ContainsKey(kvp.Key))
                     {
                         result[kvp.Key] = kvp.Value.DateTimeBehavior!;
+                    }
+                }
+            }
+
+            foreach (var entityEntry in attributeDisplayInfo)
+            {
+                if (string.IsNullOrWhiteSpace(entityEntry.Key))
+                {
+                    continue;
+                }
+
+                foreach (var attrEntry in entityEntry.Value)
+                {
+                    if (string.IsNullOrWhiteSpace(attrEntry.Key) ||
+                        string.IsNullOrWhiteSpace(attrEntry.Value.DateTimeBehavior))
+                    {
+                        continue;
+                    }
+
+                    var qualifiedKey = $"{entityEntry.Key}.{attrEntry.Key}";
+                    if (!result.ContainsKey(qualifiedKey))
+                    {
+                        result[qualifiedKey] = attrEntry.Value.DateTimeBehavior!;
                     }
                 }
             }
@@ -3714,8 +3830,21 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     userMeasuresSection = ExtractUserMeasuresSection(sourceFile, table);
                 }
 
+                // Extract user-defined hierarchies if table exists (from current or renamed file)
+                string? userHierarchiesSection = null;
+                if (sourceFile != null)
+                {
+                    userHierarchiesSection = ExtractUserHierarchiesSection(sourceFile);
+                }
+
                 // Generate new table TMDL with preserved lineage tags and column metadata
                 var tableTmdl = GenerateTableTmdl(table, attributeDisplayInfo, requiredLookupColumns, dateTableConfig, existingLineageTags: existingTags, existingColumnMetadata: existingColMeta);
+
+                // Append user hierarchies if any
+                if (!string.IsNullOrEmpty(userHierarchiesSection))
+                {
+                    tableTmdl = InsertUserHierarchies(tableTmdl, userHierarchiesSection!);
+                }
 
                 // Append user measures if any
                 if (!string.IsNullOrEmpty(userMeasuresSection))
@@ -3943,6 +4072,66 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
             // Fallback: append at end
             return tableTmdl + measuresSection;
+        }
+
+        /// <summary>
+        /// Extracts user-defined hierarchy blocks from existing TMDL.
+        /// </summary>
+        internal string? ExtractUserHierarchiesSection(string tmdlPath)
+        {
+            if (!File.Exists(tmdlPath))
+                return null;
+
+            try
+            {
+                var content = File.ReadAllText(tmdlPath);
+                var matches = HierarchyBlockRegex.Matches(content);
+                if (matches.Count == 0)
+                    return null;
+
+                var sb = new StringBuilder();
+                foreach (Match match in matches)
+                {
+                    sb.Append(match.Value);
+                }
+
+                return sb.Length > 0 ? sb.ToString() : null;
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Log($"Warning: Could not extract hierarchies from {tmdlPath}: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Inserts user-defined hierarchies into generated TMDL (after columns, before measures/partition).
+        /// </summary>
+        internal string InsertUserHierarchies(string tableTmdl, string hierarchiesSection)
+        {
+            // Prefer inserting before first measure to keep measures grouped together.
+            var measureIndex = tableTmdl.IndexOf("\tmeasure ");
+            if (measureIndex > 0)
+            {
+                return tableTmdl.Insert(measureIndex, hierarchiesSection);
+            }
+
+            // Otherwise insert before partition.
+            var partitionIndex = tableTmdl.IndexOf("\tpartition");
+            if (partitionIndex > 0)
+            {
+                return tableTmdl.Insert(partitionIndex, hierarchiesSection);
+            }
+
+            // If no partition, insert before table annotation.
+            var annotationIndex = tableTmdl.IndexOf("\tannotation");
+            if (annotationIndex > 0)
+            {
+                return tableTmdl.Insert(annotationIndex, hierarchiesSection);
+            }
+
+            // Fallback: append at end.
+            return tableTmdl + hierarchiesSection;
         }
 
         /// <summary>
@@ -4440,6 +4629,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             DisplayName = attr.LogicalName,
                             SourceColumn = attr.LogicalName,
                             IsHidden = idHidden,
+                            IsVisibilityUserConfigurable = true,
                             IsKey = isPrimaryKey,
                             Description = description,
                             AttributeType = "lookup"
@@ -4456,6 +4646,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             DisplayName = effectiveName,
                             SourceColumn = lookupSourceCol,
                             IsHidden = nameHidden,
+                            IsVisibilityUserConfigurable = true,
                             IsRowLabel = isPrimaryName,
                             Description = description,
                             AttributeType = "string"  // Name columns are always strings
@@ -4471,6 +4662,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             DisplayName = typeColumn,
                             SourceColumn = typeColumn,
                             IsHidden = typeHidden,
+                            IsVisibilityUserConfigurable = true,
                             Description = description,
                             AttributeType = "EntityName"
                         });
@@ -4485,6 +4677,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             DisplayName = yomiColumn,
                             SourceColumn = yomiColumn,
                             IsHidden = yomiHidden,
+                            IsVisibilityUserConfigurable = true,
                             Description = description,
                             AttributeType = "string"
                         });
@@ -4511,6 +4704,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             DisplayName = attr.LogicalName,
                             SourceColumn = attr.LogicalName,
                             IsHidden = valueHidden,
+                            IsVisibilityUserConfigurable = true,
                             Description = description,
                             AttributeType = attrType,
                             ForceSummarizeByNone = true
@@ -4603,6 +4797,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                 DisplayName = effectiveName,
                                 SourceColumn = fabricChoiceSourceCol,
                                 IsHidden = labelHidden,
+                                IsVisibilityUserConfigurable = true,
                                 IsRowLabel = isPrimaryName,
                                 Description = description,
                                 AttributeType = "string"  // Localized label is always a string
@@ -4648,6 +4843,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             DisplayName = effectiveName,
                             SourceColumn = tdsChoiceSourceCol,
                             IsHidden = labelHidden,
+                            IsVisibilityUserConfigurable = true,
                             IsRowLabel = isPrimaryName,
                             Description = description,
                             AttributeType = "string"  // Choice/Boolean name columns are always strings
@@ -4670,6 +4866,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             DisplayName = attr.LogicalName,
                             SourceColumn = attr.LogicalName,
                             IsHidden = valueHidden,
+                            IsVisibilityUserConfigurable = true,
                             Description = description,
                             AttributeType = attrType,
                             ForceSummarizeByNone = true
@@ -4737,6 +4934,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             DisplayName = effectiveName,
                             SourceColumn = msSourceCol,
                             IsHidden = labelHidden,
+                            IsVisibilityUserConfigurable = true,
                             IsRowLabel = isPrimaryName,
                             Description = description,
                             AttributeType = "string"  // Multi-select labels are always strings
@@ -4843,6 +5041,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                 DisplayName = prefixedDisplayName,
                                 SourceColumn = sourceCol,
                                 IsHidden = expandedHidden,
+                                IsVisibilityUserConfigurable = true,
                                 Description = description,
                                 AttributeType = "string"
                             });
@@ -4898,6 +5097,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                 DisplayName = prefixedDisplayName,
                                 SourceColumn = sourceCol,
                                 IsHidden = expandedHidden,
+                                IsVisibilityUserConfigurable = true,
                                 Description = description,
                                 AttributeType = "string"
                             });
@@ -4940,6 +5140,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                 DisplayName = prefixedDisplayName,
                                 SourceColumn = sourceCol,
                                 IsHidden = expandedHidden,
+                                IsVisibilityUserConfigurable = true,
                                 Description = description,
                                 AttributeType = "string"
                             });
@@ -4953,6 +5154,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                 DisplayName = prefixedDisplayName,
                                 SourceColumn = sourceCol,
                                 IsHidden = expandedHidden,
+                                IsVisibilityUserConfigurable = true,
                                 Description = description,
                                 AttributeType = expAttr.AttributeType ?? "string"
                             });
@@ -5016,7 +5218,8 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 {
                     sb.AppendLine($"\t\tsourceProviderType: {sourceProviderType}");
                 }
-                if (col.IsHidden)
+                var preserveExistingHidden = !col.IsVisibilityUserConfigurable && (existingCol?.IsHidden ?? false);
+                if (col.IsHidden || preserveExistingHidden)
                 {
                     sb.AppendLine($"\t\tisHidden");
                 }
@@ -5649,6 +5852,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             public string DisplayName { get; set; } = "";
             public string SourceColumn { get; set; } = "";
             public bool IsHidden { get; set; }
+            public bool IsVisibilityUserConfigurable { get; set; }
             public string? Description { get; set; }
             public string? AttributeType { get; set; }  // Dataverse attribute type for data type mapping
             public bool IsKey { get; set; }  // Marks this as the key column (Primary ID)

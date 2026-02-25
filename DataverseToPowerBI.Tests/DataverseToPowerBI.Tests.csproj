@@ -23,7 +23,27 @@
   <ItemGroup>
     <Reference Include="XrmToolBox.Extensibility">
       <HintPath>$(APPDATA)\MscrmTools\XrmToolBox\Plugins\XrmToolBox.Extensibility.dll</HintPath>
-      <Private>False</Private>
+        <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Xrm.Sdk">
+      <HintPath>$(APPDATA)\MscrmTools\XrmToolBox\Plugins\Microsoft.Xrm.Sdk.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="McTools.Xrm.Connection">
+      <HintPath>$(APPDATA)\MscrmTools\XrmToolBox\NugetPlugins\MscrmTools.Xrm.Connection.1.2025.9.64\McTools.Xrm.Connection.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="McTools.Xrm.Connection.WinForms">
+      <HintPath>$(APPDATA)\MscrmTools\XrmToolBox\NugetPlugins\MscrmTools.Xrm.Connection.1.2025.9.64\McTools.Xrm.Connection.WinForms.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="XrmToolBox.ToolLibrary">
+      <HintPath>$(APPDATA)\MscrmTools\XrmToolBox\Plugins\XrmToolBox.ToolLibrary.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(APPDATA)\MscrmTools\XrmToolBox\Plugins\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>

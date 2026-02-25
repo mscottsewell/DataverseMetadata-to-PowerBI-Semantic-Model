@@ -631,6 +631,50 @@ namespace DataverseToPowerBI.Tests
             Assert.Equal(firstColumns, secondColumns);
         }
 
+        [Fact]
+        public void AnalyzeChanges_AfterUnchangedBuild_ReportsNoActionableChanges()
+        {
+            var scenario = new ScenarioBuilder()
+                .WithTable(new TableBuilder("cai_allocation", "Allocation")
+                    .WithPrimaryName("cai_name", "Allocation Name")
+                    .WithAttribute("cai_amount", "Amount", "Money")
+                    .WithPicklist("cai_status", "Status", "cai_status")
+                    .AsFact())
+                .WithTable(new TableBuilder("cai_serviceorinitiative", "Service or Initiative")
+                    .WithPrimaryName("cai_name", "Service or Initiative Name")
+                    .WithAttribute("cai_area", "Area", "String")
+                    .AsDimension())
+                .WithRelationship(new RelationshipBuilder()
+                    .From("cai_allocation", "cai_serviceorinitiativeid")
+                    .To("cai_serviceorinitiative")
+                    .Named("Allocation → Service or Initiative"));
+
+            var tables = scenario.BuildTables();
+            var relationships = scenario.BuildRelationships();
+            var displayInfo = scenario.BuildAttributeDisplayInfo();
+
+            var builder = CreateBuilder();
+
+            builder.Build(
+                scenario.SemanticModelName,
+                _tempDir,
+                scenario.DataverseUrl,
+                tables,
+                relationships,
+                displayInfo);
+
+            var changes = builder.AnalyzeChanges(
+                scenario.SemanticModelName,
+                _tempDir,
+                scenario.DataverseUrl,
+                tables,
+                relationships,
+                displayInfo);
+
+            var actionable = changes.Where(c => c.ChangeType == ChangeType.New || c.ChangeType == ChangeType.Update).ToList();
+            Assert.Empty(actionable);
+        }
+
         #endregion
 
         #region Scenario Helpers

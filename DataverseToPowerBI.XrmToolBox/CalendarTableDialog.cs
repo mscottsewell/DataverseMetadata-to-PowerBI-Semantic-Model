@@ -71,6 +71,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
         // All datetime fields across all tables
         private List<(string TableName, string FieldName, string DisplayName, string? DateTimeBehavior)> _allDateTimeFields = new();
+        private bool _isRestoringConfig;
 
         // Output
         public DateTableConfig? Config { get; private set; }
@@ -487,44 +488,21 @@ namespace DataverseToPowerBI.XrmToolBox
                 return;
             }
 
-            // Restore table selection
-            for (int i = 0; i < cboTable.Items.Count; i++)
+            _isRestoringConfig = true;
+
+            try
             {
-                if (((ComboItem)cboTable.Items[i]).Value == existingConfig.PrimaryDateTable)
+                // Restore table selection
+                for (int i = 0; i < cboTable.Items.Count; i++)
                 {
-                    cboTable.SelectedIndex = i;
-                    break;
+                    if (((ComboItem)cboTable.Items[i]).Value == existingConfig.PrimaryDateTable)
+                    {
+                        cboTable.SelectedIndex = i;
+                        break;
+                    }
                 }
-            }
 
-            // Restore timezone
-            for (int i = 0; i < cboTimeZone.Items.Count; i++)
-            {
-                if (((TimeZoneItem)cboTimeZone.Items[i]).TimeZone.Id == existingConfig.TimeZoneId)
-                {
-                    cboTimeZone.SelectedIndex = i;
-                    break;
-                }
-            }
-
-            // Restore year range
-            numStartYear.Value = Math.Max(numStartYear.Minimum, Math.Min(numStartYear.Maximum, existingConfig.StartYear));
-            numEndYear.Value = Math.Max(numEndYear.Minimum, Math.Min(numEndYear.Maximum, existingConfig.EndYear));
-
-            // Restore checked fields
-            foreach (var field in existingConfig.WrappedFields)
-            {
-                var idx = _allDateTimeFields.FindIndex(f =>
-                    f.TableName == field.TableName && f.FieldName == field.FieldName);
-                if (idx >= 0)
-                {
-                    lstDateTimeFields.SetItemChecked(idx, true);
-                }
-            }
-
-            // Date field will be loaded when table is selected
-            this.Load += (s, e) =>
-            {
+                // Restore primary date field for selected table
                 for (int i = 0; i < cboDateField.Items.Count; i++)
                 {
                     if (((ComboItem)cboDateField.Items[i]).Value == existingConfig.PrimaryDateField)
@@ -533,7 +511,41 @@ namespace DataverseToPowerBI.XrmToolBox
                         break;
                     }
                 }
-            };
+
+                // Restore timezone
+                for (int i = 0; i < cboTimeZone.Items.Count; i++)
+                {
+                    if (((TimeZoneItem)cboTimeZone.Items[i]).TimeZone.Id == existingConfig.TimeZoneId)
+                    {
+                        cboTimeZone.SelectedIndex = i;
+                        break;
+                    }
+                }
+
+                // Restore year range
+                numStartYear.Value = Math.Max(numStartYear.Minimum, Math.Min(numStartYear.Maximum, existingConfig.StartYear));
+                numEndYear.Value = Math.Max(numEndYear.Minimum, Math.Min(numEndYear.Maximum, existingConfig.EndYear));
+
+                for (int i = 0; i < lstDateTimeFields.Items.Count; i++)
+                {
+                    lstDateTimeFields.SetItemChecked(i, false);
+                }
+
+                // Restore checked fields
+                foreach (var field in existingConfig.WrappedFields)
+                {
+                    var idx = _allDateTimeFields.FindIndex(f =>
+                        f.TableName == field.TableName && f.FieldName == field.FieldName);
+                    if (idx >= 0)
+                    {
+                        lstDateTimeFields.SetItemChecked(idx, true);
+                    }
+                }
+            }
+            finally
+            {
+                _isRestoringConfig = false;
+            }
         }
 
         private void CboTable_SelectedIndexChanged(object? sender, EventArgs e)
@@ -575,6 +587,21 @@ namespace DataverseToPowerBI.XrmToolBox
 
                 if (cboDateField.Items.Count > 0)
                 {
+                    var restoredDateFieldIndex = -1;
+                    if (_isRestoringConfig &&
+                        _existingConfig != null &&
+                        tableName.Equals(_existingConfig.PrimaryDateTable, StringComparison.OrdinalIgnoreCase))
+                    {
+                        for (int i = 0; i < cboDateField.Items.Count; i++)
+                        {
+                            if (((ComboItem)cboDateField.Items[i]).Value.Equals(_existingConfig.PrimaryDateField, StringComparison.OrdinalIgnoreCase))
+                            {
+                                restoredDateFieldIndex = i;
+                                break;
+                            }
+                        }
+                    }
+
                     // Try to select createdon by default
                     var createdonIdx = -1;
                     for (int i = 0; i < cboDateField.Items.Count; i++)
@@ -585,7 +612,9 @@ namespace DataverseToPowerBI.XrmToolBox
                             break;
                         }
                     }
-                    cboDateField.SelectedIndex = createdonIdx >= 0 ? createdonIdx : 0;
+                    cboDateField.SelectedIndex = restoredDateFieldIndex >= 0
+                        ? restoredDateFieldIndex
+                        : (createdonIdx >= 0 ? createdonIdx : 0);
                 }
                 else
                 {
@@ -605,6 +634,11 @@ namespace DataverseToPowerBI.XrmToolBox
 
         private void UpdatePrimaryFieldInList()
         {
+            if (_isRestoringConfig)
+            {
+                return;
+            }
+
             if (cboTable.SelectedItem is ComboItem tableItem &&
                 cboDateField.SelectedItem is ComboItem fieldItem)
             {
@@ -691,7 +725,9 @@ namespace DataverseToPowerBI.XrmToolBox
             }
 
             // Ensure primary field is included
-            if (!wrappedFields.Any(f => f.TableName == tableItem.Value && f.FieldName == fieldItem.Value))
+            var shouldForceIncludePrimary = ShouldForceIncludePrimaryField(tableItem.Value, fieldItem.Value);
+            if (shouldForceIncludePrimary &&
+                !wrappedFields.Any(f => f.TableName == tableItem.Value && f.FieldName == fieldItem.Value))
             {
                 wrappedFields.Insert(0, new DateTimeFieldConfig
                 {
@@ -747,6 +783,15 @@ namespace DataverseToPowerBI.XrmToolBox
 
             return !dateTimeBehavior.Equals("DateOnly", StringComparison.OrdinalIgnoreCase)
                 && !dateTimeBehavior.Equals("TimeZoneIndependent", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool ShouldForceIncludePrimaryField(string tableName, string fieldName)
+        {
+            var field = _allDateTimeFields.FirstOrDefault(f =>
+                f.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase) &&
+                f.FieldName.Equals(fieldName, StringComparison.OrdinalIgnoreCase));
+
+            return IsTimeZoneAdjustable(field.DateTimeBehavior);
         }
 
         private class ComboItem

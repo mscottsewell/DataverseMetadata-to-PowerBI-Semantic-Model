@@ -1,7 +1,9 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using DataverseToPowerBI.XrmToolBox;
 using DataverseToPowerBI.XrmToolBox.Services;
 using Xunit;
@@ -120,6 +122,14 @@ namespace DataverseToPowerBI.Tests
         }
 
         [Fact]
+        public void ParseExistingColumnMetadata_ExtractsIsHidden()
+        {
+            var cols = _builder.ParseExistingColumnMetadata(FixturePath("SampleTable.tmdl"));
+            Assert.True(cols["accountid"].IsHidden);
+            Assert.False(cols["name"].IsHidden);
+        }
+
+        [Fact]
         public void ParseExistingColumnMetadata_ExtractsUserAnnotations()
         {
             var cols = _builder.ParseExistingColumnMetadata(FixturePath("SampleTable.tmdl"));
@@ -139,6 +149,39 @@ namespace DataverseToPowerBI.Tests
         {
             var cols = _builder.ParseExistingColumnMetadata(Path.Combine(_tempDir, "nonexistent.tmdl"));
             Assert.Empty(cols);
+        }
+
+        [Fact]
+        public void ParseExistingColumns_UsesLogicalNameAnnotation_NotDocComment()
+        {
+            var tmdl =
+                "table 'Sample'\r\n" +
+                "\t/// User-provided description\r\n" +
+                "\tcolumn 'Friendly Name'\r\n" +
+                "\t\tdataType: string\r\n" +
+                "\t\tsourceColumn: friendlyname\r\n" +
+                "\r\n" +
+                "\t\tannotation DataverseToPowerBI_LogicalName = actual_logical_name\r\n";
+
+            var parseMethod = typeof(SemanticModelBuilder).GetMethod(
+                "ParseExistingColumns",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+
+            Assert.NotNull(parseMethod);
+
+            var result = parseMethod!.Invoke(_builder, new object[] { tmdl });
+            var columns = Assert.IsAssignableFrom<IDictionary>(result);
+            Assert.True(columns.Contains("Friendly Name"));
+
+            var columnDefinition = columns["Friendly Name"];
+            Assert.NotNull(columnDefinition);
+
+            var logicalNameProperty = columnDefinition!.GetType().GetProperty("LogicalName");
+            Assert.NotNull(logicalNameProperty);
+
+            var logicalName = logicalNameProperty!.GetValue(columnDefinition) as string;
+            Assert.Equal("actual_logical_name", logicalName);
+            Assert.NotEqual("User-provided description", logicalName);
         }
 
         #endregion
@@ -1663,6 +1706,151 @@ namespace DataverseToPowerBI.Tests
 
             Assert.IsType<InvalidOperationException>(ex.InnerException);
             Assert.Contains("Path traversal", ex.InnerException!.Message);
+        }
+
+        #endregion
+
+        #region ExtractUserHierarchiesSection Tests
+
+        [Fact]
+        public void ExtractUserHierarchiesSection_ExtractsHierarchyBlock()
+        {
+            var result = _builder.ExtractUserHierarchiesSection(FixturePath("SampleTableWithHierarchy.tmdl"));
+            Assert.NotNull(result);
+            Assert.Contains("hierarchy 'Account Hierarchy'", result);
+            Assert.Contains("level 'Account Name'", result);
+        }
+
+        [Fact]
+        public void ExtractUserHierarchiesSection_ReturnsNullForMissingFile()
+        {
+            var result = _builder.ExtractUserHierarchiesSection(Path.Combine(_tempDir, "nonexistent-hierarchy.tmdl"));
+            Assert.Null(result);
+        }
+
+        #endregion
+
+        #region InsertUserHierarchies Tests
+
+        [Fact]
+        public void InsertUserHierarchies_InsertsBeforeMeasures()
+        {
+            var tmdl = "table Test\r\n\tcolumn Col1\r\n\tmeasure 'M' = 1\r\n\tpartition Test = m\r\n\t\tmode: directQuery\r\n";
+            var hierarchies = "\thierarchy 'H'\r\n\t\tlevel 'L'\r\n\t\t\tcolumn: Col1\r\n\r\n";
+
+            var result = _builder.InsertUserHierarchies(tmdl, hierarchies);
+            var hierarchyIndex = result.IndexOf("hierarchy 'H'", StringComparison.Ordinal);
+            var measureIndex = result.IndexOf("measure 'M'", StringComparison.Ordinal);
+            Assert.True(hierarchyIndex < measureIndex, "Hierarchy should appear before measures");
+        }
+
+        [Fact]
+        public void InsertUserHierarchies_InsertsBeforePartitionWhenNoMeasures()
+        {
+            var tmdl = "table Test\r\n\tcolumn Col1\r\n\tpartition Test = m\r\n\t\tmode: directQuery\r\n";
+            var hierarchies = "\thierarchy 'H'\r\n\t\tlevel 'L'\r\n\t\t\tcolumn: Col1\r\n\r\n";
+
+            var result = _builder.InsertUserHierarchies(tmdl, hierarchies);
+            var hierarchyIndex = result.IndexOf("hierarchy 'H'", StringComparison.Ordinal);
+            var partitionIndex = result.IndexOf("partition Test", StringComparison.Ordinal);
+            Assert.True(hierarchyIndex < partitionIndex, "Hierarchy should appear before partition");
+        }
+
+        [Fact]
+        public void GenerateTableTmdl_NonConfigurableColumn_PreservesExistingHiddenState()
+        {
+            var table = new ExportTable
+            {
+                LogicalName = "account",
+                SchemaName = "Account",
+                DisplayName = "Account",
+                PrimaryIdAttribute = "accountid",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "accountid",
+                        AttributeType = "uniqueidentifier"
+                    },
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "name",
+                        DisplayName = "Name",
+                        AttributeType = "string"
+                    }
+                }
+            };
+
+            var existingColumnMetadata = new Dictionary<string, SemanticModelBuilder.ExistingColumnInfo>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Name"] = new SemanticModelBuilder.ExistingColumnInfo
+                {
+                    SourceColumn = "Name",
+                    DataType = "string",
+                    IsHidden = true
+                }
+            };
+
+            var tmdl = _builder.GenerateTableTmdl(
+                table,
+                new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(),
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                existingColumnMetadata: existingColumnMetadata);
+
+            Assert.Matches(@"column Name\r?\n(?:\t\t[^\r\n]*\r?\n)*\t\tisHidden", tmdl);
+        }
+
+        [Fact]
+        public void GenerateTableTmdl_ConfigurableColumn_AppVisibilityOverridesExistingHiddenState()
+        {
+            var table = new ExportTable
+            {
+                LogicalName = "account",
+                SchemaName = "Account",
+                DisplayName = "Account",
+                PrimaryIdAttribute = "accountid",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "accountid",
+                        AttributeType = "uniqueidentifier"
+                    },
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "customchoice",
+                        DisplayName = "Custom Choice",
+                        AttributeType = "Picklist",
+                        VirtualAttributeName = "customchoicename"
+                    }
+                },
+                ChoiceSubColumnConfigs = new Dictionary<string, DataverseToPowerBI.Core.Models.ChoiceSubColumnConfig>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["customchoice"] = new DataverseToPowerBI.Core.Models.ChoiceSubColumnConfig
+                    {
+                        IncludeLabelField = true,
+                        LabelFieldHidden = false
+                    }
+                }
+            };
+
+            var existingColumnMetadata = new Dictionary<string, SemanticModelBuilder.ExistingColumnInfo>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Custom Choice"] = new SemanticModelBuilder.ExistingColumnInfo
+                {
+                    SourceColumn = "Custom Choice",
+                    DataType = "string",
+                    IsHidden = true
+                }
+            };
+
+            var tmdl = _builder.GenerateTableTmdl(
+                table,
+                new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(),
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                existingColumnMetadata: existingColumnMetadata);
+
+            Assert.DoesNotMatch(@"column Custom Choice\r?\n(?:\t\t[^\r\n]*\r?\n)*\t\tisHidden", tmdl);
         }
 
         #endregion

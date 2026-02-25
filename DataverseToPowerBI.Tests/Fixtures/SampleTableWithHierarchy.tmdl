@@ -1,0 +1,21 @@
+table Account
+	lineageTag: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+
+	column accountid
+		dataType: string
+		sourceColumn: accountid
+
+	hierarchy 'Account Hierarchy'
+		lineageTag: 11111111-1111-1111-1111-111111111111
+		level 'Account Name'
+			column: name
+
+	measure 'Custom Measure' = 1
+
+	partition Account = m
+		mode: directQuery
+		source =
+				let
+					Source = "dummy"
+				in
+					Source
