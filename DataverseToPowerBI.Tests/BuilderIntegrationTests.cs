@@ -675,6 +675,53 @@ namespace DataverseToPowerBI.Tests
             Assert.Empty(actionable);
         }
 
+        [Fact]
+        public void AnalyzeChanges_AfterUnchangedBuild_WithExpandedLookups_ReportsNoActionableChanges()
+        {
+            var scenario = new ScenarioBuilder()
+                .WithTable(new TableBuilder("cai_allocation", "Allocation")
+                    .WithPrimaryName("cai_name", "Allocation Name")
+                    .WithLookup("cai_serviceorinitiativeid", "Feature Team", "cai_serviceorinitiative")
+                    .WithExpandedLookup("cai_serviceorinitiativeid", "cai_serviceorinitiative", "cai_serviceorinitiativeid",
+                        ("cai_area", "Allocation Area", "String"),
+                        ("cai_fiscalyear", "Fiscal Year", "String"))
+                    .AsFact())
+                .WithTable(new TableBuilder("cai_serviceorinitiative", "Service or Initiative")
+                    .WithPrimaryName("cai_name", "Service or Initiative Name")
+                    .WithAttribute("cai_area", "Allocation Area", "String")
+                    .WithAttribute("cai_fiscalyear", "Fiscal Year", "String")
+                    .AsDimension())
+                .WithRelationship(new RelationshipBuilder()
+                    .From("cai_allocation", "cai_serviceorinitiativeid")
+                    .To("cai_serviceorinitiative")
+                    .Named("Allocation → Service or Initiative"));
+
+            var tables = scenario.BuildTables();
+            var relationships = scenario.BuildRelationships();
+            var displayInfo = scenario.BuildAttributeDisplayInfo();
+
+            var builder = CreateBuilder();
+
+            builder.Build(
+                scenario.SemanticModelName,
+                _tempDir,
+                scenario.DataverseUrl,
+                tables,
+                relationships,
+                displayInfo);
+
+            var changes = builder.AnalyzeChanges(
+                scenario.SemanticModelName,
+                _tempDir,
+                scenario.DataverseUrl,
+                tables,
+                relationships,
+                displayInfo);
+
+            var actionable = changes.Where(c => c.ChangeType == ChangeType.New || c.ChangeType == ChangeType.Update).ToList();
+            Assert.Empty(actionable);
+        }
+
         #endregion
 
         #region Scenario Helpers

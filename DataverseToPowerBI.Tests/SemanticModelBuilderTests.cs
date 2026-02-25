@@ -1853,6 +1853,57 @@ namespace DataverseToPowerBI.Tests
             Assert.DoesNotMatch(@"column Custom Choice\r?\n(?:\t\t[^\r\n]*\r?\n)*\t\tisHidden", tmdl);
         }
 
+        [Fact]
+        public void GenerateTableTmdl_WhenExistingLineageTagsCollide_AssignsUniqueColumnLineageTags()
+        {
+            var table = new ExportTable
+            {
+                LogicalName = "tov2_position",
+                SchemaName = "tov2_Position",
+                DisplayName = "Position",
+                PrimaryIdAttribute = "tov2_positionid",
+                PrimaryNameAttribute = "tov2_positionnumber",
+                Attributes = new List<DataverseToPowerBI.Core.Models.AttributeMetadata>
+                {
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "tov2_positionid",
+                        AttributeType = "uniqueidentifier"
+                    },
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "tov2_reports_to_level7",
+                        DisplayName = "Reports To L7",
+                        AttributeType = "String"
+                    },
+                    new DataverseToPowerBI.Core.Models.AttributeMetadata
+                    {
+                        LogicalName = "tov2_sec_functional_area",
+                        DisplayName = "SEC Func Area",
+                        AttributeType = "String"
+                    }
+                }
+            };
+
+            var collidingTag = "a006909b-3b37-40ee-abbb-2d77ae448616";
+            var existingTags = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["col:Reports To L7"] = collidingTag,
+                ["col:SEC Func Area"] = collidingTag,
+                ["logicalcol:tov2_reports_to_level7"] = collidingTag,
+                ["logicalcol:tov2_sec_functional_area"] = collidingTag
+            };
+
+            var tmdl = _builder.GenerateTableTmdl(
+                table,
+                new Dictionary<string, Dictionary<string, AttributeDisplayInfo>>(),
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                existingLineageTags: existingTags);
+
+            var occurrences = tmdl.Split(new[] { collidingTag }, StringSplitOptions.None).Length - 1;
+            Assert.Equal(1, occurrences);
+        }
+
         #endregion
     }
 }

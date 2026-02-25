@@ -1012,6 +1012,29 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         }
 
         /// <summary>
+        /// Gets a lineage tag while enforcing uniqueness within a table's column collection.
+        /// If the resolved tag is already used by another column, a new GUID is generated.
+        /// </summary>
+        private string GetUniqueColumnLineageTag(
+            Dictionary<string, string>? existingTags,
+            string key,
+            string? fallbackKey,
+            HashSet<string> usedColumnLineageTags,
+            string columnDisplayName)
+        {
+            var candidate = GetOrNewLineageTag(existingTags, key, fallbackKey);
+            if (usedColumnLineageTags.Add(candidate))
+            {
+                return candidate;
+            }
+
+            var replacement = Guid.NewGuid().ToString();
+            usedColumnLineageTags.Add(replacement);
+            DebugLogger.Log($"Lineage collision detected for column '{columnDisplayName}' (tag: {candidate}). Generated new tag: {replacement}");
+            return replacement;
+        }
+
+        /// <summary>
         /// Returns the TMDL partition mode string for a table based on the global storage mode setting.
         /// DirectQuery: all tables use directQuery.
         /// Dual: fact table uses directQuery, dimensions use dual.
@@ -2064,28 +2087,37 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     DebugLogger.Log($"  Expected ({newColumns.Count}): {string.Join(", ", newColumns.Keys.Take(5))}...");
                 }
 
-                // Compare columns
+                // Compare columns using stable identity matching to avoid display-name false positives
+                var matchedExistingKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var matchedNewKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
                 foreach (var newCol in newColumns)
                 {
-                    if (!existingColumns.ContainsKey(newCol.Key))
+                    var matchedExistingKey = FindMatchingColumnKey(newCol.Key, newCol.Value, existingColumns, matchedExistingKeys);
+                    if (matchedExistingKey == null)
                     {
                         analysis.NewColumns.Add(newCol.Key);
+                        continue;
                     }
-                    else
+
+                    matchedExistingKeys.Add(matchedExistingKey);
+                    matchedNewKeys.Add(newCol.Key);
+
+                    var existing = existingColumns[matchedExistingKey];
+                    var diffs = CompareColumnDefinitions(existing, newCol.Value);
+                    if (diffs.Count > 0)
                     {
-                        var existing = existingColumns[newCol.Key];
-                        var diffs = CompareColumnDefinitions(existing, newCol.Value);
-                        if (diffs.Count > 0)
-                        {
-                            analysis.ModifiedColumns[newCol.Key] = string.Join(", ", diffs);
-                        }
+                        analysis.ModifiedColumns[newCol.Key] = string.Join(", ", diffs);
                     }
                 }
 
-                // Check for removed columns (only Dataverse columns, not user-added)
+                // Check for removed columns (only tool-managed Dataverse columns, not user-added)
                 foreach (var existingCol in existingColumns)
                 {
-                    if (existingCol.Value.LogicalName != null && !newColumns.ContainsKey(existingCol.Key))
+                    if (matchedExistingKeys.Contains(existingCol.Key))
+                        continue;
+
+                    if (existingCol.Value.LogicalName != null)
                     {
                         analysis.RemovedColumns.Add(existingCol.Key);
                         DebugLogger.Log($"Removed column detected in {table.DisplayName ?? table.LogicalName}: {existingCol.Key} (logical: {existingCol.Value.LogicalName})");
@@ -2184,6 +2216,64 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             }
 
             return analysis;
+        }
+
+        /// <summary>
+        /// Finds a matching column key in an existing column map using stable identity
+        /// (display name, logical name, or source column), while honoring already-matched keys.
+        /// </summary>
+        private string? FindMatchingColumnKey(
+            string candidateKey,
+            ColumnDefinition candidate,
+            Dictionary<string, ColumnDefinition> otherColumns,
+            HashSet<string> usedKeys)
+        {
+            if (otherColumns.ContainsKey(candidateKey) && !usedKeys.Contains(candidateKey))
+            {
+                return candidateKey;
+            }
+
+            foreach (var kvp in otherColumns)
+            {
+                if (usedKeys.Contains(kvp.Key))
+                    continue;
+
+                if (ColumnsRepresentSameField(candidateKey, candidate, kvp.Key, kvp.Value))
+                {
+                    return kvp.Key;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Determines whether two columns represent the same underlying field.
+        /// </summary>
+        private static bool ColumnsRepresentSameField(
+            string leftKey,
+            ColumnDefinition left,
+            string rightKey,
+            ColumnDefinition right)
+        {
+            if (leftKey.Equals(rightKey, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (!string.IsNullOrWhiteSpace(left.LogicalName) &&
+                !string.IsNullOrWhiteSpace(right.LogicalName) &&
+                left.LogicalName.Equals(right.LogicalName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(left.SourceColumn) &&
+                !string.IsNullOrWhiteSpace(right.SourceColumn) &&
+                left.SourceColumn.Equals(right.SourceColumn, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -2512,6 +2602,66 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             FormatString = formatString
                         };
                         processedColumns.Add(attr.LogicalName);
+                    }
+                }
+            }
+
+            // Process expanded lookup columns (must match GenerateTableTmdl naming logic)
+            if (table.ExpandedLookups != null)
+            {
+                foreach (var expand in table.ExpandedLookups)
+                {
+                    if (expand.Attributes == null || expand.Attributes.Count == 0)
+                        continue;
+
+                    foreach (var expAttr in expand.Attributes)
+                    {
+                        if (!(expAttr.IncludeInModel ?? true))
+                            continue;
+
+                        var colKey = $"{expand.LookupAttributeName}_{expAttr.LogicalName}";
+                        if (processedColumns.Contains(colKey))
+                            continue;
+
+                        var expandedHidden = expAttr.IsHidden ?? false;
+                        var prefixedDisplayName = BuildExpandedLookupDisplayName(table, expand, expAttr, attrInfo);
+                        var sourceCol = _useDisplayNameAliasesInSql && !expandedHidden ? prefixedDisplayName : colKey;
+
+                        var expAttrType = expAttr.AttributeType ?? string.Empty;
+                        var isExpLookup = expAttrType.Equals("Lookup", StringComparison.OrdinalIgnoreCase) ||
+                                          expAttrType.Equals("Owner", StringComparison.OrdinalIgnoreCase) ||
+                                          expAttrType.Equals("Customer", StringComparison.OrdinalIgnoreCase);
+                        var isExpChoice = expAttrType.Equals("Picklist", StringComparison.OrdinalIgnoreCase) ||
+                                          expAttrType.Equals("State", StringComparison.OrdinalIgnoreCase) ||
+                                          expAttrType.Equals("Status", StringComparison.OrdinalIgnoreCase);
+                        var isExpBoolean = expAttrType.Equals("Boolean", StringComparison.OrdinalIgnoreCase);
+                        var isExpMultiSelect = expAttrType.Equals("MultiSelectPicklist", StringComparison.OrdinalIgnoreCase);
+
+                        string expectedDataType;
+                        string? expectedFormatString;
+
+                        if (isExpLookup || isExpChoice || isExpBoolean || isExpMultiSelect)
+                        {
+                            expectedDataType = "string";
+                            expectedFormatString = null;
+                        }
+                        else
+                        {
+                            var (mappedDataType, mappedFormatString, _, _) = MapDataType(expAttr.AttributeType);
+                            expectedDataType = mappedDataType;
+                            expectedFormatString = mappedFormatString;
+                        }
+
+                        columns[prefixedDisplayName] = new ColumnDefinition
+                        {
+                            DisplayName = prefixedDisplayName,
+                            LogicalName = colKey,
+                            DataType = expectedDataType,
+                            SourceColumn = sourceCol,
+                            FormatString = expectedFormatString
+                        };
+
+                        processedColumns.Add(colKey);
                     }
                 }
             }
@@ -5172,6 +5322,8 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 "SummarizationSetBy", "UnderlyingDateTimeDataType", "DataverseToPowerBI_LogicalName"
             };
 
+            var usedColumnLineageTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
             foreach (var col in columns)
             {
                 // Map the data type
@@ -5227,7 +5379,13 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 {
                     sb.AppendLine($"\t\tisKey");
                 }
-                sb.AppendLine($"\t\tlineageTag: {GetOrNewLineageTag(existingLineageTags, $"col:{col.SourceColumn}", $"logicalcol:{col.LogicalName}")}");
+                var lineageTag = GetUniqueColumnLineageTag(
+                    existingLineageTags,
+                    $"col:{col.SourceColumn}",
+                    $"logicalcol:{col.LogicalName}",
+                    usedColumnLineageTags,
+                    col.DisplayName);
+                sb.AppendLine($"\t\tlineageTag: {lineageTag}");
                 if (col.IsRowLabel)
                 {
                     sb.AppendLine($"\t\tisDefaultLabel");
