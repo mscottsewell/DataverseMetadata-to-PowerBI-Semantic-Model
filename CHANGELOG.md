@@ -12,6 +12,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2026.5.141] - 2026-02-24
+
+### Added
+- **Tests for Unique Column Lineage Tag Generation** — Added tests to ensure that unique lineage tags are generated for columns, preventing conflicts when multiple columns have the same logical name.
+
+- **Tests for Expanded Lookup Handling** — Added tests to verify the correct handling of expanded lookup fields, including their inclusion, exclusion, and hidden states during semantic model generation.
+
 ## [1.2026.5.125] - 2026-02-24
 
 ### Added
