@@ -129,7 +129,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         private readonly string? _fabricLinkEndpoint;
         private readonly string? _fabricLinkDatabase;
         private readonly int _languageCode;
-        private readonly bool _useDisplayNameAliasesInSql;
+        private readonly bool _useDisplayNameRenamesInPowerQuery;
         private readonly string _storageMode;
         private readonly bool _enableFetchXmlDebugLogs;
         private Dictionary<string, string> _tableStorageModeOverrides = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -148,12 +148,12 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// <param name="fabricLinkEndpoint">SQL endpoint URL for FabricLink mode (ignored for DataverseTDS).</param>
         /// <param name="fabricLinkDatabase">Database/lakehouse name for FabricLink mode (ignored for DataverseTDS).</param>
         /// <param name="languageCode">LCID for localized display names (default: 1033 for English).</param>
-        /// <param name="useDisplayNameAliasesInSql">When true, SQL column aliases use display names; when false, logical names.</param>
+        /// <param name="UseDisplayNameRenamesInPowerQuery">When true, generated Power Query adds a Table.RenameColumns step to map logical names to display names.</param>
         /// <param name="storageMode">"DirectQuery" (default), "Import", or "Dual" — sets the table storage mode.</param>
         /// <param name="enableFetchXmlDebugLogs">When true, writes FetchXML conversion debug files to {outputFolder}/FetchXML_Debug/. Off by default to avoid persisting sensitive filter data to disk.</param>
         public SemanticModelBuilder(string templatePath, Action<string>? statusCallback = null,
             string connectionType = "DataverseTDS", string? fabricLinkEndpoint = null, string? fabricLinkDatabase = null,
-            int languageCode = 1033, bool useDisplayNameAliasesInSql = true, string storageMode = "DirectQuery",
+            int languageCode = 1033, bool UseDisplayNameRenamesInPowerQuery = true, string storageMode = "DirectQuery",
             bool enableFetchXmlDebugLogs = false)
         {
             if (string.IsNullOrWhiteSpace(templatePath))
@@ -167,7 +167,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             _fabricLinkEndpoint = fabricLinkEndpoint;
             _fabricLinkDatabase = fabricLinkDatabase;
             _languageCode = languageCode;
-            _useDisplayNameAliasesInSql = useDisplayNameAliasesInSql;
+            _useDisplayNameRenamesInPowerQuery = UseDisplayNameRenamesInPowerQuery;
             _storageMode = storageMode ?? "DirectQuery";
             _enableFetchXmlDebugLogs = enableFetchXmlDebugLogs;
         }
@@ -1080,7 +1080,9 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         /// </summary>
         private string GetEffectiveDisplayName(AttributeDisplayInfo? attrDisplayInfo, string fallbackDisplayName)
         {
-            if (_useDisplayNameAliasesInSql && attrDisplayInfo?.OverrideDisplayName != null)
+            // Display-name overrides are model-level naming and should apply even when
+            // SQL aliasing is disabled. SQL aliasing only controls SELECT AS behavior.
+            if (attrDisplayInfo?.OverrideDisplayName != null)
                 return attrDisplayInfo.OverrideDisplayName;
             return fallbackDisplayName;
         }
@@ -1213,19 +1215,56 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         }
 
         /// <summary>
-        /// Wraps a SQL field expression with an AS [alias] clause when display name aliasing is enabled.
-        /// For hidden columns (primary keys, lookup FK IDs), no alias is added.
+        /// Ensures SQL projections use a stable technical output name (logical/virtual key) when needed.
+        /// Display-name aliasing is applied later in Power Query via Table.RenameColumns.
         /// </summary>
         private string ApplySqlAlias(string sqlExpression, string displayName, string logicalName, bool isHidden)
         {
-            if (!_useDisplayNameAliasesInSql || isHidden)
+            if (string.IsNullOrWhiteSpace(logicalName))
                 return sqlExpression;
-            
-            // Only add alias if display name differs from logical name
-            if (displayName.Equals(logicalName, StringComparison.OrdinalIgnoreCase))
+
+            if (SqlExpressionYieldsColumnName(sqlExpression, logicalName))
                 return sqlExpression;
-            
-            return $"{sqlExpression} AS {EscapeSqlIdentifier(displayName)}";
+
+            return $"{sqlExpression} {EscapeSqlIdentifier(logicalName)}";
+        }
+
+        private static bool SqlExpressionYieldsColumnName(string sqlExpression, string expectedName)
+        {
+            var match = Regex.Match(sqlExpression, @"\.?\[?([A-Za-z0-9_]+)\]?\s*$");
+            return match.Success &&
+                   match.Groups[1].Value.Equals(expectedName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string EscapeMStringLiteral(string value) => value.Replace("\"", "\"\"");
+
+        private static List<(string SourceName, string DisplayName)> BuildPowerQueryRenamePairs(
+            IEnumerable<ColumnInfo> columns,
+            bool UseDisplayNameRenamesInPowerQuery)
+        {
+            var pairs = new List<(string SourceName, string DisplayName)>();
+            var seenSourceNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (!UseDisplayNameRenamesInPowerQuery)
+                return pairs;
+
+            foreach (var col in columns)
+            {
+                if (col.IsHidden)
+                    continue;
+
+                if (string.IsNullOrWhiteSpace(col.LogicalName) || string.IsNullOrWhiteSpace(col.DisplayName))
+                    continue;
+
+                if (col.LogicalName.Equals(col.DisplayName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (!seenSourceNames.Add(col.LogicalName))
+                    continue;
+
+                pairs.Add((col.LogicalName, col.DisplayName));
+            }
+
+            return pairs;
         }
 
         /// <summary>
@@ -2411,7 +2450,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
                         if (includeName && !processedColumns.Contains(nameColumn) && !isOwningLookup)
                         {
-                            var lookupSourceCol = _useDisplayNameAliasesInSql ? effectiveName : nameColumn;
+                            var lookupSourceCol = _useDisplayNameRenamesInPowerQuery ? effectiveName : nameColumn;
                             columns[effectiveName] = new ColumnDefinition
                             {
                                 DisplayName = effectiveName,
@@ -2484,7 +2523,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             var nameColumn = attr.LogicalName + "name";
                             if (!processedColumns.Contains(nameColumn))
                             {
-                                var fabricChoiceSourceCol = _useDisplayNameAliasesInSql ? effectiveName : nameColumn;
+                                var fabricChoiceSourceCol = _useDisplayNameRenamesInPowerQuery ? effectiveName : nameColumn;
                                 columns[effectiveName] = new ColumnDefinition
                                 {
                                     DisplayName = effectiveName,
@@ -2511,7 +2550,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             
                             if (!processedColumns.Contains(nameColumn))
                             {
-                                var tdsChoiceSourceCol = _useDisplayNameAliasesInSql ? effectiveName : nameColumn;
+                                var tdsChoiceSourceCol = _useDisplayNameRenamesInPowerQuery ? effectiveName : nameColumn;
                                 columns[effectiveName] = new ColumnDefinition
                                 {
                                     DisplayName = effectiveName,
@@ -2563,7 +2602,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         
                         if (!processedColumns.Contains(nameColumn))
                         {
-                            var msSourceCol = _useDisplayNameAliasesInSql ? effectiveName : nameColumn;
+                            var msSourceCol = _useDisplayNameRenamesInPowerQuery ? effectiveName : nameColumn;
                             columns[effectiveName] = new ColumnDefinition
                             {
                                 DisplayName = effectiveName,
@@ -2591,7 +2630,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         
                         var isPrimaryKey = attr.LogicalName.Equals(table.PrimaryIdAttribute, StringComparison.OrdinalIgnoreCase);
                         var regularDisplayName = isPrimaryKey ? attr.LogicalName : effectiveName;
-                        var regularSourceCol = isPrimaryKey ? attr.LogicalName : (_useDisplayNameAliasesInSql ? effectiveName : attr.LogicalName);
+                        var regularSourceCol = isPrimaryKey ? attr.LogicalName : (_useDisplayNameRenamesInPowerQuery ? effectiveName : attr.LogicalName);
                         
                         columns[regularDisplayName] = new ColumnDefinition
                         {
@@ -2625,7 +2664,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
                         var expandedHidden = expAttr.IsHidden ?? false;
                         var prefixedDisplayName = BuildExpandedLookupDisplayName(table, expand, expAttr, attrInfo);
-                        var sourceCol = _useDisplayNameAliasesInSql && !expandedHidden ? prefixedDisplayName : colKey;
+                        var sourceCol = _useDisplayNameRenamesInPowerQuery && !expandedHidden ? prefixedDisplayName : colKey;
 
                         var expAttrType = expAttr.AttributeType ?? string.Empty;
                         var isExpLookup = expAttrType.Equals("Lookup", StringComparison.OrdinalIgnoreCase) ||
@@ -2907,9 +2946,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                             }
                             if (!processedColumns.Contains(nameColumn))
                             {
-                                var fabricChoiceAlias = _useDisplayNameAliasesInSql && !effectiveName.Equals(nameColumn, StringComparison.OrdinalIgnoreCase)
-                                    ? $"{joinAlias}.[LocalizedLabel] AS {EscapeSqlIdentifier(effectiveName)}"
-                                    : $"{joinAlias}.[LocalizedLabel] {nameColumn}";
+                                var fabricChoiceAlias = $"{joinAlias}.[LocalizedLabel] {nameColumn}";
                                 sqlFields.Add(fabricChoiceAlias);
                             }
                             processedColumns.Add(nameColumn);
@@ -3002,9 +3039,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
                         if (shouldWrapDateTime)
                         {
-                            var dtAlias = isPrimaryKey ? attr.LogicalName : (_useDisplayNameAliasesInSql ? effectiveName : attr.LogicalName);
-                            var dtAliasClause = dtAlias.Equals(attr.LogicalName, StringComparison.OrdinalIgnoreCase)
-                                ? $"AS {attr.LogicalName}" : $"AS {EscapeSqlIdentifier(dtAlias)}";
+                            var dtAliasClause = $"AS {attr.LogicalName}";
                             var behavior = attr.DateTimeBehavior ?? attrDisplayInfo2?.DateTimeBehavior;
                             if (ShouldApplyTimezoneAdjustment(behavior))
                             {
@@ -3086,9 +3121,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                     joinClauses.Add($"LEFT JOIN [{metadataTable}] {metadataJoinAlias} ON {metadataJoinAlias}.[OptionSetName]='{optionSetName}' AND {metadataJoinAlias}.[EntityName]='{expand.TargetTableLogicalName}' AND {metadataJoinAlias}.[LocalizedLabelLanguageCode]={_languageCode} AND {metadataJoinAlias}.[Option]={joinAlias}.{expAttr.LogicalName}");
                                 }
                                 
-                                var fabricAlias = _useDisplayNameAliasesInSql && !expandedHidden && !prefixedDisplayName.Equals(colKey, StringComparison.OrdinalIgnoreCase)
-                                    ? $"{metadataJoinAlias}.[LocalizedLabel] AS {EscapeSqlIdentifier(prefixedDisplayName)}"
-                                    : $"{metadataJoinAlias}.[LocalizedLabel] {colKey}";
+                                var fabricAlias = $"{metadataJoinAlias}.[LocalizedLabel] {colKey}";
                                 sqlFields.Add(fabricAlias);
                             }
                             else
@@ -4789,7 +4822,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
                     if (includeName && !processedColumns.Contains(nameColumn) && !isOwningLookup)
                     {
-                        var lookupSourceCol = _useDisplayNameAliasesInSql ? effectiveName : nameColumn;
+                        var lookupSourceCol = _useDisplayNameRenamesInPowerQuery ? effectiveName : nameColumn;
                         columns.Add(new ColumnInfo
                         {
                             LogicalName = nameColumn,
@@ -4934,10 +4967,8 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         // Check if already processed (user may have selected virtual name column)
                         if (!processedColumns.Contains(nameColumn))
                         {
-                            var fabricChoiceSourceCol = _useDisplayNameAliasesInSql ? effectiveName : nameColumn;
-                            var fabricChoiceAlias = _useDisplayNameAliasesInSql && !effectiveName.Equals(nameColumn, StringComparison.OrdinalIgnoreCase)
-                                ? $"{joinAlias}.[LocalizedLabel] AS {EscapeSqlIdentifier(effectiveName)}"
-                                : $"{joinAlias}.[LocalizedLabel] {nameColumn}";
+                            var fabricChoiceSourceCol = _useDisplayNameRenamesInPowerQuery ? effectiveName : nameColumn;
+                            var fabricChoiceAlias = $"{joinAlias}.[LocalizedLabel] {nameColumn}";
                             sqlFields.Add(fabricChoiceAlias);
 
                             // Column definition uses string type (the label text)
@@ -4986,7 +5017,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     
                     if (!processedColumns.Contains(nameColumn))
                     {
-                        var tdsChoiceSourceCol = _useDisplayNameAliasesInSql ? effectiveName : nameColumn;
+                        var tdsChoiceSourceCol = _useDisplayNameRenamesInPowerQuery ? effectiveName : nameColumn;
                         columns.Add(new ColumnInfo
                         {
                             LogicalName = nameColumn,
@@ -5077,7 +5108,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
                     if (!processedColumns.Contains(nameColumn))
                     {
-                        var msSourceCol = _useDisplayNameAliasesInSql ? effectiveName : nameColumn;
+                        var msSourceCol = _useDisplayNameRenamesInPowerQuery ? effectiveName : nameColumn;
                         columns.Add(new ColumnInfo
                         {
                             LogicalName = nameColumn,
@@ -5104,7 +5135,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
 
                     // If wrapping datetime, change the data type to dateTime (date-only)
                     var effectiveAttrType = shouldWrapDateTime ? "dateonly" : attrType;
-                    var regularSourceCol = isPrimaryKey ? attr.LogicalName : (_useDisplayNameAliasesInSql ? effectiveName : attr.LogicalName);
+                    var regularSourceCol = isPrimaryKey ? attr.LogicalName : (_useDisplayNameRenamesInPowerQuery ? effectiveName : attr.LogicalName);
 
                     columns.Add(new ColumnInfo
                     {
@@ -5121,9 +5152,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                     // Generate SQL field - wrap datetime if configured
                     if (shouldWrapDateTime)
                     {
-                        var dtAlias = isPrimaryKey ? attr.LogicalName : (_useDisplayNameAliasesInSql ? effectiveName : attr.LogicalName);
-                        var dtAliasClause = dtAlias.Equals(attr.LogicalName, StringComparison.OrdinalIgnoreCase)
-                            ? $"AS {attr.LogicalName}" : $"AS {EscapeSqlIdentifier(dtAlias)}";
+                        var dtAliasClause = $"AS {attr.LogicalName}";
                         var behavior = attr.DateTimeBehavior;
                         if (ShouldApplyTimezoneAdjustment(behavior))
                         {
@@ -5179,7 +5208,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                         var isExpBoolean = expAttrType.Equals("Boolean", StringComparison.OrdinalIgnoreCase);
                         var isExpMultiSelect = expAttrType.Equals("MultiSelectPicklist", StringComparison.OrdinalIgnoreCase);
                         
-                        var sourceCol = _useDisplayNameAliasesInSql && !expandedHidden ? prefixedDisplayName : colKey;
+                        var sourceCol = _useDisplayNameRenamesInPowerQuery && !expandedHidden ? prefixedDisplayName : colKey;
                         
                         if (isExpLookup)
                         {
@@ -5229,9 +5258,7 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                                         $"\t\t\t\t            AND {metadataJoinAlias}.[Option] = {joinAlias}.{expAttr.LogicalName}");
                                 }
                                 
-                                var fabricAlias = _useDisplayNameAliasesInSql && !expandedHidden && !prefixedDisplayName.Equals(colKey, StringComparison.OrdinalIgnoreCase)
-                                    ? $"{metadataJoinAlias}.[LocalizedLabel] AS {EscapeSqlIdentifier(prefixedDisplayName)}"
-                                    : $"{metadataJoinAlias}.[LocalizedLabel] {colKey}";
+                                var fabricAlias = $"{metadataJoinAlias}.[LocalizedLabel] {colKey}";
                                 sqlFields.Add(fabricAlias);
                             }
                             else
@@ -5446,6 +5473,8 @@ namespace DataverseToPowerBI.XrmToolBox.Services
                 }
             }
 
+            var renamePairs = BuildPowerQueryRenamePairs(columns, _useDisplayNameRenamesInPowerQuery);
+
             // Partition name matches table display name (PBI Desktop requires this for DirectQuery evaluation)
             var partitionName = displayName;
 
@@ -5549,8 +5578,23 @@ namespace DataverseToPowerBI.XrmToolBox.Services
             {
                 sb.AppendLine($"\t\t\t\t    \" ,null ,[EnableFolding=true])");
             }
+
+            if (renamePairs.Count > 0)
+            {
+                var renameList = string.Join(", ", renamePairs.Select(p =>
+                    $"{{\"{EscapeMStringLiteral(p.SourceName)}\", \"{EscapeMStringLiteral(p.DisplayName)}\"}}"));
+                sb.AppendLine($"\t\t\t\t    ,#\"Renamed Columns\" = Table.RenameColumns(Source,{{{renameList}}})");
+            }
+
             sb.AppendLine($"\t\t\t\tin");
-            sb.AppendLine($"\t\t\t\t    Source");
+            if (renamePairs.Count > 0)
+            {
+                sb.AppendLine($"\t\t\t\t    #\"Renamed Columns\"");
+            }
+            else
+            {
+                sb.AppendLine($"\t\t\t\t    Source");
+            }
             sb.AppendLine();
             sb.AppendLine($"\tannotation PBI_NavigationStepName = Navigation");
             sb.AppendLine();
@@ -6117,3 +6161,4 @@ namespace DataverseToPowerBI.XrmToolBox.Services
         public TmdlEntryType EntryType { get; set; }
     }
 }
+

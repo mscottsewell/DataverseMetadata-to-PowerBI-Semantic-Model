@@ -225,6 +225,9 @@ namespace DataverseToPowerBI.XrmToolBox
             existing.FabricLinkSQLDatabase = model.FabricLinkSQLDatabase;
             existing.WorkingFolder = model.WorkingFolder;
             existing.TemplatePath = model.TemplatePath;
+            existing.UseDisplayNameRenamesInPowerQuery = model.UseDisplayNameRenamesInPowerQuery;
+            existing.StorageMode = model.StorageMode;
+            existing.IncludeChoiceNumericValueAsHiddenAttributes = model.IncludeChoiceNumericValueAsHiddenAttributes;
             existing.LastUsed = DateTime.Now;
             existing.PluginSettings = model.PluginSettings;
             
@@ -272,7 +275,9 @@ namespace DataverseToPowerBI.XrmToolBox
                 FabricLinkSQLDatabase = source.FabricLinkSQLDatabase,
                 WorkingFolder = source.WorkingFolder,
                 TemplatePath = source.TemplatePath,
-                    IncludeChoiceNumericValueAsHiddenAttributes = source.IncludeChoiceNumericValueAsHiddenAttributes,
+                UseDisplayNameRenamesInPowerQuery = source.UseDisplayNameRenamesInPowerQuery,
+                StorageMode = source.StorageMode,
+                IncludeChoiceNumericValueAsHiddenAttributes = source.IncludeChoiceNumericValueAsHiddenAttributes,
                 CreatedDate = DateTime.Now,
                 LastUsed = DateTime.Now,
                 PluginSettings = ClonePluginSettings(source.PluginSettings)
@@ -526,7 +531,7 @@ namespace DataverseToPowerBI.XrmToolBox
         [OnDeserializing]
         private void SetDefaults(StreamingContext context)
         {
-            UseDisplayNameAliasesInSql = true;
+            UseDisplayNameRenamesInPowerQuery = true;
             IncludeChoiceNumericValueAsHiddenAttributes = false;
         }
 
@@ -567,11 +572,11 @@ namespace DataverseToPowerBI.XrmToolBox
         public string FabricLinkSQLDatabase { get; set; } = "";
 
         /// <summary>
-        /// When true, uses display names as SQL column aliases (AS [Display Name])
-        /// instead of renaming columns at the TMDL level. Default: true.
+        /// When true, applies display-name renaming in Power Query using a
+        /// Table.RenameColumns step after the native query. Default: true.
         /// </summary>
-        [DataMember]
-        public bool UseDisplayNameAliasesInSql { get; set; } = true;
+        [DataMember(Name = "UseDisplayNameAliasesInSql")]
+        public bool UseDisplayNameRenamesInPowerQuery { get; set; } = true;
 
         /// <summary>
         /// Storage mode for Dataverse tables: "DirectQuery", "Dual", or "Import".
@@ -596,3 +601,4 @@ namespace DataverseToPowerBI.XrmToolBox
         public PluginSettings PluginSettings { get; set; } = new PluginSettings();
     }
 }
+

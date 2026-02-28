@@ -220,7 +220,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 ConnectionType = source.ConnectionType,
                 FabricLinkSQLEndpoint = source.FabricLinkSQLEndpoint,
                 FabricLinkSQLDatabase = source.FabricLinkSQLDatabase,
-                UseDisplayNameAliasesInSql = source.UseDisplayNameAliasesInSql,
+                UseDisplayNameRenamesInPowerQuery = source.UseDisplayNameRenamesInPowerQuery,
                 IncludeChoiceNumericValueAsHiddenAttributes = source.IncludeChoiceNumericValueAsHiddenAttributes,
                 StorageMode = source.StorageMode,
                 PluginSettings = new PluginSettings
@@ -420,7 +420,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 sb.AppendLine($"Environment URL,{CsvEscape(model.DataverseUrl)}");
                 sb.AppendLine($"Connection Type,{CsvEscape(model.ConnectionType)}");
                 sb.AppendLine($"Storage Mode,{CsvEscape(model.StorageMode)}");
-                sb.AppendLine($"Use Display Name Aliases,{model.UseDisplayNameAliasesInSql}");
+                sb.AppendLine($"Rename Columns To Display Names (Power Query),{model.UseDisplayNameRenamesInPowerQuery}");
                 sb.AppendLine($"Language Code,{settings.LanguageCode}");
                 sb.AppendLine($"Total Tables,{settings.SelectedTableNames.Count}");
                 sb.AppendLine($"Total Relationships,{settings.Relationships.Count}");
@@ -491,3 +491,4 @@ namespace DataverseToPowerBI.XrmToolBox
         }
     }
 }
+

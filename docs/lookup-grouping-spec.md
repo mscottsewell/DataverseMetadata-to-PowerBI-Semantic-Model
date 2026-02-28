@@ -15,7 +15,7 @@
 - `AttributeDisplayInfo` (Core `DataModels.cs:480`) — passed to builder per attribute. Has `OverrideDisplayName` (`string?`), `DisplayName`, `AttributeType`, `Targets`, etc.
 - `PluginControl` state: `_selectedAttributes[tableLogicalName]` = `HashSet<string>` of selected attribute logical names; `_attributeDisplayNameOverrides[tableLogicalName][attrLogicalName]` = user display name override; `_expandedLookups[tableLogicalName]` = `List<ExpandedLookupConfig>`.
 - **Two `ExportTable` classes exist**: one in `PluginControl.cs:4258` (`[DataContract]`, used for serialization to JSON), one in `Core/DataModels.cs:1077` (used by `SemanticModelBuilder`). Both need the new `LookupSubColumnConfigs` property. The `PrepareExportData()` method at `PluginControl.cs:3615` builds the Core `ExportTable` from the serialization one.
-- `GetEffectiveDisplayName` (`SemanticModelBuilder.cs:866`) — returns `OverrideDisplayName` only when `_useDisplayNameAliasesInSql == true`, else returns `fallbackDisplayName`. This is used to compute `effectiveName` for both SQL aliasing AND TMDL column naming.
+- `GetEffectiveDisplayName` (`SemanticModelBuilder.cs`) — returns `OverrideDisplayName` whenever present, else returns `fallbackDisplayName`. Display-name overrides are model-level naming and remain active even when SQL alias toggles are off.
 - `processedColumns` (`HashSet<string>`) — prevents double-processing attributes within the generation loop.
 - `isHidden` on `ColumnInfo` (SemanticModelBuilder) maps directly to `isHidden` in TMDL output at line 4309–4312. This is the Power BI "visible in field list" flag.
 

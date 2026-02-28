@@ -12,6 +12,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2026.5.146] - 2026-02-28
+
+### Changed
+
+- **Display Name Rename Execution Path** — Display-name renaming now executes in Power Query using `Table.RenameColumns` after the native query. SQL projections remain stable technical/logical names (no display-name `AS [..]` aliases).
+- **Configuration Naming Clarification** — Internal setting/property naming now reflects Power Query behavior (`UseDisplayNameRenamesInPowerQuery`) while preserving compatibility with legacy persisted JSON key names.
+- **UI Terminology Alignment** — Semantic model dialogs now label the option as "Rename columns to display names in Power Query" to match generated output.
+- **CSV Summary Labeling** — Exported model summary now labels this setting as Power Query renaming rather than SQL aliases.
+
+### Fixed
+
+- **Semantic Model Setting Persistence** — Model save/copy paths now consistently carry rename toggle state, storage mode, and choice numeric visibility defaults across model updates and clones.
+- **Legacy Model Compatibility** — Deserialization keeps rename behavior enabled by default when older model files omit the setting.
+- **Display Name Override UX Consistency** — Duplicate detection and display-name override handling in attribute editing are now consistently applied without depending on SQL-alias terminology.
+
+### Added
+
+- **Serialization Compatibility Tests** — Added tests ensuring missing rename-setting payloads default to enabled, and explicit legacy JSON key values still deserialize correctly.
+- **Build Output Validation for Rename Step** — Integration tests now assert `Table.RenameColumns` generation and verify display-name aliasing is no longer emitted in SQL projections.
+
+---
+
 ## [1.2026.5.141] - 2026-02-24
 
 ### Added

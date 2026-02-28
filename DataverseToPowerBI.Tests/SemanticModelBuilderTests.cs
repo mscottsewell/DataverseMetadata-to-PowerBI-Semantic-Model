@@ -677,7 +677,7 @@ namespace DataverseToPowerBI.Tests
                 fabricLinkEndpoint: "test-endpoint",
                 fabricLinkDatabase: "test-db",
                 languageCode: 1033,
-                useDisplayNameAliasesInSql: false);
+                UseDisplayNameRenamesInPowerQuery: false);
 
             var table = new ExportTable
             {
@@ -734,7 +734,7 @@ namespace DataverseToPowerBI.Tests
                 fabricLinkEndpoint: "test-endpoint",
                 fabricLinkDatabase: "test-db",
                 languageCode: 1033,
-                useDisplayNameAliasesInSql: false);
+                UseDisplayNameRenamesInPowerQuery: false);
 
             var table = new ExportTable
             {
@@ -787,7 +787,7 @@ namespace DataverseToPowerBI.Tests
                 fabricLinkEndpoint: "test-endpoint",
                 fabricLinkDatabase: "test-db",
                 languageCode: 1033,
-                useDisplayNameAliasesInSql: false);
+                UseDisplayNameRenamesInPowerQuery: false);
 
             var table = new ExportTable
             {
@@ -840,7 +840,7 @@ namespace DataverseToPowerBI.Tests
                 fabricLinkEndpoint: "test-endpoint",
                 fabricLinkDatabase: "test-db",
                 languageCode: 1033,
-                useDisplayNameAliasesInSql: false);
+                UseDisplayNameRenamesInPowerQuery: false);
 
             var table = new ExportTable
             {
@@ -895,7 +895,7 @@ namespace DataverseToPowerBI.Tests
                 fabricLinkEndpoint: "test-endpoint",
                 fabricLinkDatabase: "test-db",
                 languageCode: 1033,
-                useDisplayNameAliasesInSql: false);
+                UseDisplayNameRenamesInPowerQuery: false);
 
             var table = new ExportTable
             {
@@ -950,7 +950,7 @@ namespace DataverseToPowerBI.Tests
                 fabricLinkEndpoint: "test-endpoint",
                 fabricLinkDatabase: "test-db",
                 languageCode: 1033,
-                useDisplayNameAliasesInSql: false);
+                UseDisplayNameRenamesInPowerQuery: false);
 
             var table = new ExportTable
             {
@@ -1907,3 +1907,4 @@ namespace DataverseToPowerBI.Tests
         #endregion
     }
 }
+

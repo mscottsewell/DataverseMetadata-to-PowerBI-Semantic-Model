@@ -419,11 +419,11 @@ namespace DataverseToPowerBI.Core.Models
         public DateTableConfig? DateTableConfig { get; set; }
 
         /// <summary>
-        /// When true, uses display names as SQL column aliases (AS [Display Name])
-        /// instead of renaming columns at the TMDL level.
+        /// When true, applies display-name renaming in Power Query using a
+        /// Table.RenameColumns step after the native query.
         /// Default: true.
         /// </summary>
-        public bool UseDisplayNameAliasesInSql { get; set; } = true;
+        public bool UseDisplayNameRenamesInPowerQuery { get; set; } = true;
 
         /// <summary>
         /// User-specified override display names for attributes.
@@ -1433,3 +1433,4 @@ namespace DataverseToPowerBI.Core.Models
 
     #endregion
 }
+

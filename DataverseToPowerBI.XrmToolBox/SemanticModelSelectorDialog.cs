@@ -370,10 +370,10 @@ namespace DataverseToPowerBI.XrmToolBox
             };
             txtFabricDatabase.TextChanged += TxtFabricDatabase_TextChanged;
 
-            // Display Name Aliases checkbox - below connection fields
+            // Display Name Renaming checkbox - below connection fields
             chkUseDisplayNameAliases = new CheckBox
             {
-                Text = "Use display name aliases in SQL queries",
+                Text = "Rename columns to display names in Power Query",
                 Location = new Point(15, 455),
                 Size = new Size(365, 20),
                 Checked = true
@@ -640,7 +640,7 @@ namespace DataverseToPowerBI.XrmToolBox
             
             txtWorkingFolder.Text = model.WorkingFolder ?? "";
             txtTemplatePath.Text = model.TemplatePath ?? "";
-            chkUseDisplayNameAliases.Checked = model.UseDisplayNameAliasesInSql;
+            chkUseDisplayNameAliases.Checked = model.UseDisplayNameRenamesInPowerQuery;
             chkIncludeChoiceNumericValues.Checked = model.IncludeChoiceNumericValueAsHiddenAttributes;
 
             // Indicate if model is from different environment
@@ -698,7 +698,7 @@ namespace DataverseToPowerBI.XrmToolBox
         {
             if (_selectedModel != null)
             {
-                _selectedModel.UseDisplayNameAliasesInSql = chkUseDisplayNameAliases.Checked;
+                _selectedModel.UseDisplayNameRenamesInPowerQuery = chkUseDisplayNameAliases.Checked;
                 _modelManager.SaveModel(_selectedModel);
                 ConfigurationsChanged = true;
             }
@@ -858,7 +858,7 @@ namespace DataverseToPowerBI.XrmToolBox
                             FabricLinkSQLDatabase = dialog.FabricLinkSQLDatabase,
                             WorkingFolder = dialog.WorkingFolder,
                             TemplatePath = dialog.TemplatePath,
-                            UseDisplayNameAliasesInSql = dialog.UseDisplayNameAliasesInSql,
+                            UseDisplayNameRenamesInPowerQuery = dialog.UseDisplayNameRenamesInPowerQuery,
                             IncludeChoiceNumericValueAsHiddenAttributes = dialog.IncludeChoiceNumericValueAsHiddenAttributes,
                             LastUsed = DateTime.Now,
                             CreatedDate = DateTime.Now,
@@ -1358,7 +1358,7 @@ namespace DataverseToPowerBI.XrmToolBox
         public string FabricLinkSQLDatabase { get; private set; } = "";
         public string WorkingFolder { get; private set; } = "";
         public string TemplatePath { get; private set; } = "";
-        public bool UseDisplayNameAliasesInSql { get; private set; } = true;
+        public bool UseDisplayNameRenamesInPowerQuery { get; private set; } = true;
         public bool IncludeChoiceNumericValueAsHiddenAttributes { get; private set; } = false;
 
         public NewSemanticModelDialogXrm(string defaultFolder, string environmentUrl, string defaultTemplate)
@@ -1535,10 +1535,10 @@ namespace DataverseToPowerBI.XrmToolBox
                 Visible = false
             };
 
-            // Display Name Aliases checkbox
+            // Display Name Renaming checkbox
             chkUseDisplayNameAliases = new CheckBox
             {
-                Text = "Use display name aliases in SQL queries",
+                Text = "Rename columns to display names in Power Query",
                 Location = new Point(20, 535),
                 Size = new Size(460, 20),
                 Checked = true
@@ -1691,7 +1691,7 @@ namespace DataverseToPowerBI.XrmToolBox
             FabricLinkSQLDatabase = txtFabricDatabase.Text.Trim();
             WorkingFolder = txtFolder.Text.Trim();
             TemplatePath = txtTemplate.Text.Trim();
-            UseDisplayNameAliasesInSql = chkUseDisplayNameAliases.Checked;
+            UseDisplayNameRenamesInPowerQuery = chkUseDisplayNameAliases.Checked;
             IncludeChoiceNumericValueAsHiddenAttributes = chkIncludeChoiceNumericValues.Checked;
 
             if (string.IsNullOrWhiteSpace(SemanticModelName))
@@ -1707,3 +1707,4 @@ namespace DataverseToPowerBI.XrmToolBox
         }
     }
 }
+

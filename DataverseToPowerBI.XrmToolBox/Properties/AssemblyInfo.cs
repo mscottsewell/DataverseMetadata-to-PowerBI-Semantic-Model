@@ -15,8 +15,8 @@ using System.Runtime.InteropServices;
 
 [assembly: Guid("b8c9a3e4-2d6f-4a8b-9e5c-1f7d3a6b8c9e")]
 
-[assembly: AssemblyVersion("1.2026.5.141")]
-[assembly: AssemblyFileVersion("1.2026.5.141")]
+[assembly: AssemblyVersion("1.2026.5.146")]
+[assembly: AssemblyFileVersion("1.2026.5.146")]
 
 [assembly: InternalsVisibleTo("DataverseToPowerBI.Tests")]
 

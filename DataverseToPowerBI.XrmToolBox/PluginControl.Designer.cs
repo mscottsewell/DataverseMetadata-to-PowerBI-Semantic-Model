@@ -460,8 +460,10 @@ namespace DataverseToPowerBI.XrmToolBox
             this.listViewAttributes.TabIndex = 1;
             this.listViewAttributes.UseCompatibleStateImageBehavior = false;
             this.listViewAttributes.View = System.Windows.Forms.View.Details;
+            this.listViewAttributes.ItemCheck += new System.Windows.Forms.ItemCheckEventHandler(this.ListViewAttributes_ItemCheck);
             this.listViewAttributes.ItemChecked += new System.Windows.Forms.ItemCheckedEventHandler(this.ListViewAttributes_ItemChecked);
             this.listViewAttributes.ColumnClick += new System.Windows.Forms.ColumnClickEventHandler(this.ListViewAttributes_ColumnClick);
+            this.listViewAttributes.MouseDown += new System.Windows.Forms.MouseEventHandler(this.ListViewAttributes_MouseDown);
             this.listViewAttributes.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.ListViewAttributes_MouseDoubleClick);
             this.listViewAttributes.MouseClick += new System.Windows.Forms.MouseEventHandler(this.ListViewAttributes_MouseClick);
             this.listViewAttributes.Resize += new System.EventHandler(this.ListViewAttributes_Resize);

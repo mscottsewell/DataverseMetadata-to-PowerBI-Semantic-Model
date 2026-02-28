@@ -207,7 +207,7 @@ The core TMDL generation engine (~3,000 lines). Key responsibilities:
 - **User Code Preservation:** Keeps custom measures when rebuilding
 - **Auto-Generated Measures:** Creates count and URL link measures on fact tables
 - **Virtual Column Corrections:** Dictionary-based mapping to fix problematic TDS virtual column names (e.g., `contact.donotsendmmname` → `donotsendmarketingmaterial`)
-- **Display Name Aliasing:** Per-model and per-attribute overrides for SQL column aliases with duplicate detection
+- **Display Name Renaming:** Per-model and per-attribute overrides applied through a Power Query `Table.RenameColumns` step, with duplicate detection
 - **Rich Column Metadata:** Generates comprehensive descriptions including Dataverse descriptions, source attribution, and lookup targets
 
 ```csharp

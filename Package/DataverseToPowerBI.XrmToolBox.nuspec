@@ -2,7 +2,7 @@
 <package>
 	<metadata>
     <id>DataverseToPowerBI.XrmToolBox</id>
-    <version>1.2026.5.141</version>
+    <version>1.2026.5.146</version>
     <title>Dataverse to Power BI Semantic Model</title>
     <authors>Scott Sewell</authors>
     <owners>mScottSewell</owners>
@@ -11,24 +11,24 @@
     <description>Extract Dataverse metadata and generate Power BI TMDL/PBIP semantic models with automatic table relationships, calendar tables, and incremental change detection.</description>
     <summary>XrmToolBox plugin for generating Power BI semantic models from Dataverse metadata</summary>
     <releaseNotes>
-  v1.2026.5.141 — Add tests for unique column lineage tag generation and expanded lookup handling    
-  v1.2026.5.125 — Attribute-grid UX and expanded-field control release.
+v1.2026.5.146 - Power Query display-name renaming release
 
-Key updates:
-- Expanded child rows now have in-grid Include/Hidden toggles
-- In Show: Selected mode, grouped child rows remain visible even when not included
-- Added Open all groups / Collapse all groups and persisted group open/collapse state
-- Expanded column now has header + count display (e.g., ▶ Expand (2)); width rebalanced to avoid truncation
-- Choice numeric Include now defaults Hidden=true when enabled
-- Expanded child Include now behaves as a true toggle (unchecked rows stay visible)
-- Expanded Include/Hidden settings are persisted and honored during semantic model generation
+Highlights since the previous notes:
+- Display-name renaming now executes in Power Query via Table.RenameColumns instead of SQL AS [Display Name] aliases.
+- SQL projections remain stable technical/logical names for improved query consistency.
+- Internal setting/property naming updated to UseDisplayNameRenamesInPowerQuery.
+- Backward compatibility preserved for existing semantic-model JSON via legacy key mapping (UseDisplayNameAliasesInSql).
+- Semantic model dialogs updated to Power Query rename terminology.
+- Export summary label updated to match Power Query behavior.
+- Added serialization compatibility tests for default/migrated setting behavior.
+- Updated integration tests to assert Table.RenameColumns generation and no SQL display alias emission.
+- Updated the select/unselect behavior to be more intuitive and less prone to accidental deselection when interacting with the attribute rows.
 
-Recent prior releases:
-- v1.2026.5.110 — Incremental-update and output-stability fixes (description preservation scope, null-safety, lineage stability, opt-in FetchXML debug logs)
-- v1.2026.5.101 — Lookup sub-column controls, polymorphic lookup support, collapsible groups, and relationship selector improvements
-- v1.2026.5.84 — Fixed expanded-lookup JOINs to always use logical/schema table names
+Additional model-management fixes included:
+- Save/copy flows now persist rename setting, storage mode, and choice numeric defaults consistently.
+- Legacy model deserialization continues to default rename behavior to enabled when the setting is omitted.
 
-Full change history is maintained in CHANGELOG.md.
+Full details: CHANGELOG.md
     </releaseNotes>
     <tags>XrmToolBox PowerBI Dataverse TMDL PBIP SemanticModel</tags>
     <projectUrl>https://github.com/mscottsewell/DataverseToPowerBI</projectUrl>

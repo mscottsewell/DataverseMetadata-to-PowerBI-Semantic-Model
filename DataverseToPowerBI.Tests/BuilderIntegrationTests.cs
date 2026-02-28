@@ -49,7 +49,7 @@ namespace DataverseToPowerBI.Tests
                 connectionType: connectionType,
                 fabricLinkEndpoint: fabricEndpoint,
                 fabricLinkDatabase: fabricDatabase,
-                useDisplayNameAliasesInSql: useDisplayNameAliases,
+                UseDisplayNameRenamesInPowerQuery: useDisplayNameAliases,
                 storageMode: storageMode);
         }
 
@@ -566,8 +566,10 @@ namespace DataverseToPowerBI.Tests
                 scenario.BuildTables(), scenario.BuildRelationships(), scenario.BuildAttributeDisplayInfo());
 
             var tableContent = TmdlAssertions.ReadTableTmdl(_tempDir, "Account");
-            // With display name aliases, SQL should contain AS [Display Name]
-            Assert.Contains("AS [", tableContent);
+            // Display-name aliasing should be applied in Power Query, not SQL SELECT aliases.
+            Assert.Contains("Table.RenameColumns", tableContent, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("#\"Renamed Columns\"", tableContent, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("AS [Annual Revenue]", tableContent, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
@@ -757,3 +759,4 @@ namespace DataverseToPowerBI.Tests
         #endregion
     }
 }
+

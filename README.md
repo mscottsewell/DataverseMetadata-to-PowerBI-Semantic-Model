@@ -362,6 +362,8 @@ Uses **Microsoft Fabric Link for Dataverse** — data is synced to a Fabric Lake
 
 > **FabricLink queries** automatically JOIN to `OptionsetMetadata` / `GlobalOptionsetMetadata` and `StatusMetadata` tables for human-readable choice labels and status values. TDS mode uses virtual "name" attributes for the same purpose.
 >
+> **Display-name renaming option:** when enabled, the generated partition keeps technical SQL column names and applies friendly names in a Power Query `Table.RenameColumns` step.
+>
 > **Multi-select choices in FabricLink:** Label resolution splits values on semicolons (`;`) and uses the attribute logical name for `OptionSetName` in metadata joins.
 
 ---

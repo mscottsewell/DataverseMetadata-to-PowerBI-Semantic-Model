@@ -153,6 +153,7 @@ namespace DataverseToPowerBI.XrmToolBox
         private bool _isLoading = false;
         private int _operationVersion = 0;
         private bool _isLoadingMetadata = false;
+        private bool _allowAttributeCheckToggle = false;
         
         public PluginControl()
         {
@@ -340,7 +341,7 @@ namespace DataverseToPowerBI.XrmToolBox
             // Check for first-run experience
             if (_modelManager.IsFirstRun())
             {
-                PromptForFirstSemanticModel();
+                ShowSemanticModelSelector();
                 return;
             }
             
@@ -377,7 +378,7 @@ namespace DataverseToPowerBI.XrmToolBox
                 // Check for first-run experience
                 if (_modelManager.IsFirstRun())
                 {
-                    PromptForFirstSemanticModel();
+                    ShowSemanticModelSelector();
                     return;
                 }
                 
@@ -418,83 +419,6 @@ namespace DataverseToPowerBI.XrmToolBox
             if (url.EndsWith("/"))
                 url = url.Substring(0, url.Length - 1);
             return url;
-        }
-        
-        private void PromptForFirstSemanticModel()
-        {
-            var result = MessageBox.Show(
-                "Welcome to Dataverse Metadata Extractor for Power BI!\n\n" +
-                "Let's create your first semantic model.\n\n" +
-                "You'll need:\n" +
-                "  • A name for your semantic model\n" +
-                "  • A working folder location\n\n" +
-                "Would you like to continue?",
-                "First Time Setup",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question);
-
-            if (result == DialogResult.No)
-            {
-                SetStatus("Setup cancelled. Click the Semantic Model button to create one.");
-                UpdateSemanticModelDisplay();
-                // Still enable Select Tables so user can proceed
-                btnSelectTables.Enabled = true;
-                return;
-            }
-
-            // Show the new semantic model dialog
-            var defaultFolder = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                "DataverseToPowerBI");
-            Directory.CreateDirectory(defaultFolder);
-
-            var defaultTemplate = _modelManager.GetInstalledTemplatePath() ?? _templatePath;
-
-            using (var dialog = new NewSemanticModelDialogXrm(defaultFolder, _currentEnvironmentUrl ?? "", defaultTemplate))
-            {
-                if (dialog.ShowDialog(this) == DialogResult.OK)
-                {
-                    try
-                    {
-                        // Clear any existing metadata before creating the first model
-                        ClearAllMetadata();
-                        
-                        var newModel = new SemanticModelConfig
-                        {
-                            Name = dialog.SemanticModelName,
-                            DataverseUrl = _currentEnvironmentUrl ?? "",
-                            WorkingFolder = dialog.WorkingFolder,
-                            TemplatePath = dialog.TemplatePath,
-                            IncludeChoiceNumericValueAsHiddenAttributes = dialog.IncludeChoiceNumericValueAsHiddenAttributes,
-                            LastUsed = DateTime.Now,
-                            CreatedDate = DateTime.Now,
-                            PluginSettings = new PluginSettings()  // Explicitly initialize with empty settings
-                        };
-
-                        _modelManager.CreateModel(newModel);
-                        LoadSemanticModel(newModel);
-
-                        SetStatus($"Semantic model '{newModel.Name}' created successfully.");
-                        btnSelectTables.Enabled = true;
-                        
-                        // Immediately start the table selection workflow
-                        BeginInvoke(new Action(() => StartTableSelectionWorkflow()));
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Error creating semantic model:\n{ex.Message}",
-                            "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                }
-                else
-                {
-                    SetStatus("Setup cancelled. Click the Semantic Model button to create one.");
-                    // Still enable Select Tables so user can proceed
-                    btnSelectTables.Enabled = true;
-                }
-            }
-            
-            UpdateSemanticModelDisplay();
         }
         
         /// <summary>
@@ -1779,12 +1703,12 @@ namespace DataverseToPowerBI.XrmToolBox
         /// <summary>
         /// Auto-creates display name overrides for primary name attributes to disambiguate
         /// generic names like "Name" across tables (e.g., "Account Name", "Contact Name").
-        /// Only runs when UseDisplayNameAliasesInSql is enabled.
+        /// Only runs when UseDisplayNameRenamesInPowerQuery is enabled.
         /// Skips if the display name already starts with the table display name.
         /// </summary>
         private void AutoOverridePrimaryNameAttributes()
         {
-            if (_currentModel?.UseDisplayNameAliasesInSql != true)
+            if (_currentModel?.UseDisplayNameRenamesInPowerQuery != true)
                 return;
             
             foreach (var kvp in _selectedTables)
@@ -2396,6 +2320,54 @@ namespace DataverseToPowerBI.XrmToolBox
             return $"{prefix} : {expandedName}";
         }
 
+        /// <summary>
+        /// Strips UI-only adornments (indent arrows, expand glyphs, and override marker) from editable text.
+        /// </summary>
+        private static string NormalizeDisplayNameInput(string displayText)
+        {
+            if (string.IsNullOrWhiteSpace(displayText))
+                return string.Empty;
+
+            var text = displayText.Trim();
+
+            if (text.EndsWith("*", StringComparison.Ordinal))
+                text = text.Substring(0, text.Length - 1).TrimEnd();
+
+            if (text.StartsWith("▶ ", StringComparison.Ordinal) || text.StartsWith("▼ ", StringComparison.Ordinal))
+                text = text.Substring(2).TrimStart();
+
+            const string childPrefixSymbol = "↳";
+            var arrowIndex = text.IndexOf(childPrefixSymbol, StringComparison.Ordinal);
+            if (arrowIndex >= 0)
+            {
+                var prefix = text.Substring(0, arrowIndex);
+                if (prefix.All(char.IsWhiteSpace))
+                    text = text.Substring(arrowIndex + childPrefixSymbol.Length).TrimStart();
+            }
+
+            return text.Trim();
+        }
+
+        private string GetEditableDisplayName(string tableName, string attrLogicalName, string renderedText)
+        {
+            if (_attributeDisplayNameOverrides.TryGetValue(tableName, out var tableOverrides) &&
+                tableOverrides.TryGetValue(attrLogicalName, out var overrideName) &&
+                !string.IsNullOrWhiteSpace(overrideName))
+            {
+                return overrideName;
+            }
+
+            if (_tableAttributes.TryGetValue(tableName, out var attrs))
+            {
+                var attr = attrs.FirstOrDefault(a =>
+                    a.LogicalName.Equals(attrLogicalName, StringComparison.OrdinalIgnoreCase));
+                if (attr != null)
+                    return attr.DisplayName ?? attr.LogicalName;
+            }
+
+            return NormalizeDisplayNameInput(renderedText);
+        }
+
         private void RecalculateLookupDefaults()
         {
             if (listViewSelectedTables.SelectedItems.Count > 0)
@@ -2681,21 +2653,17 @@ namespace DataverseToPowerBI.XrmToolBox
                 var overrides = _attributeDisplayNameOverrides.ContainsKey(logicalName)
                     ? _attributeDisplayNameOverrides[logicalName]
                     : new Dictionary<string, string>();
-                var useAliases = _currentModel?.UseDisplayNameAliasesInSql ?? true;
 
                 var displayNameCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-                if (useAliases)
+                foreach (var attr in sortedList)
                 {
-                    foreach (var attr in sortedList)
-                    {
-                        if (!selected.Contains(attr.LogicalName) && !requiredAttrs.Contains(attr.LogicalName)) continue;
-                        var dn = overrides.ContainsKey(attr.LogicalName)
-                            ? overrides[attr.LogicalName]
-                            : (attr.DisplayName ?? attr.LogicalName);
-                        if (!displayNameCounts.ContainsKey(dn))
-                            displayNameCounts[dn] = 0;
-                        displayNameCounts[dn]++;
-                    }
+                    if (!selected.Contains(attr.LogicalName) && !requiredAttrs.Contains(attr.LogicalName)) continue;
+                    var dn = overrides.ContainsKey(attr.LogicalName)
+                        ? overrides[attr.LogicalName]
+                        : (attr.DisplayName ?? attr.LogicalName);
+                    if (!displayNameCounts.ContainsKey(dn))
+                        displayNameCounts[dn] = 0;
+                    displayNameCounts[dn]++;
                 }
 
                 var items = new List<ListViewItem>(sortedList.Count * 2);
@@ -2779,7 +2747,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
                     if (!isCollapsed)
                     {
-                        var nameDisplayValue = useAliases && overrides.ContainsKey(attr.LogicalName)
+                        var nameDisplayValue = overrides.ContainsKey(attr.LogicalName)
                             ? overrides[attr.LogicalName]
                             : (attr.DisplayName ?? attr.LogicalName);
                         var displayRows = new List<(string SubType, string LogicalName, string DisplayName, string Type, bool Include, bool Hidden)>
@@ -2915,7 +2883,7 @@ namespace DataverseToPowerBI.XrmToolBox
 
                     if (!isCollapsed)
                     {
-                        var labelDisplayValue = useAliases && overrides.ContainsKey(attr.LogicalName)
+                        var labelDisplayValue = overrides.ContainsKey(attr.LogicalName)
                             ? overrides[attr.LogicalName]
                             : (attr.DisplayName ?? attr.LogicalName);
                         var labelLogicalName = attr.VirtualAttributeName ?? (attr.LogicalName + "name");
@@ -2965,7 +2933,7 @@ namespace DataverseToPowerBI.XrmToolBox
                         continue;
                 }
 
-                var hasOverride = useAliases && overrides.ContainsKey(attr.LogicalName);
+                var hasOverride = overrides.ContainsKey(attr.LogicalName);
                 var effectiveDisplayName = hasOverride
                     ? overrides[attr.LogicalName]
                     : (attr.DisplayName ?? attr.LogicalName);
@@ -3001,7 +2969,7 @@ namespace DataverseToPowerBI.XrmToolBox
                     item.ForeColor = Color.Gray;
                 }
                 
-                if (useAliases && (isSelected || isRequired) && 
+                if ((isSelected || isRequired) && 
                     displayNameCounts.ContainsKey(effectiveDisplayName) && displayNameCounts[effectiveDisplayName] > 1)
                 {
                     item.BackColor = Color.FromArgb(255, 200, 200);
@@ -3257,6 +3225,37 @@ namespace DataverseToPowerBI.XrmToolBox
             
             UpdateSelectedTableRow(logicalName);
             SaveSettings();
+        }
+
+        private void ListViewAttributes_ItemCheck(object sender, ItemCheckEventArgs e)
+        {
+            if (_isLoading)
+                return;
+
+            if (_allowAttributeCheckToggle)
+            {
+                _allowAttributeCheckToggle = false;
+                return;
+            }
+
+            // Prevent implicit toggles from row/double-click interactions.
+            if (e.NewValue != e.CurrentValue)
+            {
+                e.NewValue = e.CurrentValue;
+            }
+        }
+
+        private void ListViewAttributes_MouseDown(object sender, MouseEventArgs e)
+        {
+            _allowAttributeCheckToggle = false;
+            if (e.Button != MouseButtons.Left)
+                return;
+
+            var hit = listViewAttributes.HitTest(e.Location);
+            if (hit.Item == null)
+                return;
+
+            _allowAttributeCheckToggle = (hit.Location & ListViewHitTestLocations.StateImage) == ListViewHitTestLocations.StateImage;
         }
         
         private void TxtAttrSearch_TextChanged(object sender, EventArgs e)
@@ -3600,14 +3599,19 @@ namespace DataverseToPowerBI.XrmToolBox
         private void ListViewAttributes_MouseDoubleClick(object sender, MouseEventArgs e)
         {
             if (listViewSelectedTables.SelectedItems.Count == 0) return;
-            if (!(_currentModel?.UseDisplayNameAliasesInSql ?? true)) return;
             
             var hit = listViewAttributes.HitTest(e.Location);
             if (hit.Item == null || hit.SubItem == null) return;
             
-            // Only allow editing the Display Name column (index 2)
+            // Allow double-click on Display Name or Logical Name columns.
+            // Logical Name still edits the display alias to be more forgiving for users.
             var subItemIndex = hit.Item.SubItems.IndexOf(hit.SubItem);
-            if (subItemIndex != 2) return;
+            if (subItemIndex != 2 && subItemIndex != 3) return;
+
+            var editSubItem = hit.Item.SubItems[2];
+            var headerText = editSubItem.Text.TrimStart();
+            if (headerText.StartsWith("▶ ") || headerText.StartsWith("▼ "))
+                return;
             
             var attrLogicalName = hit.Item.Tag as string;
             if (string.IsNullOrEmpty(attrLogicalName)) return;
@@ -3621,13 +3625,11 @@ namespace DataverseToPowerBI.XrmToolBox
             
             var tableName = listViewSelectedTables.SelectedItems[0].Name;
             
-            // Get current effective display name (strip the * indicator if present)
-            var currentText = hit.SubItem.Text;
-            if (currentText.EndsWith(" *"))
-                currentText = currentText.Substring(0, currentText.Length - 2);
+            // Resolve editable name from canonical model state rather than decorated UI text.
+            var currentText = GetEditableDisplayName(tableName, attrLogicalName, editSubItem.Text);
             
             // Create an inline TextBox overlay for editing
-            var bounds = hit.SubItem.Bounds;
+            var bounds = editSubItem.Bounds;
             var editBox = new TextBox
             {
                 Text = currentText,
@@ -3640,7 +3642,7 @@ namespace DataverseToPowerBI.XrmToolBox
             
             void CommitEdit()
             {
-                var newName = editBox.Text.Trim();
+                var newName = NormalizeDisplayNameInput(editBox.Text);
                 if (editBox.Parent == null) return; // Already removed
                 listViewAttributes.Controls.Remove(editBox);
                 editBox.Dispose();
@@ -5016,8 +5018,6 @@ namespace DataverseToPowerBI.XrmToolBox
         /// </summary>
         private bool HasDuplicateDisplayNames()
         {
-            if (!(_currentModel?.UseDisplayNameAliasesInSql ?? true)) return false;
-            
             var conflicts = new List<string>();
             
             foreach (var tableName in _selectedTables.Keys)
@@ -5288,7 +5288,7 @@ namespace DataverseToPowerBI.XrmToolBox
                     _currentModel?.FabricLinkSQLEndpoint,
                     _currentModel?.FabricLinkSQLDatabase,
                     _currentModel?.PluginSettings?.LanguageCode ?? 1033,
-                    _currentModel?.UseDisplayNameAliasesInSql ?? true,
+                    _currentModel?.UseDisplayNameRenamesInPowerQuery ?? true,
                     _currentModel?.StorageMode ?? "DirectQuery");
                     
                     if ((_currentModel?.StorageMode ?? "DirectQuery") == "DualSelect")
@@ -5563,7 +5563,7 @@ namespace DataverseToPowerBI.XrmToolBox
                     _currentModel?.FabricLinkSQLEndpoint,
                     _currentModel?.FabricLinkSQLDatabase,
                     _currentModel?.PluginSettings?.LanguageCode ?? 1033,
-                    _currentModel?.UseDisplayNameAliasesInSql ?? true,
+                    _currentModel?.UseDisplayNameRenamesInPowerQuery ?? true,
                     _currentModel?.StorageMode ?? "DirectQuery");
 
                 if ((_currentModel?.StorageMode ?? "DirectQuery") == "DualSelect")
@@ -5967,3 +5967,4 @@ namespace DataverseToPowerBI.XrmToolBox
     
     #endregion
 }
+
